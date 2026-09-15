@@ -231,8 +231,13 @@ broken out), and its `RST` lands on `esp:RX2` (GPIO16), same gotcha as the
 real board.
 
 To test against the real homelab Mosquitto broker (LAN-only, not public),
-use `wokwi-server`, a local proxy that bridges the simulated device's
-network calls to the real local network.
+use **wokwigw** (Wokwi's IoT Gateway — the tool previously referred to
+here as "wokwi-server", corrected name), which bridges the simulated
+device's network calls to the real local network via `host.wokwi.internal`.
+**Requires a paid Wokwi Hobby+/Pro plan**, not just a free account — worth
+confirming before relying on it. Without it, the free tier still connects
+the simulated ESP32 to the public internet (via the "Wokwi-GUEST" network),
+just not to the LAN-only broker.
 
 ## Open items for Claude Code to help resolve
 - ~~Confirm the `/status` (or MQTT payload) JSON schema against the server

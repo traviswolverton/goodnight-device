@@ -58,10 +58,81 @@ for card rotation, menu timeout, etc. Blocking delay breaks encoder
 responsiveness and MQTT message handling.
 
 ### Pixel mapping
-The server sends a pixel-index -> color mapping in its status payload (or a
-separate small payload) — e.g. `{0: "#1D9E75", 1: "#BA7517", ...}`. The
-firmware just sets those pixel colors directly; it does not decide which
-service maps to which pixel — that's server-side config.
+The server sends a pixel-index -> color mapping as the `pixels` object in
+`homelab/status` — e.g. `{"0": "#1D9E75", "1": "#BA7517", ...}`, keys `"0"`
+through `"4"`, value `null` for an unassigned pixel. The firmware just sets
+those pixel colors directly (or turns the pixel off on `null`); it does not
+decide which service maps to which pixel or which color a status implies —
+that's all server-side (see `pixel_map` config in the server repo).
+
+## MQTT JSON payload schema
+Locked against the server repo (`desk-dashboard-server/DESIGN.md`) — both
+docs carry this section verbatim; update them together if it changes.
+
+### `homelab/status`
+Published on any adapter state change and as a ~30-60s heartbeat regardless.
+```json
+{
+  "version": 1,
+  "ts": 1737000000,
+  "overall": {
+    "level": "ok",
+    "text": "All systems normal"
+  },
+  "services": [
+    {
+      "name": "plex",
+      "status": "ok",
+      "value": 4,
+      "unit": "streams",
+      "detail": "4 active streams"
+    }
+  ],
+  "pixels": {
+    "0": "#1D9E75",
+    "1": "#BA7517",
+    "2": "#1D9E75",
+    "3": "#1D9E75",
+    "4": null
+  }
+}
+```
+- `overall.level` is `"ok"` | `"warn"` | `"down"` — drives the HOME banner
+  color directly; the client does not derive it from `services`.
+- `overall.text` is the short banner string, already worded server-side.
+- `services` is an array, in server-decided order — that order is the HOME
+  card rotation order. Each entry matches the adapter's `fetch()` shape
+  (`status`/`value`/`unit`/`detail`) from the server repo.
+- `pixels` keys are always strings `"0"`-`"4"` (JSON object keys can't be
+  bare ints); `null` means "off/unassigned", not "no change".
+- `ts` is unix seconds. Not currently used by the firmware but parse it
+  anyway — useful for staleness checks later (e.g. banner goes gray if no
+  message for N minutes).
+
+### `homelab/alert/camera`
+```json
+{
+  "camera": "front_door",
+  "ts": 1737000000,
+  "snapshot_url": "http://<host>/api/frigate/front_door/latest.jpg",
+  "label": "person",
+  "text": "Front Door: person detected"
+}
+```
+- `snapshot_url` is fetched by the ESP32 over plain HTTP GET (not embedded
+  in the MQTT payload — keeps the message small and avoids broker
+  max-packet-size issues). Server has already resized the JPEG to the
+  display's resolution.
+- `label` is the detected object class, optional — omit or `null` if not
+  applicable.
+- `text` is the pre-worded string for the CAMERA screen's caption.
+
+### Firmware implication
+Default `PubSubClient` payload buffer is 256 bytes — too small once
+`services` has more than 1-2 entries. Call
+`mqttClient.setBufferSize(...)` (or equivalent for whichever MQTT lib is
+chosen) sized to the largest expected `homelab/status` payload, with
+headroom for adapter count growing past the initial 2-3.
 
 ## Testing before hardware arrives
 Use **Wokwi** (wokwi.com, also a VS Code extension) — simulates ESP32 +
@@ -76,8 +147,9 @@ Note: Wokwi does not simulate the UPS/battery power electronics — that
 part still needs validation on real hardware once it arrives.
 
 ## Open items for Claude Code to help resolve
-- Confirm the `/status` (or MQTT payload) JSON schema against the server
-  repo before writing the parser
+- ~~Confirm the `/status` (or MQTT payload) JSON schema against the server
+  repo before writing the parser~~ — done, see "MQTT JSON payload schema"
+  above (locked with the server repo)
 - Decide exact SPI pin assignments once wiring is finalized, write
   TFT_eSPI's User_Setup.h accordingly
 - Write the Wokwi diagram.json for local simulation

@@ -198,14 +198,26 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
 ### Firmware implication
 Default `PubSubClient` payload buffer is 256 bytes — too small once
 `services` has more than 1-2 entries. Call
-`mqttClient.setBufferSize(...)` (or equivalent for whichever MQTT lib is
-chosen) sized to the largest expected `homelab/status` payload, with
-headroom for adapter count growing past the initial 2-3.
+`mqttClient.setBufferSize(...)` sized to the largest expected
+`homelab/status` payload, with headroom for adapter count growing past
+the initial 2-3. Done in [`src/main.cpp`](src/main.cpp) — currently 2048
+bytes, revisit if `services` grows enough to need more.
+
+## Project layout
+PlatformIO project (`platformio.ini`). WiFi + MQTT connectivity is the
+first working slice — see [`src/main.cpp`](src/main.cpp) — subscribing to
+both topics and dumping payloads to Serial, no display/LED/PIR code yet.
+Real credentials go in `include/secrets.h` (gitignored; copy
+`include/secrets.h.example` and fill it in) — never commit that file.
 
 ## Testing before hardware arrives
 Use **Wokwi** (wokwi.com, also a VS Code extension) — simulated ESP32 +
-rotary encoder + WS2812 strip, wired per [`diagram.json`](diagram.json).
-Its simulated ESP32 has working WiFi that reaches the public internet.
+rotary encoder + WS2812 strip + PIR, wired per [`diagram.json`](diagram.json).
+`wokwi.toml` points it at the PlatformIO build output, so the VS Code
+extension's simulate command builds and runs it directly. Its simulated
+ESP32 only joins the "Wokwi-GUEST" open network (see
+`secrets.h.example`'s note) but that network does reach the public
+internet.
 
 **Display correction:** Wokwi has no native ST7789 simulation part (as of
 this writing it's still an open feature request, not a built-in). Per
@@ -229,7 +241,7 @@ network calls to the real local network.
 - ~~Decide exact SPI pin assignments once wiring is finalized, write
   TFT_eSPI's User_Setup.h accordingly~~ — done, verified against real
   hardware (see "Pin assignments" above) and drafted in
-  [`User_Setup.h`](User_Setup.h)
+  [`include/User_Setup.h`](include/User_Setup.h)
 - ~~Write the Wokwi diagram.json for local simulation~~ — done, see
   [`diagram.json`](diagram.json) (uses `ili9341` as an ST7789 stand-in,
   see "Testing before hardware arrives" above for why)

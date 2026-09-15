@@ -30,6 +30,13 @@
       "top": 60,
       "left": 620,
       "attrs": { "rows": "1", "cols": "5" }
+    },
+    {
+      "type": "wokwi-pir-motion-sensor",
+      "id": "pir1",
+      "top": 260,
+      "left": 620,
+      "attrs": {}
     }
   ],
   "connections": [
@@ -40,7 +47,7 @@
     ["display:RST", "esp:RX2", "green", []],
     ["display:MOSI", "esp:D23", "green", []],
     ["display:SCK", "esp:D18", "green", []],
-    ["display:LED", "esp:3V3", "red", []],
+    ["display:LED", "esp:D26", "green", []],
 
     ["encoder1:CLK", "esp:D32", "green", []],
     ["encoder1:DT", "esp:D33", "green", []],
@@ -50,6 +57,10 @@
 
     ["leds:DIN", "esp:D13", "green", []],
     ["leds:VDD", "esp:VIN", "red", []],
-    ["leds:VSS", "esp:GND.2", "black", []]
+    ["leds:VSS", "esp:GND.2", "black", []],
+
+    ["pir1:OUT", "esp:D27", "green", []],
+    ["pir1:VCC", "esp:3V3", "red", []],
+    ["pir1:GND", "esp:GND.2", "black", []]
   ]
 }

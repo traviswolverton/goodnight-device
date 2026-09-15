@@ -25,6 +25,12 @@ it. No business logic (severity decisions, adapter polling) belongs here.
   both at that `DIN` input end. Data line is 3.3V (ESP32 GPIO) driving
   5V-logic pixels — works fine at this scale over short wire runs; revisit
   with a level shifter (74AHCT125) only if signal issues appear.
+- Presence: HW-740 mini PIR motion sensor module (`VCC`/`VOUT`/`GND`) —
+  drives backlight on/off based on whether anyone's at the desk. Powered
+  from 3.3V, not 5V/6V (within its spec range but the safer choice): the
+  digital output swings up to VCC, and running it at 3.3V keeps that
+  signal within the ESP32 GPIO's safe voltage range instead of risking a
+  5V signal into a 3.3V-only input.
 - Power: External 5V/2A DC supply (USB-C wall adapter) — no battery/UPS.
   Desk-bound and always-on, so battery backup isn't solving a real problem
   here; deferred to a future project instead. 2A over 1A for headroom: WS2812
@@ -48,7 +54,7 @@ so GPIO16/17 are free to use as plain GPIO.
 | Display | `CS` | 5 | `D5` |
 | Display | `DC` | 4 | `D4` |
 | Display | `RST` | 16 | **`RX2`** — not `D16`, see note |
-| Display | `BL` | — | tie to 3.3V directly, no GPIO |
+| Display | `BL` | 26 | `D26` — digital on/off, not PWM (see note) |
 | Display | `VCC`/`GND` | — | 3.3V / GND |
 | Encoder | `CLK` | 32 | `D32` |
 | Encoder | `DT` | 33 | `D33` |
@@ -56,6 +62,8 @@ so GPIO16/17 are free to use as plain GPIO.
 | Encoder | `+`/`GND` | — | 3.3V / GND |
 | LED strip | `DIN` | 13 | `D13` |
 | LED strip | `+5V`/`GND` | — | from the external 5V supply, not the ESP32 |
+| PIR | `VOUT` | 27 | `D27` |
+| PIR | `VCC`/`GND` | — | 3.3V / GND (3.3V, not 5V — see Hardware note) |
 
 Notes:
 - **GPIO16/17 silkscreen gotcha:** this specific board prints its alternate
@@ -65,9 +73,12 @@ Notes:
 - Display board has no `MISO`/`SDO` pin at all (write-only) — leave
   `TFT_MISO` undefined in `User_Setup.h` rather than pointing it at an
   unused GPIO.
-- Not used, confirmed present and free for later: `D14`, `D26`, `D27`,
-  `D19`, `D21`, `D22` (the latter two freed up when the UPS/I2C module was
-  dropped).
+- `BL` is digital on/off (`digitalWrite`), not PWM dimming — the PIR-driven
+  backlight behavior (see Firmware architecture) only needs two states,
+  so there's no need for LEDC/PWM complexity here.
+- Not used, confirmed present and free for later: `D14`, `D19`, `D21`,
+  `D22` (the latter two freed up when the UPS/I2C module was dropped;
+  `D26`/`D27` are now taken by backlight control and the PIR).
 - Still avoid: `GPIO0`/`2`/`12`/`15` (boot straps), `GPIO1`/`3` (UART0 —
   flashing/Serial), `GPIO6`-`11` (internal flash), `GPIO34`-`39`
   (input-only, no internal pull-up — ruled out the encoder pins for that
@@ -98,6 +109,16 @@ Three states, not more:
    RTSP/H.264. This is a distinct screen state, not blended into
    HOME's auto-rotation, since JPEG decode + SPI blit is slow enough to
    disrupt the main loop if run continuously.
+
+### Backlight / presence
+Independent of screen state — runs the same in HOME, MENU, and CAMERA.
+PIR `VOUT` HIGH turns the backlight (`BL` GPIO) on immediately. On the
+transition to LOW, backlight stays on for the same ~15-20s idle window
+already used for MENU's timeout (one shared constant, not two separate
+tuning knobs) before switching off. No PWM/dimming — just on/off, since
+that's all this needs. Doesn't touch screen state at all: CAMERA and MENU
+behave exactly as already designed regardless of presence; this only ever
+changes whether the backlight is lit.
 
 ### Non-blocking is mandatory
 No `delay()` calls anywhere in the main loop — use `millis()`-based timers

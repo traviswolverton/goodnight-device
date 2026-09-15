@@ -33,8 +33,10 @@
 #define TFT_DC    4   // board silkscreen: D4   (display pin: DC)
 #define TFT_RST  16   // board silkscreen: RX2 — NOT D16, see DESIGN.md note
 // No TFT_MISO — this display has no MISO/SDO pin (write-only).
-// No TFT_BL — backlight is wired straight to 3.3V, not GPIO-driven. If a
-// dimmable backlight is added later, define TFT_BL + TFT_BACKLIGHT_ON here.
+
+// --- Backlight (digital on/off, driven by PIR presence — not PWM/dimming) ---
+#define TFT_BL   26   // board silkscreen: D26
+#define TFT_BACKLIGHT_ON HIGH
 
 // --- Fonts (trim this list later if flash size becomes a concern) ---
 #define LOAD_GLCD

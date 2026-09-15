@@ -12,16 +12,19 @@ it. No business logic (severity decisions, adapter polling) belongs here.
   TFT_eSPI library; needs a `User_Setup.h` matching actual wiring pins).
   Native orientation is portrait 240x320 — rotate to landscape 320x240 in
   software via TFT_eSPI's rotation setting.
-- Input: KY-040 rotary encoder module (GND, +, SW, DT, CLK) — rotation for
-  navigation, integrated push button for select/menu-open. Onboard pull-ups
-  may or may not be present on the breakout — verify, or use
-  `INPUT_PULLUP` on the ESP32 side if not.
-- Status LEDs: 5x WS2812 (NeoPixel) addressable strip. Use FastLED or
-  Adafruit_NeoPixel. Add a series resistor (~300-500 ohm) on the data line
-  and a decoupling cap (~100-1000uF) across 5V/GND at the strip's input.
-  Data line is 3.3V (ESP32 GPIO) driving 5V-logic pixels — works fine at
-  this scale over short wire runs; revisit with a level shifter
-  (74AHCT125) only if signal issues appear.
+- Input: HW-040 rotary encoder module (silkscreened HW-040, not KY-040 —
+  same pinout: `CLK`, `DT`, `SW`, `+`, `GND`) — rotation for navigation,
+  integrated push button for select/menu-open. Board has no visible
+  pull-up resistors, so firmware always sets `INPUT_PULLUP` on all three
+  signal pins — safe even if pull-ups turn out to be present too.
+- Status LEDs: 5x WS2812 (NeoPixel) addressable strip, 5050 flexible strip
+  with each pixel's pads labeled `+5V`/`DIN`(or `DO`)/`GND` and an arrow
+  showing data direction into `DIN`. Use FastLED or Adafruit_NeoPixel.
+  Wire the ESP32 to the end labeled `DIN`. Add a series resistor (~300-500
+  ohm) on the data line and a decoupling cap (~100-1000uF) across 5V/GND,
+  both at that `DIN` input end. Data line is 3.3V (ESP32 GPIO) driving
+  5V-logic pixels — works fine at this scale over short wire runs; revisit
+  with a level shifter (74AHCT125) only if signal issues appear.
 - Power: External 5V/2A DC supply (USB-C wall adapter) — no battery/UPS.
   Desk-bound and always-on, so battery backup isn't solving a real problem
   here; deferred to a future project instead. 2A over 1A for headroom: WS2812
@@ -31,6 +34,44 @@ it. No business logic (severity decisions, adapter polling) belongs here.
   the ESP32's `5V`/`VIN` pin (or USB-C port) and (b) the LED strip's 5V/GND
   input directly — don't route strip current through the ESP32's onboard
   3.3V regulator.
+
+## Pin assignments
+Verified against the actual ELEGOO ESP32-WROOM-32 board (38-pin
+"DEVKIT V1" layout), the Waveshare display module, the HW-040 encoder, and
+the WS2812 strip in hand — not just datasheets. Board is WROOM (no PSRAM),
+so GPIO16/17 are free to use as plain GPIO.
+
+| Function | Signal | GPIO | MCU board silkscreen |
+|---|---|---|---|
+| Display | MOSI/`DIN` | 23 | `D23` |
+| Display | SCLK/`CLK` | 18 | `D18` |
+| Display | `CS` | 5 | `D5` |
+| Display | `DC` | 4 | `D4` |
+| Display | `RST` | 16 | **`RX2`** — not `D16`, see note |
+| Display | `BL` | — | tie to 3.3V directly, no GPIO |
+| Display | `VCC`/`GND` | — | 3.3V / GND |
+| Encoder | `CLK` | 32 | `D32` |
+| Encoder | `DT` | 33 | `D33` |
+| Encoder | `SW` | 25 | `D25` |
+| Encoder | `+`/`GND` | — | 3.3V / GND |
+| LED strip | `DIN` | 13 | `D13` |
+| LED strip | `+5V`/`GND` | — | from the external 5V supply, not the ESP32 |
+
+Notes:
+- **GPIO16/17 silkscreen gotcha:** this specific board prints its alternate
+  UART2 function (`RX2`/`TX2`) on GPIO16/17 instead of `D16`/`D17`. Display
+  `RST` is wired to `RX2`. Don't go looking for a pin labeled `D16` — it
+  isn't there under that name.
+- Display board has no `MISO`/`SDO` pin at all (write-only) — leave
+  `TFT_MISO` undefined in `User_Setup.h` rather than pointing it at an
+  unused GPIO.
+- Not used, confirmed present and free for later: `D14`, `D26`, `D27`,
+  `D19`, `D21`, `D22` (the latter two freed up when the UPS/I2C module was
+  dropped).
+- Still avoid: `GPIO0`/`2`/`12`/`15` (boot straps), `GPIO1`/`3` (UART0 —
+  flashing/Serial), `GPIO6`-`11` (internal flash), `GPIO34`-`39`
+  (input-only, no internal pull-up — ruled out the encoder pins for that
+  reason, since the HW-040 board supplies none of its own).
 
 ## Firmware architecture
 ### Connectivity
@@ -153,8 +194,10 @@ network calls to the real local network.
 - ~~Confirm the `/status` (or MQTT payload) JSON schema against the server
   repo before writing the parser~~ — done, see "MQTT JSON payload schema"
   above (locked with the server repo)
-- Decide exact SPI pin assignments once wiring is finalized, write
-  TFT_eSPI's User_Setup.h accordingly
+- ~~Decide exact SPI pin assignments once wiring is finalized, write
+  TFT_eSPI's User_Setup.h accordingly~~ — done, verified against real
+  hardware (see "Pin assignments" above) and drafted in
+  [`User_Setup.h`](User_Setup.h)
 - Write the Wokwi diagram.json for local simulation
 - Decide whether "Mute alerts" and "Pin a screen" states need to persist
   across a reboot (likely not, given desk-bound always-on nature) or reset

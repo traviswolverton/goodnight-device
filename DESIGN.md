@@ -182,9 +182,20 @@ chosen) sized to the largest expected `homelab/status` payload, with
 headroom for adapter count growing past the initial 2-3.
 
 ## Testing before hardware arrives
-Use **Wokwi** (wokwi.com, also a VS Code extension) — simulates ESP32 +
-ST7789 + SSD1306 + rotary encoder + WS2812, all relevant parts here. Its
-simulated ESP32 has working WiFi that reaches the public internet.
+Use **Wokwi** (wokwi.com, also a VS Code extension) — simulated ESP32 +
+rotary encoder + WS2812 strip, wired per [`diagram.json`](diagram.json).
+Its simulated ESP32 has working WiFi that reaches the public internet.
+
+**Display correction:** Wokwi has no native ST7789 simulation part (as of
+this writing it's still an open feature request, not a built-in). Per
+Wokwi's own maintainer, the standard stand-in is the `ili9341` part —
+ST7789 and ILI9341 share a largely compatible command set, so it's good
+enough for exercising firmware logic (layout, redraw timing, SPI wiring)
+even though it isn't pixel-perfect to the real panel. `diagram.json` wires
+an `ili9341` part using the confirmed pin table above; its `MISO` pin is
+left unconnected to match the real display (which has no `MISO`/`SDO`
+broken out), and its `RST` lands on `esp:RX2` (GPIO16), same gotcha as the
+real board.
 
 To test against the real homelab Mosquitto broker (LAN-only, not public),
 use `wokwi-server`, a local proxy that bridges the simulated device's
@@ -198,7 +209,9 @@ network calls to the real local network.
   TFT_eSPI's User_Setup.h accordingly~~ — done, verified against real
   hardware (see "Pin assignments" above) and drafted in
   [`User_Setup.h`](User_Setup.h)
-- Write the Wokwi diagram.json for local simulation
+- ~~Write the Wokwi diagram.json for local simulation~~ — done, see
+  [`diagram.json`](diagram.json) (uses `ili9341` as an ST7789 stand-in,
+  see "Testing before hardware arrives" above for why)
 - Decide whether "Mute alerts" and "Pin a screen" states need to persist
   across a reboot (likely not, given desk-bound always-on nature) or reset
   each boot

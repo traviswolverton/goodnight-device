@@ -1,0 +1,55 @@
+{
+  "version": 1,
+  "author": "desk-dashboard-esp32",
+  "editor": "wokwi",
+  "parts": [
+    {
+      "type": "wokwi-esp32-devkit-v1",
+      "id": "esp",
+      "top": 50,
+      "left": 0,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-ili9341",
+      "id": "display",
+      "top": -60,
+      "left": 320,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-ky-040",
+      "id": "encoder1",
+      "top": 260,
+      "left": 320,
+      "attrs": {}
+    },
+    {
+      "type": "wokwi-neopixel-canvas",
+      "id": "leds",
+      "top": 60,
+      "left": 620,
+      "attrs": { "rows": "1", "cols": "5" }
+    }
+  ],
+  "connections": [
+    ["display:VCC", "esp:3V3", "red", []],
+    ["display:GND", "esp:GND.1", "black", []],
+    ["display:CS", "esp:D5", "green", []],
+    ["display:D/C", "esp:D4", "green", []],
+    ["display:RST", "esp:RX2", "green", []],
+    ["display:MOSI", "esp:D23", "green", []],
+    ["display:SCK", "esp:D18", "green", []],
+    ["display:LED", "esp:3V3", "red", []],
+
+    ["encoder1:CLK", "esp:D32", "green", []],
+    ["encoder1:DT", "esp:D33", "green", []],
+    ["encoder1:SW", "esp:D25", "green", []],
+    ["encoder1:VCC", "esp:3V3", "red", []],
+    ["encoder1:GND", "esp:GND.1", "black", []],
+
+    ["leds:DIN", "esp:D13", "green", []],
+    ["leds:VDD", "esp:VIN", "red", []],
+    ["leds:VSS", "esp:GND.2", "black", []]
+  ]
+}

@@ -212,6 +212,13 @@ network calls to the real local network.
 - ~~Write the Wokwi diagram.json for local simulation~~ — done, see
   [`diagram.json`](diagram.json) (uses `ili9341` as an ST7789 stand-in,
   see "Testing before hardware arrives" above for why)
-- Decide whether "Mute alerts" and "Pin a screen" states need to persist
-  across a reboot (likely not, given desk-bound always-on nature) or reset
-  each boot
+- ~~Decide whether "Mute alerts" and "Pin a screen" states need to persist
+  across a reboot~~ — done: neither persists. Both reset to default
+  (unmuted, auto-rotate) on every boot, from plain `setup()`
+  initialization — no NVS/Preferences writes needed. Reboots on this
+  device (power blip, reflash, watchdog reset) are usually unattended, and
+  a muted display that silently stays muted after an unattended reboot is
+  the worst failure mode for a status board — fail toward showing alerts,
+  not suppressing them. A pinned screen has no safety angle either way,
+  but resetting it too keeps the behavior consistent and the
+  implementation with zero persistence code.

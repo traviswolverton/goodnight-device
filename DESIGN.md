@@ -22,9 +22,15 @@ it. No business logic (severity decisions, adapter polling) belongs here.
   Data line is 3.3V (ESP32 GPIO) driving 5V-logic pixels — works fine at
   this scale over short wire runs; revisit with a level shifter
   (74AHCT125) only if signal issues appear.
-- Power: Waveshare UPS Module 3S (3x 18650 in series), 5V/5A output,
-  supports simultaneous charge+discharge, I2C battery monitoring. This is
-  the final power architecture — no separate charger/boost module needed.
+- Power: External 5V/2A DC supply (USB-C wall adapter) — no battery/UPS.
+  Desk-bound and always-on, so battery backup isn't solving a real problem
+  here; deferred to a future project instead. 2A over 1A for headroom: WS2812
+  strip at full white (~300mA) plus a WiFi TX burst (~500mA momentary) plus
+  display/backlight leaves a 1A supply almost no margin, risking brownout
+  resets. Bring 5V/GND from the adapter to a shared point and branch to (a)
+  the ESP32's `5V`/`VIN` pin (or USB-C port) and (b) the LED strip's 5V/GND
+  input directly — don't route strip current through the ESP32's onboard
+  3.3V regulator.
 
 ## Firmware architecture
 ### Connectivity
@@ -142,9 +148,6 @@ simulated ESP32 has working WiFi that reaches the public internet.
 To test against the real homelab Mosquitto broker (LAN-only, not public),
 use `wokwi-server`, a local proxy that bridges the simulated device's
 network calls to the real local network.
-
-Note: Wokwi does not simulate the UPS/battery power electronics — that
-part still needs validation on real hardware once it arrives.
 
 ## Open items for Claude Code to help resolve
 - ~~Confirm the `/status` (or MQTT payload) JSON schema against the server

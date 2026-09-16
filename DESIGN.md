@@ -41,6 +41,17 @@ it. No business logic (severity decisions, adapter polling) belongs here.
   input directly — don't route strip current through the ESP32's onboard
   3.3V regulator.
 
+  Powering the board via its USB-C port instead of wiring 5V into `VIN`
+  directly doesn't change any of this: `VIN` and USB-C's 5V input are the
+  same net on this board (confirmed against ESP32 DevKit V1 hardware
+  references, not assumed) — plugging in USB-C energizes `VIN` too, so
+  branching the LED strip's power off the board's own `VIN`/`GND` pins
+  works exactly as already wired. Only watch for it if the board resets
+  specifically when the LEDs go bright — that would mean the strip's
+  ~300mA is more than the board's internal USB-5V-to-`VIN` trace likes,
+  and the fix is running the strip's `+5V`/`GND` straight to the adapter
+  instead of through the board.
+
 ## Pin assignments
 Verified against the actual ELEGOO ESP32-WROOM-32 board (38-pin
 "DEVKIT V1" layout), the Waveshare display module, the HW-040 encoder, and

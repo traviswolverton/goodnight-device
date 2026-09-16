@@ -58,6 +58,12 @@ Verified against the actual ELEGOO ESP32-WROOM-32 board (38-pin
 the WS2812 strip in hand — not just datasheets. Board is WROOM (no PSRAM),
 so GPIO16/17 are free to use as plain GPIO.
 
+See [`docs/pinout.html`](docs/pinout.html) for a visual wiring diagram —
+open it in a browser (it's self-contained, no server needed). Same data
+as the table below, laid out for the workbench: shows the two GPIO16 and
+PIR pinout gotchas directly on the wires that matter, and draws the 3V3
+power-bus crossing explained in the Power note above.
+
 | Function | Signal | GPIO | MCU board silkscreen |
 |---|---|---|---|
 | Display | MOSI/`DIN` | 23 | `D23` |

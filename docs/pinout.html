@@ -1,0 +1,446 @@
+<title>Desk Dashboard Pinout</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper: #f5f2ea;
+    --ink: #201d16;
+    --ink-dim: #7a7566;
+    --rule: #ded7c4;
+    --accent: #8a5a2b;
+    --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14171a;
+      --ink: #eae6d9;
+      --ink-dim: #96917f;
+      --rule: #2c2f2a;
+      --accent: #d9a35f;
+      --card: #1b1e1a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14171a;
+    --ink: #eae6d9;
+    --ink-dim: #96917f;
+    --rule: #2c2f2a;
+    --accent: #d9a35f;
+    --card: #1b1e1a;
+  }
+
+  /* Diagram panel — fixed "instrument panel" palette, same in both themes */
+  svg.wiring {
+    --panel-bg: #0c1210;
+    --pcb: #123d2e;
+    --pcb-edge: #1f5c45;
+    --silk: #eef1ea;
+    --silk-dim: #5b6a63;
+    --pad: #d9a35f;
+    --wire-power: #d9a35f;
+    --wire-gnd: #7b8a82;
+    --wire-signal: #45c2b3;
+    --wire-warn: #e2666a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    padding: 28px 20px 64px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  h1, h2, h3 { font-family: "IBM Plex Mono", "SF Mono", monospace; text-wrap: balance; }
+  h1 {
+    font-size: clamp(1.4rem, 1rem + 2vw, 1.9rem);
+    font-weight: 700;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+    margin: 0 0 28px;
+    max-width: 62ch;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+
+  figure.diagram-figure {
+    margin: 0 0 20px;
+    padding: 0;
+  }
+  .diagram-scroll {
+    overflow-x: auto;
+    background: #0c1210;
+    border-radius: 10px;
+    padding: 6px;
+  }
+  svg.wiring { display: block; width: 100%; height: auto; min-width: 720px; }
+  figcaption {
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    margin-top: 10px;
+    max-width: 68ch;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 0 0 40px;
+    padding: 14px 16px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--ink-dim); }
+  .legend-swatch { width: 22px; height: 4px; border-radius: 2px; flex: none; }
+
+  h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 40px 0 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .table-wrap { overflow-x: auto; margin-top: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+  th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    font-weight: 500;
+  }
+  td.mono, .mono { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+  tr.group-start td { border-top: 2px solid var(--rule); }
+  .gpio { color: var(--accent); font-weight: 600; }
+  .note { color: var(--ink-dim); font-size: 0.85em; }
+  .flag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
+    background: color-mix(in srgb, #e2666a 22%, transparent);
+    color: #c94b50;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .flag { color: #f0989b; }
+  }
+  :root[data-theme="dark"] .flag { color: #f0989b; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+  }
+  footer strong { color: var(--ink); }
+</style>
+
+<p class="eyebrow">desk-dashboard-esp32 · hardware reference</p>
+<h1>Wiring reference</h1>
+<p class="subtitle">
+  Every GPIO in use, verified against photos of the real ELEGOO ESP32 DEVKIT V1,
+  Waveshare ST7789 display, HW-040 encoder, WS2812 strip, and HW-740 PIR — not just
+  datasheets. Full rationale lives in DESIGN.md; this is the at-the-bench version.
+</p>
+
+<figure class="diagram-figure">
+  <div class="diagram-scroll">
+    <svg class="wiring" viewBox="0 0 1500 780" role="img"
+      aria-label="Wiring diagram: ESP32 DEVKIT V1 center spine with 15 paired pin rows on left and right edges, connected to an HW-040 encoder, WS2812 LED strip, and HW-740 PIR on the left, and a Waveshare ST7789 display on the right. Two wires cross the board: the display's backlight pin reaches left to GPIO26, and a 3V3 power bus fans out from the single 3.3V pin on the right to the encoder, PIR, and display.">
+      <defs>
+        <marker id="dot" markerWidth="6" markerHeight="6" refX="3" refY="3">
+          <circle cx="3" cy="3" r="2.6" fill="context-fill" />
+        </marker>
+      </defs>
+
+      <!-- ESP32 board -->
+      <rect x="640" y="70" width="180" height="560" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <rect x="672" y="86" width="116" height="70" rx="3" fill="#2b2f2c" opacity="0.55"/>
+      <text x="730" y="126" text-anchor="middle" font-family="IBM Plex Mono" font-size="11" fill="var(--silk)" letter-spacing="0.5">WROOM-32</text>
+      <rect x="700" y="600" width="60" height="16" rx="2" fill="#2b2f2c" opacity="0.55"/>
+      <text x="730" y="645" text-anchor="middle" font-family="IBM Plex Mono" font-size="12" font-weight="600" fill="var(--silk)" letter-spacing="0.5">ESP32 · DEVKIT V1</text>
+      <text x="730" y="660" text-anchor="middle" font-family="IBM Plex Mono" font-size="9" fill="var(--silk-dim)">ELEGOO · WROOM-32, no PSRAM</text>
+
+      <!-- ROW TICKS (generated) -->
+      <!-- Row template: left tick 600-640, right tick 820-860, spacing 36px starting y=100 -->
+      <g font-family="IBM Plex Mono" font-size="12">
+        <!-- row 0: EN / D23 -->
+        <line x1="600" y1="100" x2="640" y2="100" stroke="var(--silk-dim)" stroke-width="1.5"/>
+        <text x="594" y="104" text-anchor="end" fill="var(--silk-dim)" font-size="10">EN</text>
+        <line x1="820" y1="100" x2="860" y2="100" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="820" cy="100" r="3.2" fill="var(--wire-signal)"/>
+        <text x="866" y="98" fill="var(--silk)" font-weight="600">D23</text>
+        <text x="866" y="112" fill="var(--silk-dim)" font-size="9.5">display MOSI</text>
+
+        <!-- row 1: VN / D22 (unused) -->
+        <line x1="600" y1="136" x2="640" y2="136" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="594" y="140" text-anchor="end" fill="var(--silk-dim)" font-size="10">VN</text>
+        <line x1="820" y1="136" x2="860" y2="136" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="140" fill="var(--silk-dim)" font-size="10">D22</text>
+
+        <!-- row 2: VP / TX0 (unused) -->
+        <line x1="600" y1="172" x2="640" y2="172" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="594" y="176" text-anchor="end" fill="var(--silk-dim)" font-size="10">VP</text>
+        <line x1="820" y1="172" x2="860" y2="172" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="176" fill="var(--silk-dim)" font-size="10">TX0</text>
+
+        <!-- row 3: D34 / RX0 (unused) -->
+        <line x1="600" y1="208" x2="640" y2="208" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="594" y="212" text-anchor="end" fill="var(--silk-dim)" font-size="10">D34</text>
+        <line x1="820" y1="208" x2="860" y2="208" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="212" fill="var(--silk-dim)" font-size="10">RX0</text>
+
+        <!-- row 4: D35 / D21 (unused) -->
+        <line x1="600" y1="244" x2="640" y2="244" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="594" y="248" text-anchor="end" fill="var(--silk-dim)" font-size="10">D35</text>
+        <line x1="820" y1="244" x2="860" y2="244" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="248" fill="var(--silk-dim)" font-size="10">D21</text>
+
+        <!-- row 5: D32 (encoder CLK) / D19 (unused) -->
+        <line x1="600" y1="280" x2="640" y2="280" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="600" cy="280" r="3.2" fill="var(--wire-signal)"/>
+        <text x="594" y="278" text-anchor="end" fill="var(--silk)" font-weight="600">D32</text>
+        <text x="594" y="292" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">encoder CLK</text>
+        <line x1="820" y1="280" x2="860" y2="280" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="284" fill="var(--silk-dim)" font-size="10">D19</text>
+
+        <!-- row 6: D33 (encoder DT) / D18 (display SCK) -->
+        <line x1="600" y1="316" x2="640" y2="316" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="600" cy="316" r="3.2" fill="var(--wire-signal)"/>
+        <text x="594" y="314" text-anchor="end" fill="var(--silk)" font-weight="600">D33</text>
+        <text x="594" y="328" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">encoder DT</text>
+        <line x1="820" y1="316" x2="860" y2="316" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="820" cy="316" r="3.2" fill="var(--wire-signal)"/>
+        <text x="866" y="314" fill="var(--silk)" font-weight="600">D18</text>
+        <text x="866" y="328" fill="var(--silk-dim)" font-size="9.5">display SCK</text>
+
+        <!-- row 7: D25 (encoder SW) / D5 (display CS) -->
+        <line x1="600" y1="352" x2="640" y2="352" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="600" cy="352" r="3.2" fill="var(--wire-signal)"/>
+        <text x="594" y="350" text-anchor="end" fill="var(--silk)" font-weight="600">D25</text>
+        <text x="594" y="364" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">encoder SW</text>
+        <line x1="820" y1="352" x2="860" y2="352" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="820" cy="352" r="3.2" fill="var(--wire-signal)"/>
+        <text x="866" y="350" fill="var(--silk)" font-weight="600">D5</text>
+        <text x="866" y="364" fill="var(--silk-dim)" font-size="9.5">display CS</text>
+
+        <!-- row 8: D26 (backlight, CROSSES right) / TX2 (unused) -->
+        <line x1="600" y1="388" x2="640" y2="388" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="600" cy="388" r="3.2" fill="var(--wire-signal)"/>
+        <text x="594" y="386" text-anchor="end" fill="var(--silk)" font-weight="600">D26</text>
+        <text x="594" y="400" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">backlight BL →</text>
+        <line x1="820" y1="388" x2="860" y2="388" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="392" fill="var(--silk-dim)" font-size="10">TX2</text>
+
+        <!-- row 9: D27 (PIR OUT) / RX2 (display RST, GOTCHA) -->
+        <line x1="600" y1="424" x2="640" y2="424" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="600" cy="424" r="3.2" fill="var(--wire-signal)"/>
+        <text x="594" y="422" text-anchor="end" fill="var(--silk)" font-weight="600">D27</text>
+        <text x="594" y="436" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">PIR OUT</text>
+        <line x1="820" y1="424" x2="860" y2="424" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="820" cy="424" r="3.2" fill="var(--wire-signal)"/>
+        <text x="866" y="418" fill="var(--wire-warn)" font-weight="700">RX2</text>
+        <text x="866" y="431" fill="var(--silk-dim)" font-size="9.5">display RST</text>
+        <text x="866" y="443" fill="var(--wire-warn)" font-size="9.5" font-weight="600">⚠ printed RX2, not D16</text>
+
+        <!-- row 10: D14 (unused) / D4 (display DC) -->
+        <line x1="600" y1="460" x2="640" y2="460" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="594" y="464" text-anchor="end" fill="var(--silk-dim)" font-size="10">D14</text>
+        <line x1="820" y1="460" x2="860" y2="460" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="820" cy="460" r="3.2" fill="var(--wire-signal)"/>
+        <text x="866" y="458" fill="var(--silk)" font-weight="600">D4</text>
+        <text x="866" y="472" fill="var(--silk-dim)" font-size="9.5">display DC</text>
+
+        <!-- row 11: D12 / D2 (unused) -->
+        <line x1="600" y1="496" x2="640" y2="496" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="594" y="500" text-anchor="end" fill="var(--silk-dim)" font-size="10">D12</text>
+        <line x1="820" y1="496" x2="860" y2="496" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="500" fill="var(--silk-dim)" font-size="10">D2</text>
+
+        <!-- row 12: D13 (LED DIN) / D15 (unused) -->
+        <line x1="600" y1="532" x2="640" y2="532" stroke="var(--wire-signal)" stroke-width="2.5"/>
+        <circle cx="600" cy="532" r="3.2" fill="var(--wire-signal)"/>
+        <text x="594" y="530" text-anchor="end" fill="var(--silk)" font-weight="600">D13</text>
+        <text x="594" y="544" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">LED strip DIN</text>
+        <line x1="820" y1="532" x2="860" y2="532" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="536" fill="var(--silk-dim)" font-size="10">D15</text>
+
+        <!-- row 13: GND.2 (PIR + LED gnd) / GND.1 (display + encoder gnd) -->
+        <line x1="600" y1="568" x2="640" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+        <circle cx="600" cy="568" r="3.2" fill="var(--wire-gnd)"/>
+        <text x="594" y="566" text-anchor="end" fill="var(--silk)" font-weight="600">GND.2</text>
+        <text x="594" y="580" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">PIR + LED gnd</text>
+        <line x1="820" y1="568" x2="860" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+        <circle cx="820" cy="568" r="3.2" fill="var(--wire-gnd)"/>
+        <text x="866" y="566" fill="var(--silk)" font-weight="600">GND.1</text>
+        <text x="866" y="580" fill="var(--silk-dim)" font-size="9.5">display + encoder gnd</text>
+
+        <!-- row 14: VIN (LED +5V, local) / 3V3 (shared bus) -->
+        <line x1="600" y1="604" x2="640" y2="604" stroke="var(--wire-power)" stroke-width="2.5"/>
+        <circle cx="600" cy="604" r="3.2" fill="var(--wire-power)"/>
+        <text x="594" y="602" text-anchor="end" fill="var(--silk)" font-weight="600">VIN</text>
+        <text x="594" y="616" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">LED strip +5V</text>
+        <line x1="820" y1="604" x2="860" y2="604" stroke="var(--wire-power)" stroke-width="2.5"/>
+        <circle cx="820" cy="604" r="3.2" fill="var(--wire-power)"/>
+        <text x="866" y="602" fill="var(--silk)" font-weight="600">3V3</text>
+        <text x="866" y="616" fill="var(--silk-dim)" font-size="9.5">shared bus, see below</text>
+      </g>
+
+      <!-- 3V3 power bus: fans out from row14-right to Encoder, PIR, Display VCC -->
+      <path d="M 860 604 C 950 604, 950 700, 990 700 L 990 705" fill="none" stroke="var(--wire-power)" stroke-width="2" stroke-dasharray="1 0"/>
+      <path d="M 990 705 L 240 705 L 240 660" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
+      <circle cx="240" cy="660" r="3" fill="var(--wire-power)"/>
+      <path d="M 990 705 L 990 460 L 245 460" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
+      <circle cx="245" cy="460" r="3" fill="var(--wire-power)"/>
+      <path d="M 990 705 L 1090 705 L 1090 512" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
+      <circle cx="1090" cy="512" r="3" fill="var(--wire-power)"/>
+      <text x="995" y="722" font-family="IBM Plex Mono" font-size="10" fill="var(--wire-power)" font-weight="600">3V3 bus — only 3.3V pin on this board; every peripheral needing it wires here</text>
+
+      <!-- Backlight crossing: D26 (left row8) to Display BL pin -->
+      <path d="M 600 388 C 500 388, 500 474, 1010 474" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-dasharray="6 4" opacity="0.85"/>
+      <text x="700" y="378" font-family="IBM Plex Mono" font-size="9.5" fill="var(--wire-signal)">backlight crosses to D26 — not grouped with rest of display wiring</text>
+
+      <!-- Encoder block -->
+      <g font-family="IBM Plex Mono">
+        <rect x="120" y="255" width="180" height="150" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+        <text x="210" y="276" text-anchor="middle" font-size="11" font-weight="600" fill="var(--silk)">HW-040 ENCODER</text>
+        <circle cx="210" cy="330" r="22" fill="#2b2f2c" opacity="0.5"/>
+        <!-- pins (real order: CLK, DT, SW, +, GND) -->
+        <text x="290" y="298" text-anchor="end" font-size="10.5" fill="var(--silk)">CLK</text>
+        <text x="290" y="315" text-anchor="end" font-size="10.5" fill="var(--silk)">DT</text>
+        <text x="290" y="332" text-anchor="end" font-size="10.5" fill="var(--silk)">SW</text>
+        <text x="290" y="349" text-anchor="end" font-size="10.5" fill="var(--silk)">+</text>
+        <text x="290" y="366" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      </g>
+      <path d="M 300 298 C 450 298, 450 280, 600 280" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 300 315 C 450 315, 450 316, 600 316" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 300 332 C 450 332, 450 352, 600 352" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 300 349 C 400 349, 400 604, 990 705" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
+      <path d="M 300 366 C 390 366, 390 568, 820 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2"/>
+
+      <!-- PIR block -->
+      <g font-family="IBM Plex Mono">
+        <rect x="120" y="430" width="180" height="110" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+        <text x="210" y="450" text-anchor="middle" font-size="11" font-weight="600" fill="var(--silk)">HW-740 PIR</text>
+        <circle cx="210" cy="500" r="20" fill="#2b2f2c" opacity="0.5"/>
+        <!-- pins real order: VCC, VOUT, GND -->
+        <text x="290" y="475" text-anchor="end" font-size="10.5" fill="var(--silk)">VCC</text>
+        <text x="290" y="495" text-anchor="end" font-size="10.5" fill="var(--silk)">VOUT</text>
+        <text x="290" y="515" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      </g>
+      <path d="M 300 475 C 400 475, 400 460, 990 705" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
+      <path d="M 300 495 C 420 495, 420 424, 600 424" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 300 515 C 400 515, 400 568, 600 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2"/>
+      <text x="120" y="558" font-size="9.5" font-family="IBM Plex Mono" fill="var(--wire-warn)" font-weight="600">⚠ VCC/VOUT/GND — confirmed on this exact board, not universal</text>
+
+      <!-- LED strip block -->
+      <g font-family="IBM Plex Mono">
+        <rect x="120" y="565" width="180" height="100" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+        <text x="210" y="585" text-anchor="middle" font-size="11" font-weight="600" fill="var(--silk)">WS2812 × 5</text>
+        <text x="210" y="600" text-anchor="middle" font-size="9" fill="var(--silk-dim)">DIN end of strip</text>
+        <!-- pins real order: DIN, +5V, GND -->
+        <text x="290" y="622" text-anchor="end" font-size="10.5" fill="var(--silk)">DIN</text>
+        <text x="290" y="640" text-anchor="end" font-size="10.5" fill="var(--silk)">+5V</text>
+        <text x="290" y="658" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      </g>
+      <path d="M 300 622 C 420 622, 420 532, 600 532" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 300 640 C 420 640, 420 604, 600 604" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
+      <path d="M 300 658 C 420 658, 420 568, 600 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2"/>
+
+      <!-- Display block -->
+      <g font-family="IBM Plex Mono">
+        <rect x="1000" y="90" width="200" height="440" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+        <text x="1100" y="112" text-anchor="middle" font-size="11" font-weight="600" fill="var(--silk)">WAVESHARE 2" LCD</text>
+        <text x="1100" y="127" text-anchor="middle" font-size="9" fill="var(--silk-dim)">ST7789VW · 240×320</text>
+        <rect x="1030" y="145" width="140" height="220" fill="#2b2f2c" opacity="0.45"/>
+        <!-- pins real order: VCC, GND, DIN, CLK, CS, DC, RST, BL -->
+        <text x="1010" y="390" font-size="10.5" fill="var(--silk)">VCC</text>
+        <text x="1010" y="408" font-size="10.5" fill="var(--silk)">GND</text>
+        <text x="1010" y="426" font-size="10.5" fill="var(--silk)">DIN</text>
+        <text x="1010" y="444" font-size="10.5" fill="var(--silk)">CLK</text>
+        <text x="1010" y="462" font-size="10.5" fill="var(--silk)">CS</text>
+        <text x="1010" y="480" font-size="10.5" fill="var(--silk)">DC</text>
+        <text x="1010" y="498" font-size="10.5" fill="var(--silk)">RST</text>
+        <text x="1010" y="516" font-size="10.5" fill="var(--silk)">BL</text>
+      </g>
+      <path d="M 1000 386 C 960 386, 960 512, 1090 512" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
+      <path d="M 1000 404 C 950 404, 950 568, 860 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2"/>
+      <path d="M 1000 422 C 920 422, 920 100, 860 100" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 1000 440 C 910 440, 910 316, 860 316" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 1000 458 C 900 458, 900 352, 860 352" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 1000 476 C 890 476, 890 460, 860 460" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
+      <path d="M 1000 494 C 880 494, 880 424, 860 424" fill="none" stroke="var(--wire-warn)" stroke-width="2.5"/>
+      <path d="M 1000 512 C 700 512, 700 474, 600 388" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-dasharray="6 4" opacity="0.85"/>
+    </svg>
+  </div>
+  <figcaption>
+    Both ESP32 pin columns, drawn in real physical row order — this is why some wires
+    have to cross: <strong>3V3</strong> only breaks out on the right, so the encoder and
+    PIR each send one wire across for it even though their signal pins live on the
+    left. The display's backlight is the reverse case — its only wire on the left,
+    away from the rest of its own connector.
+  </figcaption>
+</figure>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:#d9a35f"></span>power (VCC / 3V3 / 5V)</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#7b8a82"></span>ground</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#45c2b3"></span>signal</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#e2666a"></span>silkscreen ≠ schematic name — read the flag</div>
+</div>
+
+<h2>Reference table</h2>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Pin</th><th>GPIO</th><th>ESP32 silkscreen</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+      <tr class="group-start"><td>Display</td><td class="mono">DIN (MOSI)</td><td class="mono gpio">23</td><td class="mono">D23</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">CLK (SCK)</td><td class="mono gpio">18</td><td class="mono">D18</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">CS</td><td class="mono gpio">5</td><td class="mono">D5</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">DC</td><td class="mono gpio">4</td><td class="mono">D4</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">RST</td><td class="mono gpio">16</td><td class="mono">RX2<span class="flag">not D16</span></td><td class="note">GPIO16's UART2 alt-label is what's printed here</td></tr>
+      <tr><td></td><td class="mono">BL</td><td class="mono gpio">26</td><td class="mono">D26</td><td class="note">digital on/off, driven by PIR — not PWM</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the shared bus</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.1</td><td class="note">—</td></tr>
+
+      <tr class="group-start"><td>Encoder (HW-040)</td><td class="mono">CLK</td><td class="mono gpio">32</td><td class="mono">D32</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">DT</td><td class="mono gpio">33</td><td class="mono">D33</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">SW</td><td class="mono gpio">25</td><td class="mono">D25</td><td class="note">no onboard pull-ups — use INPUT_PULLUP</td></tr>
+      <tr><td></td><td class="mono">+</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the shared bus</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.1</td><td class="note">—</td></tr>
+
+      <tr class="group-start"><td>LED strip (WS2812 ×5)</td><td class="mono">DIN</td><td class="mono gpio">13</td><td class="mono">D13</td><td class="note">the end marked DIN, not DO</td></tr>
+      <tr><td></td><td class="mono">+5V</td><td class="mono">—</td><td class="mono">VIN</td><td class="note">from the 5V supply rail, not through the ESP32 regulator</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">—</td></tr>
+
+      <tr class="group-start"><td>PIR (HW-740)</td><td class="mono">VOUT</td><td class="mono gpio">27</td><td class="mono">D27</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">keeps VOUT within GPIO-safe voltage</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">—</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<footer>
+  <strong>Wiring order:</strong> power rails first — check 3V3/VIN/GND with a multimeter
+  before anything else is connected — then add one peripheral at a time (display →
+  encoder → LED strip → PIR), confirming each before moving to the next.
+</footer>

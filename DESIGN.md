@@ -120,12 +120,19 @@ Three states, not more:
    overlay, vertical list, 4-5 visible rows, current selection
    highlighted (inverted color). Items: Pin a screen, Mute alerts,
    Refresh now, Network info, Back. 15-20s idle timeout returns to HOME.
-3. **CAMERA** — reached via menu item, or auto-triggered by an incoming
-   `homelab/alert/camera` message. Decodes a JPEG snapshot (TJpg_Decoder)
-   proxied from the server — NOT live video, ESP32 cannot decode
-   RTSP/H.264. This is a distinct screen state, not blended into
-   HOME's auto-rotation, since JPEG decode + SPI blit is slow enough to
-   disrupt the main loop if run continuously.
+3. **CAMERA** — auto-triggered by an incoming `homelab/alert/camera`
+   message (not reachable from the MENU item list above — that's a fixed
+   5 items, matching its own "4-5 visible rows," with nothing camera-
+   related in it). Suppressed entirely while muted, same "don't
+   surprise-interrupt" principle as the backlight. Decodes a JPEG
+   snapshot (TJpg_Decoder) proxied from the server — NOT live video,
+   ESP32 cannot decode RTSP/H.264. This is a distinct screen state, not
+   blended into HOME's auto-rotation, since JPEG decode + SPI blit is
+   slow enough to disrupt the main loop if run continuously. Exits back
+   to HOME on either an encoder button press or the same shared idle
+   timeout as MENU — this needed its own exit condition, since there was
+   otherwise no way to leave it once an alert had no viewer around to
+   dismiss it.
 
 ### Backlight / presence
 Independent of screen state — runs the same in HOME, MENU, and CAMERA.

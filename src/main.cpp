@@ -1,18 +1,20 @@
 // Desk Dashboard — ESP32 client
 //
-// First working slice: WiFi + MQTT connectivity only, no display/LED/PIR
-// code yet (those come next — see DESIGN.md's "Firmware architecture").
-// Subscribes to both topics from the locked schema and dumps whatever
-// arrives to Serial. Reconnect logic is deliberately not an afterthought
-// here, per DESIGN.md's "MQTT reconnect logic is a real piece of work" —
-// both WiFi and MQTT reconnect attempts are millis()-gated and retried
-// from loop(), never blocking it with delay().
+// Wires together connectivity (WiFi + MQTT), input (rotary encoder),
+// output (display, LED strip, backlight), and presence (PIR) around the
+// screen state machine in screen.cpp. See DESIGN.md for the full design
+// — this file is just the glue.
 
 #include <Arduino.h>
 #include <WiFi.h>
 #include <PubSubClient.h>
 
 #include "secrets.h"
+#include "status_payload.h"
+#include "encoder.h"
+#include "leds.h"
+#include "backlight.h"
+#include "screen.h"
 
 namespace {
 
@@ -27,18 +29,50 @@ constexpr size_t kMqttBufferSize = 2048;
 constexpr unsigned long kWifiRetryIntervalMs = 5000;
 constexpr unsigned long kMqttRetryIntervalMs = 5000;
 
+// Encoder pins -- see DESIGN.md's "Pin assignments" table.
+constexpr uint8_t kPinEncoderClk = 32;
+constexpr uint8_t kPinEncoderDt = 33;
+constexpr uint8_t kPinEncoderSw = 25;
+
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastMqttAttemptMs = 0;
 
+// Latest parsed homelab/status, plus a one-shot flag for "did a new one
+// just arrive this loop" -- screenUpdate() and ledsUpdate() both care
+// about that distinction, not just the latest value, so they don't
+// redraw/repaint every single loop() iteration forever after the first
+// message ever arrives.
+StatusPayload gLatestStatus;
+bool gHasNewStatus = false;
+
 void onMqttMessage(char* topic, uint8_t* payload, unsigned int length) {
-  Serial.printf("[mqtt] %s (%u bytes): ", topic, length);
-  for (unsigned int i = 0; i < length; i++) {
-    Serial.write(payload[i]);
+  // Kept deliberately fast and non-blocking: parse, flag, return. Nothing
+  // in here may do SPI/FastLED work (ledsUpdate/screen drawing) -- those
+  // happen from loop() once this returns, not synchronously in here. A
+  // slow callback delays the TCP ACK for the packet just received; the
+  // broker's stack then retransmits it, our stack redelivers the
+  // retransmission as a "new" message, and the cycle feeds itself. This
+  // is not theoretical -- it's exactly what happened when ledsUpdate()
+  // (i.e. FastLED.show(), which disables interrupts for its WS2812
+  // timing) ran directly in here: the same message got redelivered
+  // thousands of times a second, indefinitely, verified on real
+  // hardware before this fix.
+  String t(topic);
+  if (t == kTopicStatus) {
+    if (parseStatusPayload(payload, length, gLatestStatus)) {
+      gHasNewStatus = true;
+    }
+  } else if (t == kTopicCameraAlert) {
+    CameraAlert alert;
+    if (parseCameraAlert(payload, length, alert)) {
+      screenOnCameraAlert(alert);
+    }
+  } else {
+    Serial.printf("[mqtt] unexpected topic: %s\n", topic);
   }
-  Serial.println();
 }
 
 // Non-blocking: kicks off a connection attempt at most once per retry
@@ -102,10 +136,36 @@ void setup() {
   mqttClient.setServer(MQTT_HOST, MQTT_PORT);
   mqttClient.setBufferSize(kMqttBufferSize);
   mqttClient.setCallback(onMqttMessage);
+
+  encoderBegin(kPinEncoderClk, kPinEncoderDt, kPinEncoderSw);
+  ledsBegin();
+  backlightBegin();
+  screenBegin();
 }
 
 void loop() {
   ensureWifi();
   ensureMqtt();
   mqttClient.loop();
+
+  int32_t encoderDelta = encoderReadDelta();
+  if (encoderDelta != 0) {
+    screenOnEncoderDelta(encoderDelta);
+  }
+  if (encoderPressed()) {
+    screenOnEncoderPress();
+  }
+
+  backlightUpdate();
+
+  if (gHasNewStatus) {
+    ledsUpdate(gLatestStatus);
+    // One-line confirmation that a message actually made it through
+    // parsing and out to the LEDs -- without this, a working, silent
+    // steady state is indistinguishable over Serial from a stuck one.
+    Serial.printf("[status] %u services, level=%s\n", gLatestStatus.serviceCount,
+                  gLatestStatus.overallLevel.c_str());
+  }
+  screenUpdate(gLatestStatus, gHasNewStatus);
+  gHasNewStatus = false;
 }

@@ -262,6 +262,89 @@ Verified end-to-end on real hardware: a real OTA upload over WiFi with
 no USB cable attached, board rebooted cleanly afterward, resumed normal
 operation.
 
+## Reliability: a message-repeat bug, and heap hygiene
+Two unrelated bugs, found on real hardware, not in review — both would
+have been invisible in a short bench test and both matter specifically
+*because* this runs unattended for days at a time.
+
+### Bug 1 — FastLED.show() inside the MQTT callback
+Symptom: the exact same `homelab/status` message got redelivered to
+`onMqttMessage()` thousands of times a second, indefinitely, instead of
+once every 15-60s like the broker actually sends it.
+
+Cause: `ledsUpdate()` (i.e. `FastLED.show()`, which briefly disables
+interrupts for WS2812's precise bit timing) was running synchronously
+inside the callback. That delayed the TCP ACK for the packet just
+received long enough that the broker's stack retransmitted it; our stack
+delivered the retransmission as a "new" MQTT message, which called
+`ledsUpdate()` again, delaying the ACK again — self-sustaining.
+
+Fix: moved `ledsUpdate()` out of the callback and into `loop()`, gated
+by the same one-shot "a new message actually arrived" flag already
+driving the screen. The callback now only ever parses and sets a flag —
+no SPI, no FastLED, nothing that can block returning to the network
+stack.
+
+One methodology trap worth recording: after applying this fix, the same
+symptom appeared to persist across several follow-up tests. It hadn't —
+each of those tests was reading a mix of genuinely fresh serial output
+plus *stale backlog from an older, already-stuck boot* still sitting in
+the OS's kernel serial buffer. A clean single-reset capture, read from
+that exact reset forward, was what actually confirmed the fix. Multiple
+`pio device monitor`/pyserial sessions opened back-to-back without an
+explicit fresh reset will misattribute old output to new firmware.
+
+### Bug 2 — heap fragmentation from per-message String/JsonDocument churn
+This one doesn't show up as a dramatic failure — it's a slow-onset risk
+that a short test can't rule out, only a long one can.
+
+Every incoming message (every 15-60s, forever, for as long as this
+board is plugged in) used to: construct a fresh `JsonDocument` and
+destroy it, and reassign ~26 `String` fields across
+`StatusPayload`/`ServiceReading`. Both are real heap allocate/free
+cycles. Individually harmless; over thousands of cycles across days of
+uptime, this is exactly the kind of workload that fragments an embedded
+heap (many small allocations of varying size, `String` in particular
+has no reuse-in-place guarantee on reassignment).
+
+Fix:
+- `status_payload`'s `String` fields became fixed `char[]` buffers
+  (silently truncated if ever too long, never a crash) — zero heap
+  involvement.
+- The `JsonDocument` in each parse function became a function-`static`,
+  reused via `.clear()` rather than constructed fresh per call.
+  Confirmed against ArduinoJson's own source (not assumed) that
+  `clear()` resets the memory pool without necessarily freeing the
+  backing allocation.
+- The MQTT topic comparison in `main.cpp` became `strcmp`, not a
+  temporary `String` — same reasoning, still per-message.
+- `screen.cpp`'s `colorForLevel()` and the muted-banner text also
+  stopped going through `String`, since they're on the HOME redraw path
+  (frequent, if not per-message).
+
+**Verification methodology** (this is the part a clean compile can't
+give you): added temporary heap diagnostics to `main.cpp` — logged every
+30s via `ESP.getFreeHeap()`, `ESP.getMinFreeHeap()`, and specifically
+`ESP.getMaxAllocHeap()` (the largest *contiguous* allocatable block —
+the fragmentation-sensitive number; total free heap can look fine while
+this one shrinks). Watched both figures on the pre-fix firmware as a
+baseline, then on the fixed firmware, deployed via OTA specifically so
+the comparison didn't require another USB session.
+
+As of this writing: pre-fix baseline held flat for 5 minutes before
+switching over (not long enough to have caught the original problem
+either — it's what gave the false "fixed" impression the first time).
+Post-fix, `free`/`maxAlloc` held completely flat through at least the
+~15 minute mark, past the point where the original symptom first
+appeared. Longer soak testing (hours, ideally a full day) is the only
+way to be fully confident this is resolved rather than just slower to
+surface — treat that as still open.
+
+**Cleanup note:** the heap diagnostic block in `main.cpp` (marked
+`TEMPORARY` in its comment) should come out once this is confidently
+resolved — it's a real, if small, ongoing Serial-print cost that has no
+reason to ship permanently.
+
 ## Testing before hardware arrives
 Use **Wokwi** (wokwi.com, also a VS Code extension) — simulated ESP32 +
 rotary encoder + WS2812 strip + PIR, wired per [`diagram.json`](diagram.json).
@@ -312,3 +395,6 @@ just not to the LAN-only broker.
   not suppressing them. A pinned screen has no safety angle either way,
   but resetting it too keeps the behavior consistent and the
   implementation with zero persistence code.
+- Confirm the heap fragmentation fix (see "Reliability" above) with a
+  proper long soak — hours, ideally a full day — then remove the
+  `TEMPORARY` heap diagnostic block from `main.cpp` once confident.

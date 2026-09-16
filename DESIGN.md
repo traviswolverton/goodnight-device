@@ -64,6 +64,97 @@ as the table below, laid out for the workbench: shows the two GPIO16 and
 PIR pinout gotchas directly on the wires that matter, and draws the 3V3
 power-bus crossing explained in the Power note above.
 
+A lighter version of the same wiring, for whenever opening that HTML
+file isn't convenient — this one renders directly on GitHub:
+
+```mermaid
+graph LR
+  subgraph ESP32["ESP32 · DEVKIT V1"]
+    D23["D23"]
+    D18["D18"]
+    D5["D5"]
+    D4["D4"]
+    RX2["RX2 (= GPIO16)"]
+    D26["D26"]
+    D32["D32"]
+    D33["D33"]
+    D25["D25"]
+    D13["D13"]
+    D27["D27"]
+    GND1["GND.1"]
+    GND2["GND.2"]
+    VIN["VIN"]
+    V3["3V3"]
+  end
+
+  subgraph Display["Waveshare ST7789"]
+    dDIN["DIN"]
+    dCLK["CLK"]
+    dCS["CS"]
+    dDC["DC"]
+    dRST["RST"]
+    dBL["BL"]
+    dVCC["VCC"]
+    dGND["GND"]
+  end
+
+  subgraph Encoder["HW-040"]
+    eCLK["CLK"]
+    eDT["DT"]
+    eSW["SW"]
+    eV["+"]
+    eGND["GND"]
+  end
+
+  subgraph LEDs["WS2812 x5"]
+    lDIN["DIN"]
+    lV["+5V"]
+    lGND["GND"]
+  end
+
+  subgraph PIR["HW-740"]
+    pVOUT["VOUT"]
+    pVCC["VCC"]
+    pGND["GND"]
+  end
+
+  D23 --- dDIN
+  D18 --- dCLK
+  D5 --- dCS
+  D4 --- dDC
+  RX2 ---|"printed RX2, not D16"| dRST
+  D26 -.- dBL
+  V3 --- dVCC
+  GND1 --- dGND
+
+  D32 --- eCLK
+  D33 --- eDT
+  D25 --- eSW
+  V3 -.- eV
+  GND1 --- eGND
+
+  D13 --- lDIN
+  VIN --- lV
+  GND2 --- lGND
+
+  D27 --- pVOUT
+  V3 -.- pVCC
+  GND2 --- pGND
+
+  linkStyle 0,1,2,3,8,9,10,13,16 stroke:#2f8f86,stroke-width:2px
+  linkStyle 4 stroke:#c94b50,stroke-width:3px
+  linkStyle 5 stroke:#2f8f86,stroke-width:2px,stroke-dasharray:4 2
+  linkStyle 6,14 stroke:#b8813a,stroke-width:2px
+  linkStyle 7,12,15,18 stroke:#7b8a82,stroke-width:2px
+  linkStyle 11,17 stroke:#b8813a,stroke-width:2px,stroke-dasharray:4 2
+```
+
+Dashed lines are the two crossings explained above (backlight to the
+left column, 3V3 fanning out to the right); the red edge is the RX2
+gotcha. Same underlying data as the table below and `docs/pinout.html`
+— if these three ever disagree, the table is the source of truth to
+reconcile the other two against.
+
 | Function | Signal | GPIO | MCU board silkscreen |
 |---|---|---|---|
 | Display | MOSI/`DIN` | 23 | `D23` |

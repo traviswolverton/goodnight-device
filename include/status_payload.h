@@ -8,28 +8,46 @@
 constexpr uint8_t kMaxServices = 8;
 constexpr uint8_t kNumPixels = 5;
 
+// All fields below are fixed-size char buffers, not String -- see
+// DESIGN.md's heap fragmentation note. A message arrives roughly every
+// 15-60s, every hour of every day this thing is plugged in; String's
+// per-assignment heap churn (this struct alone reassigns ~26 of them per
+// message) is exactly the kind of thing that's fine for a five-minute
+// test and a real problem for a fifth day of uptime. Truncation on an
+// overlong field is a silently-clipped display value, never a crash --
+// the trade this makes on purpose.
+constexpr size_t kNameLen = 24;
+constexpr size_t kStatusLen = 8;
+constexpr size_t kLineLen = 48;
+constexpr size_t kLevelLen = 8;
+constexpr size_t kTextLen = 48;
+constexpr size_t kPixelHexLen = 8;  // "#RRGGBB" + '\0'
+constexpr size_t kCameraNameLen = 32;
+constexpr size_t kUrlLen = 160;
+constexpr size_t kAlertTextLen = 64;
+
 struct ServiceReading {
-  String name;
-  String status;  // "ok" | "warn" | "down"
+  char name[kNameLen] = "";
+  char status[kStatusLen] = "ok";  // "ok" | "warn" | "down"
   // Precomputed at parse time: `detail` if present, otherwise "<value>
   // <unit>" -- the rest of the firmware only ever needs one ready-to-draw
   // line, not the raw value/unit/detail split from the schema.
-  String line;
+  char line[kLineLen] = "";
 };
 
 struct StatusPayload {
-  String overallLevel = "ok";  // "ok" | "warn" | "down"
-  String overallText = "Waiting for data...";
+  char overallLevel[kLevelLen] = "ok";  // "ok" | "warn" | "down"
+  char overallText[kTextLen] = "Waiting for data...";
   ServiceReading services[kMaxServices];
   uint8_t serviceCount = 0;
-  String pixelHex[kNumPixels];  // "#RRGGBB", or empty = off/unassigned
-  bool valid = false;           // true once at least one message has parsed
+  char pixelHex[kNumPixels][kPixelHexLen] = {};  // "#RRGGBB", or "" = off
+  bool valid = false;  // true once at least one message has parsed
 };
 
 struct CameraAlert {
-  String camera;
-  String snapshotUrl;
-  String text;
+  char camera[kCameraNameLen] = "";
+  char snapshotUrl[kUrlLen] = "";
+  char text[kAlertTextLen] = "";
 };
 
 // Parses a homelab/status payload (see DESIGN.md's locked "MQTT JSON

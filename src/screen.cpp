@@ -45,9 +45,9 @@ unsigned long cameraDeadlineMs_ = 0;
 
 // -- drawing --
 
-uint16_t colorForLevel(const String& level) {
-  if (level == "warn") return TFT_ORANGE;
-  if (level == "down") return TFT_RED;
+uint16_t colorForLevel(const char* level) {
+  if (strcmp(level, "warn") == 0) return TFT_ORANGE;
+  if (strcmp(level, "down") == 0) return TFT_RED;
   return TFT_GREEN;
 }
 
@@ -56,8 +56,10 @@ void drawBanner() {
   tft.fillRect(0, 0, tft.width(), 30, bg);
   tft.setTextColor(TFT_BLACK, bg);
   tft.setTextDatum(ML_DATUM);
-  String text = lastStatus_.overallText;
-  if (muted_) text += " (muted)";
+  // Fixed buffer, not String -- this runs on every HOME redraw
+  // (auto-rotation, encoder input), not just once per message.
+  char text[kTextLen + 8];
+  snprintf(text, sizeof(text), "%s%s", lastStatus_.overallText, muted_ ? " (muted)" : "");
   tft.drawString(text, 8, 15);
 }
 

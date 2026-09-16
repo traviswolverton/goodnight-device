@@ -41,6 +41,16 @@ PubSubClient mqttClient(wifiClient);
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastMqttAttemptMs = 0;
 
+// TEMPORARY diagnostic for investigating a suspected heap fragmentation
+// issue (repeated String/JsonDocument allocation on every message) --
+// see DESIGN.md. getMaxAllocHeap() is the fragmentation-sensitive
+// number (largest contiguous allocatable block); getFreeHeap() is total
+// free regardless of contiguity. If the former trends down over time
+// while the latter stays roughly flat, that's fragmentation, not a
+// leak. Remove once this is resolved one way or the other.
+unsigned long lastHeapLogMs = 0;
+constexpr unsigned long kHeapLogIntervalMs = 30000;
+
 // Latest parsed homelab/status, plus a one-shot flag for "did a new one
 // just arrive this loop" -- screenUpdate() and ledsUpdate() both care
 // about that distinction, not just the latest value, so they don't
@@ -61,12 +71,14 @@ void onMqttMessage(char* topic, uint8_t* payload, unsigned int length) {
   // timing) ran directly in here: the same message got redelivered
   // thousands of times a second, indefinitely, verified on real
   // hardware before this fix.
-  String t(topic);
-  if (t == kTopicStatus) {
+  // strcmp, not a String, for the same heap-churn reason as
+  // status_payload's fixed buffers -- this runs on every single message,
+  // forever.
+  if (strcmp(topic, kTopicStatus) == 0) {
     if (parseStatusPayload(payload, length, gLatestStatus)) {
       gHasNewStatus = true;
     }
-  } else if (t == kTopicCameraAlert) {
+  } else if (strcmp(topic, kTopicCameraAlert) == 0) {
     CameraAlert alert;
     if (parseCameraAlert(payload, length, alert)) {
       screenOnCameraAlert(alert);
@@ -161,6 +173,13 @@ void loop() {
   ensureMqtt();
   mqttClient.loop();
 
+  unsigned long nowForHeapLog = millis();
+  if (nowForHeapLog - lastHeapLogMs >= kHeapLogIntervalMs) {
+    lastHeapLogMs = nowForHeapLog;
+    Serial.printf("[heap] free=%u minFree=%u maxAlloc=%u uptimeMs=%lu\n", ESP.getFreeHeap(),
+                  ESP.getMinFreeHeap(), ESP.getMaxAllocHeap(), nowForHeapLog);
+  }
+
   // OTA doesn't depend on MQTT at all -- gated on WiFi only, so a broken
   // broker/server never blocks the one way to fix a broken firmware.
   if (WiFi.status() == WL_CONNECTED) {
@@ -184,7 +203,7 @@ void loop() {
     // parsing and out to the LEDs -- without this, a working, silent
     // steady state is indistinguishable over Serial from a stuck one.
     Serial.printf("[status] %u services, level=%s\n", gLatestStatus.serviceCount,
-                  gLatestStatus.overallLevel.c_str());
+                  gLatestStatus.overallLevel);
   }
   screenUpdate(gLatestStatus, gHasNewStatus);
   gHasNewStatus = false;

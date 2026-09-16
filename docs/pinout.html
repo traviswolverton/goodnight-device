@@ -303,12 +303,15 @@
         <text x="866" y="616" fill="var(--silk-dim)" font-size="9.5">shared bus, see below</text>
       </g>
 
-      <!-- 3V3 power bus: fans out from row14-right to Encoder, PIR, Display VCC -->
+      <!-- 3V3 power bus trunk: the encoder's and PIR's own power wires
+           (drawn from their blocks below) already run the full distance
+           to this junction point directly, so only Display's wire, which
+           stops short of it, needs its own branch stub. (Two decorative
+           "arrival" stubs used to exist here for encoder/PIR too, dead
+           ending inside their blocks with nothing real attached, looking
+           like a second wire; removed.) -->
       <path d="M 860 604 C 950 604, 950 700, 990 700 L 990 705" fill="none" stroke="var(--wire-power)" stroke-width="2" stroke-dasharray="1 0"/>
-      <path d="M 990 705 L 240 705 L 240 660" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
-      <circle cx="240" cy="660" r="3" fill="var(--wire-power)"/>
-      <path d="M 990 705 L 990 460 L 245 460" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
-      <circle cx="245" cy="460" r="3" fill="var(--wire-power)"/>
+      <circle cx="990" cy="705" r="3" fill="var(--wire-power)"/>
       <path d="M 990 705 L 1090 705 L 1090 512" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
       <circle cx="1090" cy="512" r="3" fill="var(--wire-power)"/>
       <text x="995" y="722" font-family="IBM Plex Mono" font-size="10" fill="var(--wire-power)" font-weight="600">3V3 bus — only 3.3V pin on this board; every peripheral needing it wires here</text>

@@ -15,6 +15,7 @@
 #include "leds.h"
 #include "backlight.h"
 #include "screen.h"
+#include "ota.h"
 
 namespace {
 
@@ -75,12 +76,24 @@ void onMqttMessage(char* topic, uint8_t* payload, unsigned int length) {
   }
 }
 
+bool wifiWasConnected = false;
+
 // Non-blocking: kicks off a connection attempt at most once per retry
 // window, never spins waiting for it. WiFi.begin() itself returns
 // immediately; the actual handshake happens in the background and
 // WiFi.status() is polled from loop() to notice when it completes.
 void ensureWifi() {
-  if (WiFi.status() == WL_CONNECTED) {
+  bool isConnected = (WiFi.status() == WL_CONNECTED);
+  if (isConnected != wifiWasConnected) {
+    wifiWasConnected = isConnected;
+    if (isConnected) {
+      Serial.print("[wifi] connected, IP: ");
+      Serial.println(WiFi.localIP());
+    } else {
+      Serial.println("[wifi] disconnected");
+    }
+  }
+  if (isConnected) {
     return;
   }
 
@@ -147,6 +160,13 @@ void loop() {
   ensureWifi();
   ensureMqtt();
   mqttClient.loop();
+
+  // OTA doesn't depend on MQTT at all -- gated on WiFi only, so a broken
+  // broker/server never blocks the one way to fix a broken firmware.
+  if (WiFi.status() == WL_CONNECTED) {
+    otaBegin();  // one-time no-op after the first successful call
+    otaHandle();
+  }
 
   int32_t encoderDelta = encoderReadDelta();
   if (encoderDelta != 0) {

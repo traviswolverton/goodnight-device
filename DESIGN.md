@@ -228,11 +228,39 @@ the initial 2-3. Done in [`src/main.cpp`](src/main.cpp) — currently 2048
 bytes, revisit if `services` grows enough to need more.
 
 ## Project layout
-PlatformIO project (`platformio.ini`). WiFi + MQTT connectivity is the
-first working slice — see [`src/main.cpp`](src/main.cpp) — subscribing to
-both topics and dumping payloads to Serial, no display/LED/PIR code yet.
+PlatformIO project (`platformio.ini`). `src/main.cpp` wires together one
+small module per concern: `status_payload` (JSON parsing), `encoder`,
+`leds`, `backlight`, `screen` (the HOME/MENU/CAMERA state machine), `ota`.
 Real credentials go in `include/secrets.h` (gitignored; copy
 `include/secrets.h.example` and fill it in) — never commit that file.
+
+## OTA firmware updates
+`ota.cpp` runs ArduinoOTA (built into the ESP32 Arduino core, no extra
+library) once WiFi is connected — independent of MQTT, so a broken
+broker/server never blocks the one way to fix broken firmware. Once it's
+running, no USB/physical access is needed to flash new firmware again:
+
+```
+OTA_PASSWORD=<same value as secrets.h's OTA_PASSWORD> pio run -t upload -e esp32dev-ota
+```
+
+`upload_port` in `platformio.ini` defaults to the board's mDNS hostname
+(`desk-dashboard-esp32.local`); if `.local` resolution doesn't work on
+your network/OS, override it with the device's actual IP instead:
+`pio run -t upload -e esp32dev-ota --upload-port <ip>` (read off Serial —
+`ensureWifi()` prints it once on connect).
+
+`OTA_PASSWORD` has to exist in two places, for two different reasons: as
+a `#define` in `secrets.h` (compiled into the firmware, so it can
+authenticate incoming OTA requests) and as a shell env var of the same
+name (read by `platformio.ini`'s `upload_flags` at upload time, so the
+*tool* doing the flashing can prove it knows the password too). Without
+a password at all, anything on the LAN could push firmware to this
+board — not something to skip even on a trusted home network.
+
+Verified end-to-end on real hardware: a real OTA upload over WiFi with
+no USB cable attached, board rebooted cleanly afterward, resumed normal
+operation.
 
 ## Testing before hardware arrives
 Use **Wokwi** (wokwi.com, also a VS Code extension) — simulated ESP32 +

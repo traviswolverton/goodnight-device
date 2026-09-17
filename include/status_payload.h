@@ -18,7 +18,7 @@ constexpr uint8_t kNumPixels = 5;
 // the trade this makes on purpose.
 constexpr size_t kNameLen = 24;
 constexpr size_t kStatusLen = 8;
-constexpr size_t kLineLen = 48;
+constexpr size_t kLineLen = 100;
 constexpr size_t kLevelLen = 8;
 constexpr size_t kTextLen = 48;
 constexpr size_t kPixelHexLen = 8;  // "#RRGGBB" + '\0'

@@ -27,6 +27,29 @@ constexpr uint8_t kMenuItemCount = 6;
 // timeout in the Configs sub-panel.
 constexpr int32_t kBacklightStepSeconds = 5;
 
+// Configs is itself a small sub-menu now (more than one adjustable
+// value), nested one level inside MENU the same way MENU nests inside
+// HOME: a list to pick a field from, then an edit view for whichever
+// field was picked.
+enum class ConfigsField : uint8_t { kNone, kBacklightTimeout, kCardSensitivity };
+const char* kConfigsItems[] = {"Backlight timeout", "Card sensitivity", "Back"};
+constexpr uint8_t kConfigsItemCount = 3;
+ConfigsField configsEditing_ = ConfigsField::kNone;
+uint8_t configsSelection_ = 0;
+
+// Raw encoder counts per HOME card change -- higher = less sensitive.
+// Added after real-world use: a small physical turn was jumping through
+// 4-5 cards, which matches a well-known characteristic of these
+// encoders (many produce 4 raw quadrature transitions per detent).
+// Rather than chase exact per-board hardware calibration, this is just
+// user-adjustable. accumulator_ carries a partial turn across calls
+// rather than discarding it, so a series of small nudges still adds up
+// correctly instead of each one being rounded away.
+int32_t cardStepAccumulator_ = 0;
+int32_t cardStepDivisor_ = 4;
+constexpr int32_t kCardStepDivisorMin = 1;
+constexpr int32_t kCardStepDivisorMax = 10;
+
 TFT_eSPI tft;
 State state_ = State::HOME;
 bool needsRedraw_ = true;
@@ -205,13 +228,42 @@ void drawMenu() {
 
   if (menuShowingConfigs_) {
     tft.setTextDatum(TL_DATUM);
+
+    if (configsEditing_ == ConfigsField::kNone) {
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.drawString("Configs", 10, 10);
+      for (uint8_t i = 0; i < kConfigsItemCount; i++) {
+        int y = 40 + i * 30;
+        bool selected = (i == configsSelection_);
+        uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
+        uint16_t fg = selected ? TFT_BLACK : TFT_WHITE;
+        tft.fillRect(0, y - 3, tft.width(), 26, bg);
+        tft.setTextColor(fg, bg);
+        tft.drawString(kConfigsItems[i], 10, y + 5);
+      }
+      return;
+    }
+
+    if (configsEditing_ == ConfigsField::kBacklightTimeout) {
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.drawString("Backlight timeout", 10, 10);
+      char line[40];
+      snprintf(line, sizeof(line), "%u s", backlightGetTimeoutSeconds());
+      tft.drawString(line, 10, 40);
+      tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      tft.drawString("Rotate to adjust (5s steps)", 10, 70);
+      tft.drawString("Press to save and go back", 10, 90);
+      return;
+    }
+
+    // ConfigsField::kCardSensitivity
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString("Configs", 10, 10);
+    tft.drawString("Card sensitivity", 10, 10);
     char line[40];
-    snprintf(line, sizeof(line), "Backlight timeout: %u s", backlightGetTimeoutSeconds());
+    snprintf(line, sizeof(line), "%ld raw steps / card", (long)cardStepDivisor_);
     tft.drawString(line, 10, 40);
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.drawString("Rotate to adjust (5s steps)", 10, 70);
+    tft.drawString("Rotate to adjust (lower = faster)", 10, 70);
     tft.drawString("Press to save and go back", 10, 90);
     return;
   }
@@ -257,6 +309,8 @@ void drawCamera() {
 
 void enterHome() {
   state_ = State::HOME;
+  cardStepAccumulator_ = 0;  // don't let a stale partial turn from before
+                             // this MENU visit suddenly complete later
   needsRedraw_ = true;
 }
 
@@ -265,6 +319,8 @@ void enterMenu() {
   menuSelection_ = 0;
   menuShowingNetworkInfo_ = false;
   menuShowingConfigs_ = false;
+  configsEditing_ = ConfigsField::kNone;
+  configsSelection_ = 0;
   menuIdleDeadlineMs_ = millis() + kIdleTimeoutMs;
   needsRedraw_ = true;
 }
@@ -348,16 +404,34 @@ void screenOnEncoderDelta(int32_t delta) {
   unsigned long now = millis();
 
   if (state_ == State::HOME) {
-    if (lastStatus_.serviceCount > 0) {
-      int32_t idx = ((int32_t)cardIndex_ + delta) % (int32_t)lastStatus_.serviceCount;
+    // cardStepDivisor_ raw encoder counts are required per card change;
+    // the accumulator carries a partial turn across calls so a series of
+    // small nudges below the threshold still adds up instead of each one
+    // being rounded away. autoRotatePausedUntilMs_ still updates on every
+    // call (any input means "the user is doing something right now"),
+    // but needsRedraw_ only fires once a full step actually lands.
+    cardStepAccumulator_ += delta;
+    int32_t steps = cardStepAccumulator_ / cardStepDivisor_;
+    cardStepAccumulator_ -= steps * cardStepDivisor_;
+    if (steps != 0 && lastStatus_.serviceCount > 0) {
+      int32_t idx = ((int32_t)cardIndex_ + steps) % (int32_t)lastStatus_.serviceCount;
       if (idx < 0) idx += lastStatus_.serviceCount;
       cardIndex_ = (uint8_t)idx;
       resetCardScroll();  // fresh marquee start for the newly-shown card
+      needsRedraw_ = true;
     }
     autoRotatePausedUntilMs_ = now + kCardRotationPauseMs;
+  } else if (state_ == State::MENU && menuShowingConfigs_ &&
+             configsEditing_ == ConfigsField::kNone) {
+    // Scrolling the Configs list itself (Backlight timeout / Card
+    // sensitivity / Back), not editing a value yet.
+    int32_t idx = ((int32_t)configsSelection_ + delta) % (int32_t)kConfigsItemCount;
+    if (idx < 0) idx += kConfigsItemCount;
+    configsSelection_ = (uint8_t)idx;
+    menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
     needsRedraw_ = true;
-  } else if (state_ == State::MENU && menuShowingConfigs_) {
-    // Editing the backlight timeout instead of scrolling the list.
+  } else if (state_ == State::MENU && menuShowingConfigs_ &&
+             configsEditing_ == ConfigsField::kBacklightTimeout) {
     // Clamp in int32_t before narrowing to uint16_t -- doing the
     // clamp only inside backlightSetTimeoutSeconds would let a
     // negative result wrap around to a huge value on the implicit
@@ -366,6 +440,14 @@ void screenOnEncoderDelta(int32_t delta) {
     if (next < kBacklightMinTimeoutSeconds) next = kBacklightMinTimeoutSeconds;
     if (next > kBacklightMaxTimeoutSeconds) next = kBacklightMaxTimeoutSeconds;
     backlightSetTimeoutSeconds((uint16_t)next);
+    menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
+    needsRedraw_ = true;
+  } else if (state_ == State::MENU && menuShowingConfigs_) {
+    // configsEditing_ == kCardSensitivity
+    int32_t next = cardStepDivisor_ + delta;
+    if (next < kCardStepDivisorMin) next = kCardStepDivisorMin;
+    if (next > kCardStepDivisorMax) next = kCardStepDivisorMax;
+    cardStepDivisor_ = next;
     menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
     needsRedraw_ = true;
   } else if (state_ == State::MENU && !menuShowingNetworkInfo_) {
@@ -394,7 +476,23 @@ void screenOnEncoderPress() {
         break;
       }
       if (menuShowingConfigs_) {
-        menuShowingConfigs_ = false;
+        if (configsEditing_ != ConfigsField::kNone) {
+          // Save (already applied live as it was rotated) and return to
+          // the Configs list, not all the way out to the top-level menu.
+          configsEditing_ = ConfigsField::kNone;
+        } else {
+          switch (configsSelection_) {
+            case 0:
+              configsEditing_ = ConfigsField::kBacklightTimeout;
+              break;
+            case 1:
+              configsEditing_ = ConfigsField::kCardSensitivity;
+              break;
+            case 2:  // Back
+              menuShowingConfigs_ = false;
+              break;
+          }
+        }
         menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
         needsRedraw_ = true;
         break;

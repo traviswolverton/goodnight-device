@@ -3,9 +3,11 @@
 #include <Arduino.h>
 
 // Fixed capacity so this stays a plain stack-friendly struct rather than
-// needing dynamic allocation -- see DESIGN.md's schema note about adapter
-// count growing past the initial 2-3. Raise this if it ever does.
-constexpr uint8_t kMaxServices = 8;
+// needing dynamic allocation. Raised 8 -> 10 to match the server repo's
+// full candidate-adapter list (only 2 of 10 built as of this writing,
+// but the cap needed to cover all 10 before that becomes a silently
+// missing card rather than a design choice).
+constexpr uint8_t kMaxServices = 10;
 constexpr uint8_t kNumPixels = 5;
 
 // All fields below are fixed-size char buffers, not String -- see

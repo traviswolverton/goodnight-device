@@ -49,6 +49,13 @@ bool menuShowingConfigs_ = false;
 CameraAlert cameraAlert_;
 unsigned long cameraDeadlineMs_ = 0;
 
+// TEMPORARY 4-line card preview (uptime_kuma only) -- see
+// drawCardPreviewUptimeKuma()'s own comment.
+unsigned long nextScrollTickMs_ = 0;
+int scrollOffsetPx_[4] = {0, 0, 0, 0};
+constexpr unsigned long kScrollTickMs = 120;
+constexpr int kScrollStepPx = 3;
+
 // -- drawing --
 
 uint16_t colorForLevel(const char* level) {
@@ -80,6 +87,47 @@ void drawDots() {
   }
 }
 
+// TEMPORARY design preview: what a 4-line card could look like, with
+// each line vertically filling its share of the card and scrolling
+// horizontally (a two-copy marquee, clipped to its own line via
+// setViewport) if it's too wide to fit. Scoped to uptime_kuma only for
+// now and using placeholder text -- the real schema doesn't carry
+// "last checked"/uptime% as separate fields today. This is here so it
+// can be seen live on the real screen before deciding what content
+// actually belongs in the real (four-line, all-cards) version.
+void drawCardPreviewUptimeKuma(int top, int bottom) {
+  static const char* kLines[4] = {
+      "UPTIME KUMA",
+      "71 / 71 monitors up",
+      "All monitors healthy, last checked 12s ago",
+      "Longest-running monitor: Plex, 41 days",
+  };
+  int lineHeight = (bottom - top) / 4;
+  tft.setTextFont(4);
+  tft.setTextDatum(ML_DATUM);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+
+  for (int i = 0; i < 4; i++) {
+    int lineTop = top + i * lineHeight;
+    int midY = lineHeight / 2;
+    int textW = tft.textWidth(kLines[i]);
+    int availW = tft.width() - 12;
+
+    tft.setViewport(6, lineTop, tft.width() - 12, lineHeight);
+    if (textW <= availW) {
+      tft.drawString(kLines[i], 0, midY);
+    } else {
+      int cycle = textW + 40;  // 40px gap before the marquee repeats
+      int x = -(scrollOffsetPx_[i] % cycle);
+      tft.drawString(kLines[i], x, midY);
+      tft.drawString(kLines[i], x + cycle, midY);  // trailing copy, seamless wrap
+    }
+    tft.resetViewport();
+  }
+
+  tft.setTextFont(2);  // restore the font the rest of the UI expects
+}
+
 void drawCard() {
   int top = 34;
   int bottom = tft.height() - 20;
@@ -93,6 +141,12 @@ void drawCard() {
   }
 
   const ServiceReading& card = lastStatus_.services[cardIndex_];
+
+  if (strcmp(card.name, "uptime_kuma") == 0) {
+    drawCardPreviewUptimeKuma(top, bottom);
+    return;
+  }
+
   int midY = (top + bottom) / 2;
   tft.setTextDatum(MC_DATUM);
   tft.setTextColor(colorForLevel(card.status), TFT_BLACK);
@@ -227,6 +281,17 @@ void screenUpdate(const StatusPayload& status, bool isNewStatus) {
         cardIndex_ = (cardIndex_ + 1) % lastStatus_.serviceCount;
       }
       nextAutoRotateMs_ = now + kCardRotationMs;
+      needsRedraw_ = true;
+    }
+    // TEMPORARY: only the uptime_kuma preview card animates -- see
+    // drawCardPreviewUptimeKuma(). Ticks its own timer rather than
+    // riding the auto-rotate one, since scrolling needs to keep moving
+    // even while rotation itself is paused by manual input.
+    if (lastStatus_.serviceCount > 0 &&
+        strcmp(lastStatus_.services[cardIndex_].name, "uptime_kuma") == 0 &&
+        now >= nextScrollTickMs_) {
+      nextScrollTickMs_ = now + kScrollTickMs;
+      for (int i = 0; i < 4; i++) scrollOffsetPx_[i] += kScrollStepPx;
       needsRedraw_ = true;
     }
   } else if (state_ == State::MENU) {

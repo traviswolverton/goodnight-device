@@ -81,8 +81,7 @@ graph LR
     D25["D25"]
     D13["D13"]
     D27["D27"]
-    GND1["GND.1"]
-    GND2["GND.2"]
+    GND2["GND.2 (shared GND bus)"]
     VIN["VIN"]
     V3["3V3"]
   end
@@ -125,13 +124,13 @@ graph LR
   RX2 ---|"printed RX2, not D16"| dRST
   D26 -.- dBL
   V3 --- dVCC
-  GND1 --- dGND
+  GND2 -.- dGND
 
   D32 --- eCLK
   D33 --- eDT
   D25 --- eSW
   V3 -.- eV
-  GND1 --- eGND
+  GND2 --- eGND
 
   D13 --- lDIN
   VIN --- lV
@@ -145,15 +144,20 @@ graph LR
   linkStyle 4 stroke:#c94b50,stroke-width:3px
   linkStyle 5 stroke:#2f8f86,stroke-width:2px,stroke-dasharray:4 2
   linkStyle 6,14 stroke:#b8813a,stroke-width:2px
-  linkStyle 7,12,15,18 stroke:#7b8a82,stroke-width:2px
+  linkStyle 7 stroke:#7b8a82,stroke-width:2px,stroke-dasharray:4 2
   linkStyle 11,17 stroke:#b8813a,stroke-width:2px,stroke-dasharray:4 2
+  linkStyle 12,15,18 stroke:#7b8a82,stroke-width:2px
 ```
 
-Dashed lines are the two crossings explained above (backlight to the
-left column, 3V3 fanning out to the right); the red edge is the RX2
-gotcha. Same underlying data as the table below and `docs/pinout.html`
-— if these three ever disagree, the table is the source of truth to
-reconcile the other two against.
+Both power and ground are physical bus strips in the real build, not
+point-to-point wiring — see the "bus strips" note below. Dashed
+edges are every wire that has to cross to reach one: backlight to the
+left column, 3V3 fanning out to the right, and the display's ground
+crossing left too (GND is sourced from `GND.2`, not `GND.1`, since
+three of the four things needing it already sit on that side). The red
+edge is the RX2 gotcha. Same underlying data as the table below and
+`docs/pinout.html` — if these three ever disagree, the table is the
+source of truth to reconcile the other two against.
 
 | Function | Signal | GPIO | MCU board silkscreen |
 |---|---|---|---|
@@ -184,6 +188,16 @@ Notes:
 - `BL` is digital on/off (`digitalWrite`), not PWM dimming — the PIR-driven
   backlight behavior (see Firmware architecture) only needs two states,
   so there's no need for LEDC/PWM complexity here.
+- **Both 3V3 and GND are physical bus strips, not point-to-point wiring:**
+  a row of header pins with their legs bridged by a soldered wire across
+  the back, one feed-in and several feed-out per strip. 3V3 has no
+  choice (it's the only 3.3V pin on the board), but GND is a deliberate
+  choice too — sourced from `GND.2` specifically (not `GND.1`) since
+  three of the four things needing ground (encoder, PIR, LED strip)
+  already sit on that side, so only the display's ground needs to cross,
+  rather than adding more crossings. `GND.1` is unused as a result —
+  it's a hardwired ground pin on the board, not a GPIO, so it doesn't
+  belong in the "free for later" list below the way an unused GPIO would.
 - Not used, confirmed present and free for later: `D14`, `D19`, `D21`,
   `D22` (the latter two freed up when the UPS/I2C module was dropped;
   `D26`/`D27` are now taken by backlight control and the PIR).

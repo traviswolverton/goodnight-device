@@ -2,16 +2,30 @@
 
 #include <Arduino.h>
 
-#include "timing_config.h"
-
 namespace {
 
 // See DESIGN.md's pin table.
 constexpr uint8_t kPirPin = 27;        // D27
 constexpr uint8_t kBacklightPin = 26;  // D26 -- digital on/off, not PWM
 
+// Deliberately this module's own constant now, not DESIGN.md's shared
+// kIdleTimeoutMs (still used by MENU/CAMERA) -- this timeout is driven
+// by PIR-or-user-activity and is runtime-adjustable via the Configs
+// menu, neither of which applies to MENU/CAMERA's idle timeout. See
+// DESIGN.md's "Backlight / presence" section for why it split off.
+constexpr uint16_t kDefaultTimeoutSeconds = 18;
+
 unsigned long onUntilMs_ = 0;
 bool backlightOn_ = true;
+uint16_t timeoutSeconds_ = kDefaultTimeoutSeconds;
+
+void extendTimer(unsigned long now) {
+  onUntilMs_ = now + (unsigned long)timeoutSeconds_ * 1000UL;
+  if (!backlightOn_) {
+    digitalWrite(kBacklightPin, HIGH);
+    backlightOn_ = true;
+  }
+}
 
 }  // namespace
 
@@ -21,21 +35,34 @@ void backlightBegin() {
   // Default to on at boot -- matches the "fail toward showing, not
   // hiding" reasoning behind resetting mute/pin on every boot too.
   digitalWrite(kBacklightPin, HIGH);
-  onUntilMs_ = millis() + kIdleTimeoutMs;
+  onUntilMs_ = millis() + (unsigned long)timeoutSeconds_ * 1000UL;
 }
 
 void backlightUpdate() {
   unsigned long now = millis();
   if (digitalRead(kPirPin) == HIGH) {
-    onUntilMs_ = now + kIdleTimeoutMs;
-    if (!backlightOn_) {
-      digitalWrite(kBacklightPin, HIGH);
-      backlightOn_ = true;
-    }
+    extendTimer(now);
     return;
   }
   if (backlightOn_ && now >= onUntilMs_) {
     digitalWrite(kBacklightPin, LOW);
     backlightOn_ = false;
   }
+}
+
+void backlightNotifyActivity() {
+  extendTimer(millis());
+}
+
+uint16_t backlightGetTimeoutSeconds() {
+  return timeoutSeconds_;
+}
+
+void backlightSetTimeoutSeconds(uint16_t seconds) {
+  if (seconds < kBacklightMinTimeoutSeconds) seconds = kBacklightMinTimeoutSeconds;
+  if (seconds > kBacklightMaxTimeoutSeconds) seconds = kBacklightMaxTimeoutSeconds;
+  timeoutSeconds_ = seconds;
+  // Applies immediately, extending from now -- so dialing the timeout
+  // down doesn't instantly flip the backlight off mid-edit.
+  extendTimer(millis());
 }

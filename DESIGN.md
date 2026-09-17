@@ -222,14 +222,15 @@ Three states, not more:
    every 4-5s; bottom shows position dots. Manual encoder rotation pauses
    auto-rotate for ~10s then resumes.
 2. **MENU** — opened by encoder button press from HOME. Full-screen
-   overlay, vertical list, 4-5 visible rows, current selection
+   overlay, vertical list, 6 visible rows (grew from an original 5 when
+   Configs was added — see Backlight/presence below), current selection
    highlighted (inverted color). Items: Pin a screen, Mute alerts,
-   Refresh now, Network info, Back. 15-20s idle timeout returns to HOME.
+   Refresh now, Network info, Configs, Back. 15-20s idle timeout returns
+   to HOME.
 3. **CAMERA** — auto-triggered by an incoming `homelab/alert/camera`
-   message (not reachable from the MENU item list above — that's a fixed
-   5 items, matching its own "4-5 visible rows," with nothing camera-
-   related in it). Suppressed entirely while muted, same "don't
-   surprise-interrupt" principle as the backlight. Decodes a JPEG
+   message (not reachable from the MENU item list above, and nothing in
+   that list is camera-related). Suppressed entirely while muted, same
+   "don't surprise-interrupt" principle as the backlight. Decodes a JPEG
    snapshot (TJpg_Decoder) proxied from the server — NOT live video,
    ESP32 cannot decode RTSP/H.264. This is a distinct screen state, not
    blended into HOME's auto-rotation, since JPEG decode + SPI blit is
@@ -241,13 +242,25 @@ Three states, not more:
 
 ### Backlight / presence
 Independent of screen state — runs the same in HOME, MENU, and CAMERA.
-PIR `VOUT` HIGH turns the backlight (`BL` GPIO) on immediately. On the
-transition to LOW, backlight stays on for the same ~15-20s idle window
-already used for MENU's timeout (one shared constant, not two separate
-tuning knobs) before switching off. No PWM/dimming — just on/off, since
-that's all this needs. Doesn't touch screen state at all: CAMERA and MENU
-behave exactly as already designed regardless of presence; this only ever
-changes whether the backlight is lit.
+PIR `VOUT` HIGH turns the backlight (`BL` GPIO) on immediately, and so
+does any encoder input (rotation or a press) — whichever happened more
+recently is what keeps it lit. That second trigger was added after
+real-world use turned up a real gap: PIR-only meant actively using the
+menu with a hand on the encoder, but not otherwise moving enough to
+retrigger the PIR, could dim the screen out from under you mid-
+interaction. On no activity from either source for the timeout window,
+it switches off. No PWM/dimming — just on/off, since that's all this
+needs. Doesn't touch screen state at all: CAMERA and MENU behave exactly
+as already designed regardless of presence; this only ever changes
+whether the backlight is lit.
+
+The timeout itself is no longer DESIGN.md's shared `kIdleTimeoutMs`
+(still used by MENU/CAMERA) — it split into its own value in
+`backlight.cpp`, runtime-adjustable via the MENU's **Configs** item
+(rotate to change in 5s steps, clamped 5-120s, press to save). Like
+mute/pin, this does *not* persist across a reboot — it resets to its
+compiled-in default (18s) every boot, same "fail toward showing, not a
+surprising leftover setting" reasoning.
 
 ### Non-blocking is mandatory
 No `delay()` calls anywhere in the main loop — use `millis()`-based timers

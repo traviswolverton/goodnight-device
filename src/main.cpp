@@ -188,10 +188,18 @@ void loop() {
   }
 
   int32_t encoderDelta = encoderReadDelta();
+  bool encoderWasPressed = encoderPressed();
+  if (encoderDelta != 0 || encoderWasPressed) {
+    // Any real encoder input counts as activity for the backlight,
+    // same as PIR motion -- whichever happened more recently keeps it
+    // lit. Unconditional here regardless of what screen.cpp does with
+    // the input; harmless to call twice in one loop (idempotent).
+    backlightNotifyActivity();
+  }
   if (encoderDelta != 0) {
     screenOnEncoderDelta(encoderDelta);
   }
-  if (encoderPressed()) {
+  if (encoderWasPressed) {
     screenOnEncoderPress();
   }
 

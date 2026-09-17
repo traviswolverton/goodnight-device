@@ -7,6 +7,7 @@
 #include <TFT_eSPI.h>
 #include <WiFi.h>
 
+#include "backlight.h"
 #include "timing_config.h"
 
 namespace {
@@ -18,9 +19,13 @@ const char* kMenuItems[] = {
     "Mute alerts",       // relabeled "Unmute alerts" at draw time if muted
     "Refresh now",
     "Network info",
+    "Configs",
     "Back",
 };
-constexpr uint8_t kMenuItemCount = 5;
+constexpr uint8_t kMenuItemCount = 6;
+// Seconds adjusted per encoder detent while editing the backlight
+// timeout in the Configs sub-panel.
+constexpr int32_t kBacklightStepSeconds = 5;
 
 TFT_eSPI tft;
 State state_ = State::HOME;
@@ -38,6 +43,7 @@ bool muted_ = false;
 uint8_t menuSelection_ = 0;
 unsigned long menuIdleDeadlineMs_ = 0;
 bool menuShowingNetworkInfo_ = false;
+bool menuShowingConfigs_ = false;
 
 // CAMERA
 CameraAlert cameraAlert_;
@@ -124,19 +130,36 @@ void drawMenu() {
     return;
   }
 
+  if (menuShowingConfigs_) {
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(TFT_WHITE, TFT_BLACK);
+    tft.drawString("Configs", 10, 10);
+    char line[40];
+    snprintf(line, sizeof(line), "Backlight timeout: %u s", backlightGetTimeoutSeconds());
+    tft.drawString(line, 10, 40);
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.drawString("Rotate to adjust (5s steps)", 10, 70);
+    tft.drawString("Press to save and go back", 10, 90);
+    return;
+  }
+
+  // Row height/box tightened from the original 5-item spacing (40px,
+  // 34px box) to fit 6 items within the 240px landscape height with
+  // real margin left at the bottom, rather than landing right on the
+  // edge.
   tft.setTextDatum(TL_DATUM);
   for (uint8_t i = 0; i < kMenuItemCount; i++) {
-    int y = 10 + i * 40;
+    int y = 8 + i * 36;
     bool selected = (i == menuSelection_);
     uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
     uint16_t fg = selected ? TFT_BLACK : TFT_WHITE;
-    tft.fillRect(0, y - 4, tft.width(), 34, bg);
+    tft.fillRect(0, y - 3, tft.width(), 30, bg);
     tft.setTextColor(fg, bg);
 
     String label = kMenuItems[i];
     if (i == 0) label = (pinnedCardIndex_ >= 0) ? "Unpin screen" : "Pin this screen";
     if (i == 1) label = muted_ ? "Unmute alerts" : "Mute alerts";
-    tft.drawString(label, 10, y + 10);
+    tft.drawString(label, 10, y + 8);
   }
 }
 
@@ -167,6 +190,7 @@ void enterMenu() {
   state_ = State::MENU;
   menuSelection_ = 0;
   menuShowingNetworkInfo_ = false;
+  menuShowingConfigs_ = false;
   menuIdleDeadlineMs_ = millis() + kIdleTimeoutMs;
   needsRedraw_ = true;
 }
@@ -243,6 +267,18 @@ void screenOnEncoderDelta(int32_t delta) {
     }
     autoRotatePausedUntilMs_ = now + kCardRotationPauseMs;
     needsRedraw_ = true;
+  } else if (state_ == State::MENU && menuShowingConfigs_) {
+    // Editing the backlight timeout instead of scrolling the list.
+    // Clamp in int32_t before narrowing to uint16_t -- doing the
+    // clamp only inside backlightSetTimeoutSeconds would let a
+    // negative result wrap around to a huge value on the implicit
+    // uint16_t cast, before that function ever got a chance to clamp it.
+    int32_t next = (int32_t)backlightGetTimeoutSeconds() + delta * kBacklightStepSeconds;
+    if (next < kBacklightMinTimeoutSeconds) next = kBacklightMinTimeoutSeconds;
+    if (next > kBacklightMaxTimeoutSeconds) next = kBacklightMaxTimeoutSeconds;
+    backlightSetTimeoutSeconds((uint16_t)next);
+    menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
+    needsRedraw_ = true;
   } else if (state_ == State::MENU && !menuShowingNetworkInfo_) {
     int32_t idx = ((int32_t)menuSelection_ + delta) % (int32_t)kMenuItemCount;
     if (idx < 0) idx += kMenuItemCount;
@@ -268,6 +304,12 @@ void screenOnEncoderPress() {
         needsRedraw_ = true;
         break;
       }
+      if (menuShowingConfigs_) {
+        menuShowingConfigs_ = false;
+        menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
+        needsRedraw_ = true;
+        break;
+      }
       menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
       switch (menuSelection_) {
         case 0:  // Pin / unpin this screen
@@ -289,7 +331,11 @@ void screenOnEncoderPress() {
           menuShowingNetworkInfo_ = true;
           needsRedraw_ = true;
           break;
-        case 4:  // Back
+        case 4:  // Configs
+          menuShowingConfigs_ = true;
+          needsRedraw_ = true;
+          break;
+        case 5:  // Back
           enterHome();
           break;
       }

@@ -52,6 +52,28 @@ void buildServiceLine(char* dest, size_t destSize, JsonVariantConst service) {
   }
 }
 
+// TEMPORARY: overrides uptime_kuma's real (single) detail line with
+// placeholder multi-line content, so the generalized multi-line card
+// renderer (screen.cpp) can be exercised live on real hardware before
+// the server can actually send more than one fact per service. Remove
+// this once the schema grows a real `lines` array (see DESIGN.md's
+// "Card templates" note) and screen.cpp will keep working unchanged --
+// it only ever looks at detailLines/detailLineCount, never a name.
+void injectPreviewLines(ServiceReading& reading) {
+  if (strcmp(reading.name, "uptime_kuma") != 0) {
+    return;
+  }
+  static const char* kPreviewLines[3] = {
+      "71 / 71 monitors up",
+      "All monitors healthy, last checked 12s ago",
+      "Longest-running monitor: Plex, 41 days",
+  };
+  reading.detailLineCount = 3;
+  for (uint8_t i = 0; i < 3; i++) {
+    copyTruncated(reading.detailLines[i], kLineLen, kPreviewLines[i]);
+  }
+}
+
 }  // namespace
 
 bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out) {
@@ -87,7 +109,9 @@ bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out) 
     ServiceReading& reading = out.services[out.serviceCount];
     copyTruncated(reading.name, kNameLen, asCString(service["name"]) ?: "?");
     copyTruncated(reading.status, kStatusLen, asCString(service["status"]) ?: "ok");
-    buildServiceLine(reading.line, kLineLen, service);
+    buildServiceLine(reading.detailLines[0], kLineLen, service);
+    reading.detailLineCount = 1;
+    injectPreviewLines(reading);  // TEMPORARY, see comment above
     out.serviceCount++;
   }
 

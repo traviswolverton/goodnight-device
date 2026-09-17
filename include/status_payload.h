@@ -26,13 +26,22 @@ constexpr size_t kCameraNameLen = 32;
 constexpr size_t kUrlLen = 160;
 constexpr size_t kAlertTextLen = 64;
 
+// A card's total line count is 1 (name) + detailLineCount -- this caps
+// the richest template at 4 total lines. See DESIGN.md's "Card
+// templates" note: the *real* content for more than one detail line
+// has to come from the server (today's schema only carries one fact --
+// value/unit/detail -- per service), so detailLineCount is 1 for every
+// service parsed from a real message right now. The one exception is
+// TEMPORARY: see injectPreviewLines() below.
+constexpr uint8_t kMaxDetailLines = 3;
+
 struct ServiceReading {
   char name[kNameLen] = "";
-  char status[kStatusLen] = "ok";  // "ok" | "warn" | "down"
-  // Precomputed at parse time: `detail` if present, otherwise "<value>
-  // <unit>" -- the rest of the firmware only ever needs one ready-to-draw
-  // line, not the raw value/unit/detail split from the schema.
-  char line[kLineLen] = "";
+  char status[kStatusLen] = "ok";  // "ok" | "warn" | "down" -- also
+                                    // colors the name line, same as
+                                    // before this became multi-line
+  char detailLines[kMaxDetailLines][kLineLen] = {};
+  uint8_t detailLineCount = 0;  // 0..kMaxDetailLines
 };
 
 struct StatusPayload {

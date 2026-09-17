@@ -49,12 +49,18 @@ bool menuShowingConfigs_ = false;
 CameraAlert cameraAlert_;
 unsigned long cameraDeadlineMs_ = 0;
 
-// TEMPORARY 4-line card preview (uptime_kuma only) -- see
-// drawCardPreviewUptimeKuma()'s own comment.
+// Per-line horizontal scroll state for the currently shown HOME card.
+// Generic across any card: index 0 is always the name/title line,
+// indices 1.. are detail lines, matching ServiceReading's layout below.
+// Sized for the richest template (name + kMaxDetailLines).
 unsigned long nextScrollTickMs_ = 0;
-int scrollOffsetPx_[4] = {0, 0, 0, 0};
+int scrollOffsetPx_[1 + kMaxDetailLines] = {0};
 constexpr unsigned long kScrollTickMs = 120;
 constexpr int kScrollStepPx = 3;
+
+void resetCardScroll() {
+  for (int i = 0; i < 1 + kMaxDetailLines; i++) scrollOffsetPx_[i] = 0;
+}
 
 // -- drawing --
 
@@ -65,6 +71,8 @@ uint16_t colorForLevel(const char* level) {
 }
 
 void drawBanner() {
+  tft.setTextFont(2);  // explicit, not assumed -- card rendering now
+                        // toggles fonts (font 4) between calls
   uint16_t bg = muted_ ? TFT_DARKGREY : colorForLevel(lastStatus_.overallLevel);
   tft.fillRect(0, 0, tft.width(), 30, bg);
   tft.setTextColor(TFT_BLACK, bg);
@@ -87,28 +95,20 @@ void drawDots() {
   }
 }
 
-// TEMPORARY design preview: what a 4-line card could look like, with
-// each line vertically filling its share of the card and scrolling
-// horizontally (a two-copy marquee, clipped to its own line via
-// setViewport) if it's too wide to fit. Scoped to uptime_kuma only for
-// now and using placeholder text -- the real schema doesn't carry
-// "last checked"/uptime% as separate fields today. This is here so it
-// can be seen live on the real screen before deciding what content
-// actually belongs in the real (four-line, all-cards) version.
-const char* kUptimeKumaPreviewLines[4] = {
-    "UPTIME KUMA",
-    "71 / 71 monitors up",
-    "All monitors healthy, last checked 12s ago",
-    "Longest-running monitor: Plex, 41 days",
-};
-
-// Draws (or redraws) one line. If onlyIfScrolling is true, a line that
-// already fits is skipped entirely rather than redrawn -- this is what
-// lets the scroll ticker touch only the two lines that actually
-// animate, instead of repainting the whole card every tick, which was
-// producing a visible flicker on the two lines that never even change.
-void drawPreviewLine(const char* text, int lineIndex, int top, int lineHeight,
-                      bool onlyIfScrolling) {
+// Generic multi-line card renderer. Line 0 is always the name/title
+// line (colored by status); indices 1.. are detail lines (white). A
+// card's "template" is nothing more than its total line count (1 +
+// detailLineCount) -- there's no separate concept to keep in sync with
+// this, no per-service special-casing anywhere in this file. See
+// DESIGN.md's "Card templates" note.
+//
+// If onlyIfScrolling is true, a line that already fits is skipped
+// entirely rather than redrawn -- this is what lets the scroll ticker
+// touch only the lines that actually animate, instead of repainting
+// the whole card every tick (which was visibly flickering the lines
+// that never even change).
+void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint16_t color,
+                   bool onlyIfScrolling) {
   int lineTop = top + lineIndex * lineHeight;
   int midY = lineHeight / 2;
   int textW = tft.textWidth(text);
@@ -118,7 +118,7 @@ void drawPreviewLine(const char* text, int lineIndex, int top, int lineHeight,
   if (onlyIfScrolling && !scrolls) return;
 
   tft.setViewport(6, lineTop, tft.width() - 12, lineHeight);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextColor(color, TFT_BLACK);
   if (!scrolls) {
     tft.drawString(text, 0, midY);
   } else {
@@ -130,28 +130,7 @@ void drawPreviewLine(const char* text, int lineIndex, int top, int lineHeight,
   tft.resetViewport();
 }
 
-void drawCardPreviewUptimeKuma(int top, int bottom) {
-  int lineHeight = (bottom - top) / 4;
-  tft.setTextFont(4);
-  tft.setTextDatum(ML_DATUM);
-  for (int i = 0; i < 4; i++) {
-    drawPreviewLine(kUptimeKumaPreviewLines[i], i, top, lineHeight, /*onlyIfScrolling=*/false);
-  }
-  tft.setTextFont(2);  // restore the font the rest of the UI expects
-}
-
-// Called from the scroll ticker only -- redraws just the lines that are
-// actually scrolling, nothing else on the card.
-void updateUptimeKumaPreviewScroll(int top, int bottom) {
-  int lineHeight = (bottom - top) / 4;
-  tft.setTextFont(4);
-  tft.setTextDatum(ML_DATUM);
-  for (int i = 0; i < 4; i++) {
-    drawPreviewLine(kUptimeKumaPreviewLines[i], i, top, lineHeight, /*onlyIfScrolling=*/true);
-  }
-  tft.setTextFont(2);
-}
-
+// Draws every line of the current card fresh (full redraw path).
 void drawCard() {
   int top = 34;
   int bottom = tft.height() - 20;
@@ -165,24 +144,39 @@ void drawCard() {
   }
 
   const ServiceReading& card = lastStatus_.services[cardIndex_];
+  int totalLines = 1 + card.detailLineCount;
+  int lineHeight = (bottom - top) / totalLines;
 
-  if (strcmp(card.name, "uptime_kuma") == 0) {
-    drawCardPreviewUptimeKuma(top, bottom);
-    return;
+  tft.setTextFont(4);
+  tft.setTextDatum(ML_DATUM);
+  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), false);
+  for (uint8_t i = 0; i < card.detailLineCount; i++) {
+    drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, false);
   }
-
-  int midY = (top + bottom) / 2;
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(colorForLevel(card.status), TFT_BLACK);
-  tft.drawString(card.name, tft.width() / 2, midY - 14);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString(card.line, tft.width() / 2, midY + 14);
+  tft.setTextFont(2);  // restore the font the rest of the UI expects
 
   if ((int8_t)cardIndex_ == pinnedCardIndex_) {
     tft.setTextColor(TFT_YELLOW, TFT_BLACK);
     tft.setTextDatum(TR_DATUM);
     tft.drawString("PINNED", tft.width() - 6, top + 4);
   }
+}
+
+// Called from the scroll ticker only -- redraws just the lines that are
+// actually scrolling on whichever card currently shows, nothing else.
+void updateCardScroll(int top, int bottom) {
+  if (lastStatus_.serviceCount == 0) return;
+  const ServiceReading& card = lastStatus_.services[cardIndex_];
+  int totalLines = 1 + card.detailLineCount;
+  int lineHeight = (bottom - top) / totalLines;
+
+  tft.setTextFont(4);
+  tft.setTextDatum(ML_DATUM);
+  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), true);
+  for (uint8_t i = 0; i < card.detailLineCount; i++) {
+    drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, true);
+  }
+  tft.setTextFont(2);
 }
 
 void drawHome() {
@@ -192,6 +186,7 @@ void drawHome() {
 }
 
 void drawMenu() {
+  tft.setTextFont(2);  // explicit, not assumed -- see drawBanner()
   tft.fillScreen(TFT_BLACK);
 
   if (menuShowingNetworkInfo_) {
@@ -242,6 +237,7 @@ void drawMenu() {
 }
 
 void drawCamera() {
+  tft.setTextFont(2);  // explicit, not assumed -- see drawBanner()
   tft.fillScreen(TFT_BLACK);
   tft.setTextDatum(TC_DATUM);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
@@ -303,24 +299,23 @@ void screenUpdate(const StatusPayload& status, bool isNewStatus) {
     if (!paused && lastStatus_.serviceCount > 0 && now >= nextAutoRotateMs_) {
       if (pinnedCardIndex_ < 0) {
         cardIndex_ = (cardIndex_ + 1) % lastStatus_.serviceCount;
+        resetCardScroll();  // fresh marquee start for the newly-shown card
       }
       nextAutoRotateMs_ = now + kCardRotationMs;
       needsRedraw_ = true;
     }
-    // TEMPORARY: only the uptime_kuma preview card animates -- see
-    // drawCardPreviewUptimeKuma(). Ticks its own timer rather than
-    // riding the auto-rotate one, since scrolling needs to keep moving
-    // even while rotation itself is paused by manual input. Calls the
-    // lightweight per-line update directly instead of setting
+    // Ticks scroll offsets for whichever card is currently shown,
+    // redrawing only the lines that actually need it -- generic across
+    // any card, not tied to a particular one. Ticks its own timer
+    // rather than riding the auto-rotate one, since scrolling needs to
+    // keep moving even while rotation itself is paused by manual input.
+    // Calls the lightweight per-line update directly instead of setting
     // needsRedraw_ -- going through the normal full-card redraw path
-    // 8 times a second was flickering the two lines that never even
-    // change (blacked out and repainted on every tick for no reason).
-    if (lastStatus_.serviceCount > 0 &&
-        strcmp(lastStatus_.services[cardIndex_].name, "uptime_kuma") == 0 &&
-        now >= nextScrollTickMs_) {
+    // 8 times a second was flickering lines that never even change.
+    if (lastStatus_.serviceCount > 0 && now >= nextScrollTickMs_) {
       nextScrollTickMs_ = now + kScrollTickMs;
-      for (int i = 0; i < 4; i++) scrollOffsetPx_[i] += kScrollStepPx;
-      updateUptimeKumaPreviewScroll(34, tft.height() - 20);
+      for (int i = 0; i < 1 + kMaxDetailLines; i++) scrollOffsetPx_[i] += kScrollStepPx;
+      updateCardScroll(34, tft.height() - 20);
     }
   } else if (state_ == State::MENU) {
     if (now >= menuIdleDeadlineMs_) {
@@ -357,6 +352,7 @@ void screenOnEncoderDelta(int32_t delta) {
       int32_t idx = ((int32_t)cardIndex_ + delta) % (int32_t)lastStatus_.serviceCount;
       if (idx < 0) idx += lastStatus_.serviceCount;
       cardIndex_ = (uint8_t)idx;
+      resetCardScroll();  // fresh marquee start for the newly-shown card
     }
     autoRotatePausedUntilMs_ = now + kCardRotationPauseMs;
     needsRedraw_ = true;

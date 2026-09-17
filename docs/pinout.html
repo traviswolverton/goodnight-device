@@ -316,8 +316,14 @@
       <circle cx="1090" cy="512" r="3" fill="var(--wire-power)"/>
       <text x="995" y="722" font-family="IBM Plex Mono" font-size="10" fill="var(--wire-power)" font-weight="600">3V3 bus — only 3.3V pin on this board; every peripheral needing it wires here</text>
 
-      <!-- Backlight crossing: D26 (left row8) to Display BL pin -->
-      <path d="M 600 388 C 500 388, 500 474, 1010 474" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-dasharray="6 4" opacity="0.85"/>
+      <!-- Backlight crossing label only. The actual wire is drawn once,
+           from the Display block's own BL pin at the end of this file
+           (the "M 1000 512 ..." path), landing exactly on this D26 tick.
+           A second, separately drawn path used to exist here too, ending
+           near but not exactly on the real BL pin: same two-paths-for-
+           one-wire mistake as the earlier PIR bug, showing up as a
+           lens/loop shape where the two slightly different curves parted
+           and rejoined. Removed; label kept. -->
       <text x="700" y="378" font-family="IBM Plex Mono" font-size="9.5" fill="var(--wire-signal)">backlight crosses to D26 — not grouped with rest of display wiring</text>
 
       <!-- Encoder block -->

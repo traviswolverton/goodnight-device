@@ -163,7 +163,7 @@
 <figure class="diagram-figure">
   <div class="diagram-scroll">
     <svg class="wiring" viewBox="0 0 1500 780" role="img"
-      aria-label="Wiring diagram: ESP32 DEVKIT V1 center spine with 15 paired pin rows on left and right edges, connected to an HW-040 encoder, WS2812 LED strip, and HW-740 PIR on the left, and a Waveshare ST7789 display on the right. Two wires cross the board: the display's backlight pin reaches left to GPIO26, and a 3V3 power bus fans out from the single 3.3V pin on the right to the encoder, PIR, and display.">
+      aria-label="Wiring diagram: ESP32 DEVKIT V1 center spine with 15 paired pin rows on left and right edges, connected to an HW-040 encoder, WS2812 LED strip, and HW-740 PIR on the left, and a Waveshare ST7789 display on the right. Three wires cross the board: the display's backlight pin reaches left to GPIO26, the display's ground reaches left to the shared GND bus, and a 3V3 power bus fans out from the single 3.3V pin on the right to the encoder, PIR, and display. Ground is also a single shared bus, sourced from the left-side GND pin -- the right-side GND pin is unused.">
       <defs>
         <marker id="dot" markerWidth="6" markerHeight="6" refX="3" refY="3">
           <circle cx="3" cy="3" r="2.6" fill="context-fill" />
@@ -282,15 +282,15 @@
         <line x1="820" y1="532" x2="860" y2="532" stroke="var(--silk-dim)" stroke-width="1"/>
         <text x="866" y="536" fill="var(--silk-dim)" font-size="10">D15</text>
 
-        <!-- row 13: GND.2 (PIR + LED gnd) / GND.1 (display + encoder gnd) -->
+        <!-- row 13: GND.2 (shared GND bus, all four peripherals) /
+             GND.1 (unused now, freed by the bus) -->
         <line x1="600" y1="568" x2="640" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
         <circle cx="600" cy="568" r="3.2" fill="var(--wire-gnd)"/>
         <text x="594" y="566" text-anchor="end" fill="var(--silk)" font-weight="600">GND.2</text>
-        <text x="594" y="580" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">PIR + LED gnd</text>
-        <line x1="820" y1="568" x2="860" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
-        <circle cx="820" cy="568" r="3.2" fill="var(--wire-gnd)"/>
-        <text x="866" y="566" fill="var(--silk)" font-weight="600">GND.1</text>
-        <text x="866" y="580" fill="var(--silk-dim)" font-size="9.5">display + encoder gnd</text>
+        <text x="594" y="580" text-anchor="end" fill="var(--silk-dim)" font-size="9.5">shared GND bus, see below</text>
+        <line x1="820" y1="568" x2="860" y2="568" stroke="var(--silk-dim)" stroke-width="1"/>
+        <text x="866" y="566" fill="var(--silk-dim)" font-size="10">GND.1</text>
+        <text x="866" y="580" fill="var(--silk-dim)" font-size="9" font-style="italic">unused, freed by GND bus</text>
 
         <!-- row 14: VIN (LED +5V, local) / 3V3 (shared bus) -->
         <line x1="600" y1="604" x2="640" y2="604" stroke="var(--wire-power)" stroke-width="2.5"/>
@@ -342,7 +342,7 @@
       <path d="M 300 315 C 450 315, 450 316, 600 316" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
       <path d="M 300 332 C 450 332, 450 352, 600 352" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
       <path d="M 300 349 C 400 349, 400 604, 990 705" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
-      <path d="M 300 366 C 390 366, 390 568, 820 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2"/>
+      <path d="M 300 366 C 430 366, 430 568, 600 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2"/>
 
       <!-- PIR block -->
       <g font-family="IBM Plex Mono">
@@ -390,7 +390,13 @@
         <text x="1010" y="516" font-size="10.5" fill="var(--silk)">BL</text>
       </g>
       <path d="M 1000 386 C 960 386, 960 512, 1090 512" fill="none" stroke="var(--wire-power)" stroke-width="2"/>
-      <path d="M 1000 404 C 950 404, 950 568, 860 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2"/>
+      <!-- Display GND now crosses to the shared bus on the left, same
+           reasoning as the backlight crossing above: dashed, different
+           color (grey, not teal) so the two crossings stay distinguishable
+           from each other even where their curves pass near one another. -->
+      <path d="M 1000 404 C 800 404, 800 620, 600 568" fill="none" stroke="var(--wire-gnd)" stroke-width="2" stroke-dasharray="6 4" opacity="0.85"/>
+      <text x="700" y="642" font-family="IBM Plex Mono" font-size="9.5" fill="var(--wire-gnd)">display GND crosses to the shared bus too</text>
+      <text x="405" y="705" font-family="IBM Plex Mono" font-size="10" fill="var(--wire-gnd)" font-weight="600">GND bus — every peripheral's ground lands on one shared header strip</text>
       <path d="M 1000 422 C 920 422, 920 100, 860 100" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
       <path d="M 1000 440 C 910 440, 910 316, 860 316" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
       <path d="M 1000 458 C 900 458, 900 352, 860 352" fill="none" stroke="var(--wire-signal)" stroke-width="2"/>
@@ -404,7 +410,10 @@
     have to cross: <strong>3V3</strong> only breaks out on the right, so the encoder and
     PIR each send one wire across for it even though their signal pins live on the
     left. The display's backlight is the reverse case — its only wire on the left,
-    away from the rest of its own connector.
+    away from the rest of its own connector. <strong>GND</strong> is a single shared
+    bus too (matching the physical build — all four grounds landing on one soldered
+    header strip), sourced from the left-side GND pin; the display's ground is the
+    one wire that crosses to reach it, and the right-side GND pin goes unused.
   </figcaption>
 </figure>
 
@@ -428,22 +437,22 @@
       <tr><td></td><td class="mono">DC</td><td class="mono gpio">4</td><td class="mono">D4</td><td class="note">—</td></tr>
       <tr><td></td><td class="mono">RST</td><td class="mono gpio">16</td><td class="mono">RX2<span class="flag">not D16</span></td><td class="note">GPIO16's UART2 alt-label is what's printed here</td></tr>
       <tr><td></td><td class="mono">BL</td><td class="mono gpio">26</td><td class="mono">D26</td><td class="note">digital on/off, driven by PIR — not PWM</td></tr>
-      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the shared bus</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.1</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the shared 3V3 bus</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">on the shared GND bus — this wire crosses to reach it</td></tr>
 
       <tr class="group-start"><td>Encoder (HW-040)</td><td class="mono">CLK</td><td class="mono gpio">32</td><td class="mono">D32</td><td class="note">—</td></tr>
       <tr><td></td><td class="mono">DT</td><td class="mono gpio">33</td><td class="mono">D33</td><td class="note">—</td></tr>
       <tr><td></td><td class="mono">SW</td><td class="mono gpio">25</td><td class="mono">D25</td><td class="note">no onboard pull-ups — use INPUT_PULLUP</td></tr>
-      <tr><td></td><td class="mono">+</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the shared bus</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.1</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">+</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the shared 3V3 bus</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">on the shared GND bus</td></tr>
 
       <tr class="group-start"><td>LED strip (WS2812 ×5)</td><td class="mono">DIN</td><td class="mono gpio">13</td><td class="mono">D13</td><td class="note">the end marked DIN, not DO</td></tr>
       <tr><td></td><td class="mono">+5V</td><td class="mono">—</td><td class="mono">VIN</td><td class="note">from the 5V supply rail, not through the ESP32 regulator</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">on the shared GND bus</td></tr>
 
       <tr class="group-start"><td>PIR (HW-740)</td><td class="mono">VOUT</td><td class="mono gpio">27</td><td class="mono">D27</td><td class="note">—</td></tr>
       <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">keeps VOUT within GPIO-safe voltage</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">—</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND.2</td><td class="note">on the shared GND bus</td></tr>
     </tbody>
   </table>
 </div>

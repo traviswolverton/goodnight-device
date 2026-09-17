@@ -26,14 +26,13 @@ constexpr size_t kCameraNameLen = 32;
 constexpr size_t kUrlLen = 160;
 constexpr size_t kAlertTextLen = 64;
 
-// A card's total line count is 1 (name) + detailLineCount -- this caps
-// the richest template at 4 total lines. See DESIGN.md's "Card
-// templates" note: the *real* content for more than one detail line
-// has to come from the server (today's schema only carries one fact --
-// value/unit/detail -- per service), so detailLineCount is 1 for every
-// service parsed from a real message right now. The one exception is
-// TEMPORARY: see injectPreviewLines() below.
-constexpr uint8_t kMaxDetailLines = 3;
+// A card's total line count is 1 (name) + detailLineCount. Matches the
+// server schema's `lines` array exactly (1-4 entries, optional) --
+// see DESIGN.md's "Card templates" note. When a service's `lines` is
+// present, detailLines/detailLineCount come from it directly; when
+// absent, they fall back to folding value/unit/detail into one line,
+// same as before this field existed.
+constexpr uint8_t kMaxDetailLines = 4;
 
 struct ServiceReading {
   char name[kNameLen] = "";

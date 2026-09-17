@@ -275,6 +275,30 @@ those pixel colors directly (or turns the pixel off on `null`); it does not
 decide which service maps to which pixel or which color a status implies —
 that's all server-side (see `pixel_map` config in the server repo).
 
+### Card templates
+A HOME card's "template" is nothing more than how many lines it has —
+there's no separate template concept anywhere in the firmware needing to
+stay in sync with anything else. Each service becomes `1 + detailLineCount`
+total lines (name/title, colored by `status`; then 0-4 detail lines, white),
+each one vertically filling its equal share of the card and scrolling
+horizontally (a two-copy marquee, clipped to its own line) if it doesn't
+fit the screen width. `screen.cpp` never special-cases a service by name —
+it just renders however many lines the current card's `ServiceReading`
+carries.
+
+The content of those detail lines is the server's call entirely, via the
+schema's `lines` field (see below) — an adapter with one interesting fact
+sends one line and gets a simple card; one with several (like
+`uptime_kuma`) sends more and gets a richer one. The client makes zero
+decisions about what's worth showing, matching the "intentionally dumb"
+principle elsewhere in this doc.
+
+`lines` was added to the locked schema specifically to support this —
+proposed from this repo, implemented and confirmed live by the server
+repo the same day. Before that field existed, every card was capped at a
+single detail line (folded from `value`/`unit`/`detail`); that fallback
+still exists today for any service whose message doesn't include `lines`.
+
 ## MQTT JSON payload schema
 Locked against the server repo (`desk-dashboard-server/DESIGN.md`) — both
 docs carry this section verbatim; update them together if it changes.
@@ -296,6 +320,18 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
       "value": 4,
       "unit": "streams",
       "detail": "4 active streams"
+    },
+    {
+      "name": "uptime_kuma",
+      "status": "ok",
+      "value": 71,
+      "unit": "/71 up",
+      "detail": null,
+      "lines": [
+        "71 / 71 monitors up",
+        "All monitors healthy",
+        "24h uptime avg: 100.0%"
+      ]
     }
   ],
   "pixels": {
@@ -313,6 +349,13 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
 - `services` is an array, in server-decided order — that order is the HOME
   card rotation order. Each entry matches the adapter's `fetch()` shape
   (`status`/`value`/`unit`/`detail`) from the server repo.
+- `lines` is optional (1-4 strings, added after the initial lock — see
+  "Card templates" below). When present, the client shows those lines
+  verbatim instead of folding `value`/`unit`/`detail` into one; when
+  absent, nothing changes from the original schema's behavior. Each
+  string is pre-formatted exactly as the server wants it shown — the
+  client does zero formatting logic on them, same as everything else
+  here.
 - `pixels` keys are always strings `"0"`-`"4"` (JSON object keys can't be
   bare ints); `null` means "off/unassigned", not "no change".
 - `ts` is unix seconds. Not currently used by the firmware but parse it

@@ -95,37 +95,61 @@ void drawDots() {
 // "last checked"/uptime% as separate fields today. This is here so it
 // can be seen live on the real screen before deciding what content
 // actually belongs in the real (four-line, all-cards) version.
+const char* kUptimeKumaPreviewLines[4] = {
+    "UPTIME KUMA",
+    "71 / 71 monitors up",
+    "All monitors healthy, last checked 12s ago",
+    "Longest-running monitor: Plex, 41 days",
+};
+
+// Draws (or redraws) one line. If onlyIfScrolling is true, a line that
+// already fits is skipped entirely rather than redrawn -- this is what
+// lets the scroll ticker touch only the two lines that actually
+// animate, instead of repainting the whole card every tick, which was
+// producing a visible flicker on the two lines that never even change.
+void drawPreviewLine(const char* text, int lineIndex, int top, int lineHeight,
+                      bool onlyIfScrolling) {
+  int lineTop = top + lineIndex * lineHeight;
+  int midY = lineHeight / 2;
+  int textW = tft.textWidth(text);
+  int availW = tft.width() - 12;
+  bool scrolls = textW > availW;
+
+  if (onlyIfScrolling && !scrolls) return;
+
+  tft.setViewport(6, lineTop, tft.width() - 12, lineHeight);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  if (!scrolls) {
+    tft.drawString(text, 0, midY);
+  } else {
+    int cycle = textW + 40;  // 40px gap before the marquee repeats
+    int x = -(scrollOffsetPx_[lineIndex] % cycle);
+    tft.drawString(text, x, midY);
+    tft.drawString(text, x + cycle, midY);  // trailing copy, seamless wrap
+  }
+  tft.resetViewport();
+}
+
 void drawCardPreviewUptimeKuma(int top, int bottom) {
-  static const char* kLines[4] = {
-      "UPTIME KUMA",
-      "71 / 71 monitors up",
-      "All monitors healthy, last checked 12s ago",
-      "Longest-running monitor: Plex, 41 days",
-  };
   int lineHeight = (bottom - top) / 4;
   tft.setTextFont(4);
   tft.setTextDatum(ML_DATUM);
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-
   for (int i = 0; i < 4; i++) {
-    int lineTop = top + i * lineHeight;
-    int midY = lineHeight / 2;
-    int textW = tft.textWidth(kLines[i]);
-    int availW = tft.width() - 12;
-
-    tft.setViewport(6, lineTop, tft.width() - 12, lineHeight);
-    if (textW <= availW) {
-      tft.drawString(kLines[i], 0, midY);
-    } else {
-      int cycle = textW + 40;  // 40px gap before the marquee repeats
-      int x = -(scrollOffsetPx_[i] % cycle);
-      tft.drawString(kLines[i], x, midY);
-      tft.drawString(kLines[i], x + cycle, midY);  // trailing copy, seamless wrap
-    }
-    tft.resetViewport();
+    drawPreviewLine(kUptimeKumaPreviewLines[i], i, top, lineHeight, /*onlyIfScrolling=*/false);
   }
-
   tft.setTextFont(2);  // restore the font the rest of the UI expects
+}
+
+// Called from the scroll ticker only -- redraws just the lines that are
+// actually scrolling, nothing else on the card.
+void updateUptimeKumaPreviewScroll(int top, int bottom) {
+  int lineHeight = (bottom - top) / 4;
+  tft.setTextFont(4);
+  tft.setTextDatum(ML_DATUM);
+  for (int i = 0; i < 4; i++) {
+    drawPreviewLine(kUptimeKumaPreviewLines[i], i, top, lineHeight, /*onlyIfScrolling=*/true);
+  }
+  tft.setTextFont(2);
 }
 
 void drawCard() {
@@ -286,13 +310,17 @@ void screenUpdate(const StatusPayload& status, bool isNewStatus) {
     // TEMPORARY: only the uptime_kuma preview card animates -- see
     // drawCardPreviewUptimeKuma(). Ticks its own timer rather than
     // riding the auto-rotate one, since scrolling needs to keep moving
-    // even while rotation itself is paused by manual input.
+    // even while rotation itself is paused by manual input. Calls the
+    // lightweight per-line update directly instead of setting
+    // needsRedraw_ -- going through the normal full-card redraw path
+    // 8 times a second was flickering the two lines that never even
+    // change (blacked out and repainted on every tick for no reason).
     if (lastStatus_.serviceCount > 0 &&
         strcmp(lastStatus_.services[cardIndex_].name, "uptime_kuma") == 0 &&
         now >= nextScrollTickMs_) {
       nextScrollTickMs_ = now + kScrollTickMs;
       for (int i = 0; i < 4; i++) scrollOffsetPx_[i] += kScrollStepPx;
-      needsRedraw_ = true;
+      updateUptimeKumaPreviewScroll(34, tft.height() - 20);
     }
   } else if (state_ == State::MENU) {
     if (now >= menuIdleDeadlineMs_) {

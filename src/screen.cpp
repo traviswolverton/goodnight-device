@@ -118,6 +118,11 @@ void drawDots() {
   }
 }
 
+// Width reserved on the title line (line 0 only) for the status icon
+// drawn by drawTitleIcon() -- the title's own text viewport starts
+// after this, so the marquee scroll never runs underneath the icon.
+constexpr int kTitleIconInset = 20;
+
 // Generic multi-line card renderer. Line 0 is always the name/title
 // line (colored by status); indices 1.. are detail lines (white). A
 // card's "template" is nothing more than its total line count (1 +
@@ -130,17 +135,20 @@ void drawDots() {
 // touch only the lines that actually animate, instead of repainting
 // the whole card every tick (which was visibly flickering the lines
 // that never even change).
+//
+// leftInset shifts the line's viewport right by that many pixels --
+// used only for the title line, to leave room for the status icon.
 void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint16_t color,
-                   bool onlyIfScrolling) {
+                   bool onlyIfScrolling, int leftInset = 0) {
   int lineTop = top + lineIndex * lineHeight;
   int midY = lineHeight / 2;
   int textW = tft.textWidth(text);
-  int availW = tft.width() - 12;
+  int availW = tft.width() - 12 - leftInset;
   bool scrolls = textW > availW;
 
   if (onlyIfScrolling && !scrolls) return;
 
-  tft.setViewport(6, lineTop, tft.width() - 12, lineHeight);
+  tft.setViewport(6 + leftInset, lineTop, availW, lineHeight);
   tft.setTextColor(color, TFT_BLACK);
   if (!scrolls) {
     tft.drawString(text, 0, midY);
@@ -151,6 +159,29 @@ void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint
     tft.drawString(text, x + cycle, midY);  // trailing copy, seamless wrap
   }
   tft.resetViewport();
+}
+
+// Small shape indicating a card's status, drawn to the left of the
+// title text -- the same information already carried by the title's
+// text color, just readable at a glance without reading the color.
+// Distinct shapes rather than a checkmark/warning glyph: our fonts
+// (see include/User_Setup.h) are monochrome ASCII/Latin bitmap sets
+// with no emoji or symbol glyphs, so this is drawn with plain TFT
+// primitives instead of any font at all. Only called from the
+// full-card redraw path -- the shape never changes without a new
+// status message triggering that path anyway, so the scroll ticker
+// has no reason to touch it.
+void drawTitleIcon(const char* status, int top, int lineHeight) {
+  int cx = 6 + kTitleIconInset / 2;
+  int cy = top + lineHeight / 2;
+  uint16_t color = colorForLevel(status);
+  if (strcmp(status, "warn") == 0) {
+    tft.fillTriangle(cx, cy - 6, cx - 6, cy + 6, cx + 6, cy + 6, color);
+  } else if (strcmp(status, "down") == 0) {
+    tft.fillRect(cx - 6, cy - 6, 12, 12, color);
+  } else {
+    tft.fillCircle(cx, cy, 6, color);
+  }
 }
 
 // Draws every line of the current card fresh (full redraw path).
@@ -172,7 +203,8 @@ void drawCard() {
 
   tft.setTextFont(4);
   tft.setTextDatum(ML_DATUM);
-  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), false);
+  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), false, kTitleIconInset);
+  drawTitleIcon(card.status, top, lineHeight);
   for (uint8_t i = 0; i < card.detailLineCount; i++) {
     drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, false);
   }
@@ -195,7 +227,7 @@ void updateCardScroll(int top, int bottom) {
 
   tft.setTextFont(4);
   tft.setTextDatum(ML_DATUM);
-  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), true);
+  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), true, kTitleIconInset);
   for (uint8_t i = 0; i < card.detailLineCount; i++) {
     drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, true);
   }

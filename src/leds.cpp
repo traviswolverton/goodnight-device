@@ -4,9 +4,13 @@
 
 namespace {
 
-// GPIO13 (board silkscreen D13) -- see DESIGN.md's pin table. FastLED's
-// addLeds<>() needs the data pin as a compile-time template argument, so
-// it's a constant here rather than a parameter to ledsBegin().
+// GPIO13 (board silkscreen D13) -- see DESIGN.md's pin table. Briefly
+// tested on GPIO14 to rule out a GPIO13-specific fault (damaged pin,
+// pin-mux quirk); the bug reproduced identically there too, so it
+// follows the wire/strip rather than the pin -- back to the documented
+// D13. FastLED's addLeds<>() needs the data pin as a compile-time
+// template argument, so it's a constant here rather than a parameter
+// to ledsBegin().
 constexpr uint8_t kDataPin = 13;
 
 CRGB pixels_[kNumPixels];

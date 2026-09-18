@@ -164,22 +164,6 @@ void setup() {
 
   encoderBegin(kPinEncoderClk, kPinEncoderDt, kPinEncoderSw);
   ledsBegin();
-
-  // TEMPORARY diagnostic for the pixels-render-white investigation --
-  // drives pixels 0/1 red directly at boot, before WiFi/MQTT are even
-  // touched. This isolates hexToColor()+FastLED.show() (the exact path
-  // a real homelab/status message would exercise) from the network and
-  // schema parsing entirely. If these still render white, the bug is
-  // fully in the LED signal path (wiring/level-shifting), not software
-  // anywhere in this repo. Remove once the bug is resolved either way.
-  {
-    StatusPayload redTest;
-    snprintf(redTest.pixelHex[0], kPixelHexLen, "#FF0000");
-    snprintf(redTest.pixelHex[1], kPixelHexLen, "#FF0000");
-    ledsUpdate(redTest);
-    Serial.println("[leds] boot-time red test fired for pixels 0/1");
-  }
-
   backlightBegin();
   screenBegin();
 }

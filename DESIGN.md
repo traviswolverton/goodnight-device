@@ -521,6 +521,73 @@ surface — treat that as still open.
 resolved — it's a real, if small, ongoing Serial-print cost that has no
 reason to ship permanently.
 
+### Bug 3 — pixels render white during real operation (open, unresolved)
+Symptom: `services[0]`/`services[1]`'s pixels (adguard_main,
+uptime_kuma) render solid white on the physical strip, regardless of
+the actual color the server sends (confirmed green, `#1D9E75`, via
+both `GET /status` and the raw retained MQTT message).
+
+Ruled out, each confirmed directly rather than assumed:
+- Software: hex-parsing math verified correct with a standalone
+  compiled test (`#1D9E75` → r=29 g=158 b=117, not white); no gamma/
+  brightness-correction code exists anywhere; `WS2812B`+`GRB` is the
+  standard/correct FastLED chipset combo for this strip.
+- The GPIO pin itself: reproduces identically on GPIO14 as on the
+  documented GPIO13/D13 — tested twice, including after the WiFi
+  correlation below was known.
+- The `DIN` pad (not `+5V`/`GND`): confirmed via a close-up photo of
+  the solder joint.
+- Wiring continuity, end to end, power off: verified with a multimeter
+  on every wire including ground.
+- Common ground between the ESP32 and the strip: guaranteed, since the
+  strip's `+5V` is fed from the ESP32's own `VIN` pin, not a separate
+  supply.
+- `WiFi.setSleep(false)` (disabling WiFi modem-sleep, a common ESP32
+  fix for CPU-timing jitter corrupting bit-banged WS2812 output): no
+  effect. Consistent with checking FastLED's actual ESP32 platform
+  code (v3.10.3) and confirming this board already resolves to the
+  RMT-hardware-peripheral driver, not a CPU cycle-counted bit-bang loop
+  — the mechanism `setSleep(false)` would fix doesn't apply here.
+
+What's actually been observed, and what it points at:
+- A boot-time test that calls `ledsUpdate()` directly with a literal
+  `#FF0000` payload — before `WiFi.begin()` is ever called, bypassing
+  MQTT/JSON entirely — renders correctly (red) reliably, every time.
+- The instant a real `homelab/status` message arrives over an active
+  WiFi/MQTT connection and drives the exact same `ledsUpdate()` code
+  path, it renders white instead.
+- Unplugging the data line entirely also renders white, not off.
+
+That last point reframes the whole symptom: white isn't a specific
+corruption pattern here, it's this strip's fallback state whenever
+`DIN` isn't receiving a valid, continuous WS2812 signal — a known
+behavior for some cheaper WS2812-clone driver chips (genuine WS2812B
+more commonly defaults to off/last-frame instead). So the real
+question isn't "why white" — it's why the signal stops being valid
+specifically once real WiFi/MQTT traffic is flowing, when the exact
+same code produces a clean signal in a quiet electrical moment at
+boot. Leading theory: RF noise from the ESP32's WiFi radio coupling
+onto the ~18in unshielded `DIN` run right next to the antenna, since
+RMT-driven output at the GPIO pin itself should already be clean —
+noise picked up downstream of the pin would explain a clean boot-time
+signal turning invalid only once the radio is actively transmitting.
+
+Not yet tried (no cap/resistor on hand at investigation time):
+- A decoupling capacitor (~100-1000uF) across `+5V`/`GND` at the first
+  pixel, and a series resistor (~300-500 ohm) on the data line — both
+  already recommended in this doc's Hardware section, both address
+  noise immunity specifically, not just DC level margin.
+- A level shifter/line driver (74AHCT125 or 74HCT245) between GPIO13
+  and `DIN` — re-drives the signal cleanly, which should fight induced
+  noise better than a long passive wire regardless of the exact
+  mechanism. This is the most likely real fix if the passives above
+  don't fully resolve it.
+
+Investigation paused here (LEDs unplugged for now) rather than
+resolved — pick up with the cap/resistor test or the level shifter next
+time this is revisited. See the git history around this note for the
+full sequence of tests (search commit messages for "pixels-render-white").
+
 ## Testing before hardware arrives
 Use **Wokwi** (wokwi.com, also a VS Code extension) — simulated ESP32 +
 rotary encoder + WS2812 strip + PIR, wired per [`diagram.json`](diagram.json).

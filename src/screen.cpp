@@ -203,7 +203,7 @@ void drawCard() {
 
   tft.setTextFont(4);
   tft.setTextDatum(ML_DATUM);
-  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), false, kTitleIconInset);
+  drawCardLine(card.title, 0, top, lineHeight, colorForLevel(card.status), false, kTitleIconInset);
   drawTitleIcon(card.status, top, lineHeight);
   for (uint8_t i = 0; i < card.detailLineCount; i++) {
     drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, false);
@@ -227,7 +227,7 @@ void updateCardScroll(int top, int bottom) {
 
   tft.setTextFont(4);
   tft.setTextDatum(ML_DATUM);
-  drawCardLine(card.name, 0, top, lineHeight, colorForLevel(card.status), true, kTitleIconInset);
+  drawCardLine(card.title, 0, top, lineHeight, colorForLevel(card.status), true, kTitleIconInset);
   for (uint8_t i = 0; i < card.detailLineCount; i++) {
     drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, true);
   }

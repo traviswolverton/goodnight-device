@@ -19,6 +19,7 @@ constexpr uint8_t kNumPixels = 5;
 // overlong field is a silently-clipped display value, never a crash --
 // the trade this makes on purpose.
 constexpr size_t kNameLen = 24;
+constexpr size_t kTitleLen = 24;
 constexpr size_t kStatusLen = 8;
 constexpr size_t kLineLen = 100;
 constexpr size_t kLevelLen = 8;
@@ -37,7 +38,12 @@ constexpr size_t kAlertTextLen = 64;
 constexpr uint8_t kMaxDetailLines = 4;
 
 struct ServiceReading {
-  char name[kNameLen] = "";
+  char name[kNameLen] = "";  // stable identifier -- display code should
+                              // prefer `title` below; `name` itself is
+                              // never shown
+  char title[kTitleLen] = "";  // display label; always populated
+                                // (falls back to `name` when the
+                                // server payload omits or empties it)
   char status[kStatusLen] = "ok";  // "ok" | "warn" | "down" -- also
                                     // colors the name line, same as
                                     // before this became multi-line

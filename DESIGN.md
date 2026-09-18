@@ -320,6 +320,7 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
   "services": [
     {
       "name": "plex",
+      "title": "plex",
       "status": "ok",
       "value": 4,
       "unit": "streams",
@@ -328,6 +329,7 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
     },
     {
       "name": "uptime_kuma",
+      "title": "Uptime Kuma",
       "status": "ok",
       "value": 71,
       "unit": "/71 up",
@@ -354,6 +356,13 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
 - `services` is an array, in server-decided order — that order is the HOME
   card rotation order. Each entry matches the adapter's `fetch()` shape
   (`status`/`value`/`unit`/`detail`) from the server repo.
+- `title` (added after the initial lock, same pattern as `lines` below)
+  is required and always populated — falls back to `name` server-side
+  for any adapter that hasn't set a custom one. `name` stays the stable
+  identifier and is never itself shown; the client renders `title` on
+  the card's title line. The two diverge already (e.g. AdGuard's
+  `name` is `adguard_main`), which is exactly why this exists instead
+  of just showing `name`.
 - `lines` (1-4 strings, added after the initial lock — see "Card
   templates" below) is required and always populated for every service
   — originally optional, tightened server-side after adoption. The

@@ -117,6 +117,8 @@ bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out) 
     }
     ServiceReading& reading = out.services[out.serviceCount];
     copyTruncated(reading.name, kNameLen, asCString(service["name"]) ?: "?");
+    const char* title = asCString(service["title"]);
+    copyTruncated(reading.title, kTitleLen, (title && title[0] != '\0') ? title : reading.name);
     copyTruncated(reading.status, kStatusLen, asCString(service["status"]) ?: "ok");
     populateDetailLines(reading, service);
     out.serviceCount++;

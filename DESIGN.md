@@ -238,7 +238,8 @@ Three states, not more:
    to HOME on either an encoder button press or the same shared idle
    timeout as MENU — this needed its own exit condition, since there was
    otherwise no way to leave it once an alert had no viewer around to
-   dismiss it.
+   dismiss it. The fetch/decode itself runs from `loop()`, not the MQTT
+   callback — see "Camera snapshot fetch" below.
 
 ### Backlight / presence
 Independent of screen state — runs the same in HOME, MENU, and CAMERA.
@@ -302,6 +303,90 @@ build custom content, the same way ours does client-side. The client's
 own fallback for a missing `lines` is dead code in practice now, but
 kept as defensive robustness against a future adapter regression rather
 than removed.
+
+### Camera snapshot fetch
+`screenOnCameraAlert()` (called synchronously from the MQTT callback)
+only ever records the alert into `cameraAlert_` and flips a
+pending-fetch flag — it never touches the network or does SPI/TFT work.
+The actual `snapshotUrl` fetch and JPEG decode happen from
+`screenCameraFetchIfPending()`, called every `loop()` iteration but a
+cheap no-op unless a fetch is actually pending. This mirrors the
+`gLatestStatus`/`gHasNewStatus` pattern in `main.cpp`, and exists for
+the same reason as Bug 1 below: an HTTP fetch (bounded to ~5s worst
+case) run synchronously inside the MQTT callback would block
+`mqttClient.loop()` far longer than the microseconds-long
+`FastLED.show()` call that originally triggered the message-repeat bug
+— a much bigger risk for the exact same failure mode, not a smaller one.
+
+The fetch itself (`src/screen.cpp`'s `httpGetToBuffer()`) is a plain
+blocking call bounded by an explicit `millis()` deadline — no async
+state machine. Camera alerts are one-shot and infrequent (60s
+per-camera cooldown, server-side), so a single bounded blocking gap of
+up to ~5s in `mqttClient.loop()` servicing is an acceptable, documented
+tradeoff, not something worth an async rewrite for. A second alert
+arriving while the CAMERA screen is already showing overwrites
+`cameraAlert_` and re-arms the pending-fetch flag cleanly, same as
+`gLatestStatus` handles a second `homelab/status` message arriving
+before the first was consumed.
+
+It deliberately does **not** use ESP32's `HTTPClient` class.
+`HTTPClient.h` unconditionally pulls in `WiFiClientSecure` (full
+mbedTLS plus the root cert bundle) whether or not it's ever used for
+`https://` — measured at ~45KB of flash here, more than this board had
+room for (see the partition note below), for TLS support this fetch
+will never need: the snapshot endpoint is plain HTTP, no auth, per the
+server contract. `httpGetToBuffer()` is a small hand-rolled HTTP/1.1
+GET instead — parses a status line and a `Content-Length` header, then
+reads exactly that many body bytes; no chunked encoding, no redirects,
+nothing the snapshot endpoint doesn't use.
+
+The received JPEG lands in a heap-allocated ~64KB buffer
+(`fetchAndDecodeSnapshot()`, sized for "typical ~13KB, worst case seen
+~45KB" per the server side), `malloc()`'d fresh per alert and `free()`'d
+right after decode — a scoped allocation, not a function-static one.
+That was the first design (matching the `static JsonDocument` pattern
+in `status_payload.cpp`, avoiding malloc/free churn), but a static 64KB
+buffer doesn't fit in this board's actual DRAM (320KB total, confirmed
+by the linker: `pio run` failed with "DRAM segment ... overflowed") on
+top of everything else already static. A scoped allocation is fine here
+specifically because camera alerts are rare and one-shot, nothing like
+the every-15-60s `homelab/status` cadence that made per-message String/
+JsonDocument churn a real problem in Bug 2 below. Before allocating,
+`fetchAndDecodeSnapshot()` checks `ESP.getFreeHeap()` against a
+conservative floor and skips the fetch (falling back to "Snapshot
+unavailable") if free heap is already unusually low, rather than
+risking an allocation failure mid-decode.
+
+TJpg_Decoder streams decoded tiles straight to `tft.pushImage()` as
+they come off the decoder (`cameraTileOutput()`, its render callback),
+so there's never a second full-frame pixel buffer in RAM alongside the
+JPEG receive buffer.
+
+**Flash headroom, and a partition table change this feature required:**
+this board's default OTA partition table (`default.csv` — two 1.31MB
+`ota_0`/`ota_1` app slots) was already at 99.7% flash usage *before*
+this feature (confirmed by building the prior commit standalone), and
+TJpg_Decoder plus its own fetch/decode code needs about 10.5KB more
+than the ~4.5KB of slack that left — not something reducible further
+without cutting existing, working functionality (TJpg_Decoder's own
+code is already near its practical floor; see the `HTTPClient`
+avoidance above for the one place real savings existed).
+`platformio.ini` now sets `board_build.partitions = min_spiffs.csv`,
+which keeps the same dual ota_0/ota_1 layout ArduinoOTA needs but grows
+each app slot to 1.9MB by shrinking the spiffs partition this project
+never uses down to its minimum. **This is a partition table change, not
+just a bigger binary** — the table itself lives at a fixed flash offset
+(0x8000) and is only written by a full USB flash, never by an OTA
+update (`espota` only writes into whichever app slot the
+already-burned table defines). Confirmed on real hardware: an OTA
+upload built against the new table was safely rejected by a device
+still running the old one (`Update::begin()` checks the requested size
+against the *actual* on-device partition before writing anything — see
+`Updater.cpp` — so this fails clean, doesn't corrupt anything, and
+the device keeps running its current firmware) but also doesn't update
+it. A device on the old table needs one USB-connected flash with this
+partition scheme before OTA uploads against it will succeed again;
+every OTA after that one-time reflash works exactly as before.
 
 ## MQTT JSON payload schema
 Locked against the server repo (`desk-dashboard-server/DESIGN.md`) — both
@@ -380,20 +465,29 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
 ### `homelab/alert/camera`
 ```json
 {
-  "camera": "front_door",
-  "ts": 1737000000,
-  "snapshot_url": "http://<host>/api/frigate/front_door/latest.jpg",
+  "camera": "driveway",
+  "ts": 1789865193.6,
+  "snapshot_url": "http://192.0.2.20:8031/snapshot/driveway?event=1789854130.091129-f9r0uf",
   "label": "person",
-  "text": "Front Door: person detected"
+  "text": "Driveway: person detected"
 }
 ```
 - `snapshot_url` is fetched by the ESP32 over plain HTTP GET (not embedded
   in the MQTT payload — keeps the message small and avoids broker
-  max-packet-size issues). Server has already resized the JPEG to the
-  display's resolution.
+  max-packet-size issues). It's a baseline (non-progressive) JPEG, about
+  90 characters, comfortably inside `kUrlLen`. The server scales the
+  camera frame to fit the display's resolution while preserving aspect
+  ratio, letterboxing on black — not a hard resize/stretch, so a 16:9
+  source doesn't come out distorted.
+- The display's resolution the server targets is landscape (320x240,
+  `SNAPSHOT_WIDTH`/`SNAPSHOT_HEIGHT` server-side) to match this device's
+  UI, which is landscape everywhere else (see "Screen state machine"
+  above) — coordinated with the server repo when the CAMERA screen was
+  built; not the server's original default (portrait 240x320).
 - `label` is the detected object class, optional — omit or `null` if not
   applicable.
-- `text` is the pre-worded string for the CAMERA screen's caption.
+- `text` is the pre-worded string for the CAMERA screen's caption, at
+  most 63 characters (`kAlertTextLen`).
 
 ### Firmware implication
 Default `PubSubClient` payload buffer is 256 bytes — too small once
@@ -641,3 +735,13 @@ just not to the LAN-only broker.
 - Confirm the heap fragmentation fix (see "Reliability" above) with a
   proper long soak — hours, ideally a full day — then remove the
   `TEMPORARY` heap diagnostic block from `main.cpp` once confident.
+- **Blocking on a one-time USB reflash:** the CAMERA snapshot feature's
+  code is complete and builds cleanly, but is not yet on the device —
+  see "Camera snapshot fetch" above. It needs `board_build.partitions =
+  min_spiffs.csv` to fit in flash at all, and that partition table
+  change can only be written via a full USB flash, confirmed safe to
+  attempt over OTA first (device cleanly rejected it, kept running its
+  current firmware) but confirmed it doesn't actually update the
+  device either. Next USB session: `pio run -t upload -e esp32dev`
+  (plain USB env, not `-ota`) once, then OTA uploads against this
+  partition table work normally from then on.

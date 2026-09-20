@@ -5,7 +5,9 @@
 #include "screen.h"
 
 #include <TFT_eSPI.h>
+#include <TJpg_Decoder.h>
 #include <WiFi.h>
+#include <strings.h>  // strncasecmp, for the manual HTTP header parse below
 
 #include "backlight.h"
 #include "timing_config.h"
@@ -71,6 +73,63 @@ bool menuShowingConfigs_ = false;
 // CAMERA
 CameraAlert cameraAlert_;
 unsigned long cameraDeadlineMs_ = 0;
+// Set by enterCamera(), cleared by screenCameraFetchIfPending() the
+// moment it starts a fetch attempt -- one-shot per alert, but a fresh
+// alert (screenOnCameraAlert() -> enterCamera() again) re-arms it, which
+// is how a second alert arriving mid-display cleanly overwrites/retries
+// rather than needing separate "already showing" handling.
+bool cameraFetchPending_ = false;
+// True once fetchAndDecodeSnapshot() has successfully decoded and drawn
+// an image for the current alert -- drawCamera() (the placeholder/error
+// chrome) is never invoked again after this until the next enterCamera().
+bool cameraHasImage_ = false;
+// True if the most recent fetch attempt for the current alert failed --
+// drives drawCamera()'s "Snapshot unavailable" vs "Loading snapshot..."
+// text.
+bool cameraFetchFailed_ = false;
+
+// ~64KB, sized for "a typical response is about 13 KB, worst case seen
+// ~45 KB" (see DESIGN.md).
+//
+// This was originally written as a function-static buffer (allocated
+// once, reused across every alert -- the same shape as
+// status_payload.cpp's static JsonDocument), matching this codebase's
+// general preference for avoiding per-message malloc/free churn after
+// Bug 2. That doesn't fit here, though, and the build itself proves it:
+// this board's actual DRAM (320KB total, per `pio run`'s own board
+// report -- not the 520KB some ESP32-WROOM-32 variants have) can't fit
+// a permanent extra 64KB BSS reservation on top of TFT_eSPI's own
+// buffers, WiFi/MQTT/TLS state, and everything else already static --
+// linking fails with "DRAM segment ... overflowed" if you try. So this
+// is a scoped heap allocation instead (malloc'd in
+// fetchAndDecodeSnapshot(), freed before every return), which is fine
+// specifically because camera alerts are rare and one-shot (a 60s
+// per-camera cooldown server-side) -- nothing like the every-15-60s
+// homelab/status cadence that made per-message churn a real problem the
+// first time. See DESIGN.md's "Camera snapshot fetch" note.
+constexpr size_t kSnapshotBufferSize = 65536;
+
+// Hard ceiling on the whole fetch (connect + headers + body) -- the
+// CAMERA screen must never hang the main loop waiting on a slow/dead
+// server. Enforced with an explicit millis() deadline in
+// httpGetToBuffer() below, not just a per-call socket timeout, so a
+// connection that dribbles in a few bytes at a time can't keep this
+// running indefinitely.
+constexpr uint32_t kSnapshotFetchTimeoutMs = 5000;
+
+// Floor on free heap before even attempting the fetch, checked with
+// ESP.getFreeHeap() at the point of use rather than just assumed safe
+// -- covers the kSnapshotBufferSize malloc() itself plus headroom for
+// TJpg_Decoder's own working memory and other allocations during the
+// fetch. If free heap is already too low, skip the fetch (and the
+// malloc) entirely and degrade to "Snapshot unavailable" rather than
+// risk an allocation failure mid-decode.
+constexpr uint32_t kMinFreeHeapForFetchBytes = kSnapshotBufferSize + 20000;
+
+// Used by the manual HTTP GET below -- see its own comment for why this
+// isn't ESP32's HTTPClient class.
+constexpr size_t kHttpLineBufSize = 128;
+constexpr size_t kHttpMaxHeaderLines = 40;
 
 // Per-line horizontal scroll state for the currently shown HOME card.
 // Generic across any card: index 0 is always the name/title line,
@@ -320,6 +379,15 @@ void drawMenu() {
   }
 }
 
+// Placeholder/error chrome only -- drawn on entry (before a fetch has
+// even started) and again if a fetch fails. Never called again once
+// fetchAndDecodeSnapshot() has successfully drawn an image; there's no
+// cached pixel data to redraw it from, so a later needsRedraw_ while an
+// image is showing would just be wrong. Nothing in this codebase
+// currently sets needsRedraw_ while state_ == CAMERA other than
+// enterCamera() and the fetch-failure path below, so that's not a
+// concern in practice, but worth noting for the next person extending
+// this.
 void drawCamera() {
   tft.setTextFont(2);  // explicit, not assumed -- see drawBanner()
   tft.fillScreen(TFT_BLACK);
@@ -327,14 +395,212 @@ void drawCamera() {
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
   tft.drawString("CAMERA ALERT", tft.width() / 2, 20);
   tft.setTextColor(TFT_YELLOW, TFT_BLACK);
-  tft.drawString(cameraAlert_.camera, tft.width() / 2, 60);
+  tft.drawString(cameraAlert_.camera, tft.width() / 2, 50);
   tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.drawString(cameraAlert_.text, tft.width() / 2, 90);
-  // JPEG-over-HTTP decode (TJpg_Decoder + fetching snapshotUrl) isn't
-  // built yet -- this is a placeholder, not the final CAMERA screen.
+  tft.drawString(cameraAlert_.text, tft.width() / 2, 76);
   tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-  tft.drawString("(snapshot decode not implemented yet)", tft.width() / 2, 140);
+  tft.drawString(cameraFetchFailed_ ? "Snapshot unavailable" : "Loading snapshot...",
+                  tft.width() / 2, 140);
   tft.drawString("Press to dismiss", tft.width() / 2, 170);
+}
+
+// Caption bar drawn over the bottom of the decoded image -- kept as its
+// own small function since it's the only part of the successful-fetch
+// path that isn't inside fetchAndDecodeSnapshot() itself (called once
+// right after TJpgDec finishes).
+void drawCameraCaption() {
+  constexpr int kBarHeight = 24;
+  int y = tft.height() - kBarHeight;
+  tft.setTextFont(2);
+  tft.fillRect(0, y, tft.width(), kBarHeight, TFT_BLACK);
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.drawString(cameraAlert_.text, tft.width() / 2, y + kBarHeight / 2);
+}
+
+// TJpg_Decoder's render callback -- called once per decoded tile
+// (16x16 MCU blocks, typically) as the JPEG streams off the decoder.
+// Pushed straight to the TFT via tft.pushImage() rather than composited
+// into a full-frame buffer first: a 320x240 16bpp framebuffer would be
+// ~150KB, on top of the 64KB JPEG receive buffer -- not worth it for a
+// screen that's redrawn once per alert. Bails out once past the bottom
+// of the screen (defensive -- shouldn't happen for a correctly-sized
+// snapshot, but costs nothing to guard).
+bool cameraTileOutput(int16_t x, int16_t y, uint16_t w, uint16_t h, uint16_t* bitmap) {
+  if (y >= tft.height()) return false;
+  tft.pushImage(x, y, w, h, bitmap);
+  return true;
+}
+
+// Minimal hand-rolled HTTP/1.1 GET, deliberately not ESP32's HTTPClient
+// class. HTTPClient.h unconditionally pulls in WiFiClientSecure (full
+// mbedTLS plus the root cert bundle) whether or not it's ever used for
+// https:// -- measured at ~45KB of flash here, more than this board's
+// existing OTA partition had headroom for (linking with HTTPClient in
+// the mix overflowed it by ~26KB). The snapshot endpoint is plain HTTP,
+// no TLS, no auth (per DESIGN.md and the server contract), so none of
+// that is needed. This parses exactly what that endpoint returns -- a
+// status line and a Content-Length header, then exactly that many body
+// bytes -- and nothing more (no chunked encoding, no redirects). Bounds
+// the whole operation (connect + headers + body) with an explicit
+// millis() deadline, not just per-call socket timeouts, so a
+// connection that dribbles in a byte at a time can't run past it.
+bool httpGetToBuffer(const char* url, uint8_t* buffer, size_t bufferSize,
+                      unsigned long deadlineMs, size_t* outLen) {
+  const char* kPrefix = "http://";
+  if (strncmp(url, kPrefix, strlen(kPrefix)) != 0) {
+    Serial.println("[camera] snapshot URL is not http://");
+    return false;
+  }
+  const char* hostStart = url + strlen(kPrefix);
+  const char* pathStart = strchr(hostStart, '/');
+  const char* path = pathStart ? pathStart : "/";
+
+  char host[64];
+  size_t hostLen = pathStart ? (size_t)(pathStart - hostStart) : strlen(hostStart);
+  if (hostLen >= sizeof(host)) hostLen = sizeof(host) - 1;
+  memcpy(host, hostStart, hostLen);
+  host[hostLen] = '\0';
+
+  uint16_t port = 80;
+  char* colon = strchr(host, ':');
+  if (colon) {
+    port = (uint16_t)atoi(colon + 1);
+    *colon = '\0';
+  }
+
+  int32_t connectTimeoutMs = (int32_t)(deadlineMs - millis());
+  WiFiClient client;
+  if (connectTimeoutMs <= 0 || !client.connect(host, port, connectTimeoutMs)) {
+    Serial.printf("[camera] connect to %s:%u failed\n", host, port);
+    return false;
+  }
+  // WiFiClient::setTimeout() takes *seconds*, unlike the base Stream
+  // class it overrides (confirmed against this core's WiFiClient.cpp,
+  // not assumed) -- rounds the remaining budget up so a 1-999ms
+  // remainder doesn't round down to 0.
+  uint32_t remainingMs = (millis() < deadlineMs) ? (deadlineMs - millis()) : 0;
+  client.setTimeout((remainingMs + 999) / 1000);
+
+  client.printf("GET %s HTTP/1.1\r\nHost: %s\r\nConnection: close\r\n\r\n", path, host);
+
+  char line[kHttpLineBufSize];
+
+  // Status line, e.g. "HTTP/1.1 200 OK".
+  size_t n = client.readBytesUntil('\n', line, sizeof(line) - 1);
+  if (n == 0 || millis() > deadlineMs) {
+    Serial.println("[camera] snapshot: no response");
+    client.stop();
+    return false;
+  }
+  line[n] = '\0';
+  char* statusSpace = strchr(line, ' ');
+  int statusCode = statusSpace ? atoi(statusSpace + 1) : -1;
+  if (statusCode != 200) {
+    Serial.printf("[camera] snapshot GET failed: %s\n", line);
+    client.stop();
+    return false;
+  }
+
+  long contentLength = -1;
+  for (size_t i = 0; i < kHttpMaxHeaderLines; i++) {
+    n = client.readBytesUntil('\n', line, sizeof(line) - 1);
+    if (millis() > deadlineMs) {
+      Serial.println("[camera] snapshot: header read timed out");
+      client.stop();
+      return false;
+    }
+    line[n] = '\0';
+    if (n > 0 && line[n - 1] == '\r') line[n - 1] = '\0';  // readBytesUntil
+                                                            // stops at '\n',
+                                                            // leaving '\r'
+    if (line[0] == '\0') break;  // blank line -- end of headers
+    if (strncasecmp(line, "content-length:", 15) == 0) {
+      contentLength = atol(line + 15);
+    }
+  }
+
+  if (contentLength <= 0 || (size_t)contentLength > bufferSize) {
+    Serial.printf("[camera] snapshot Content-Length out of range: %ld\n", contentLength);
+    client.stop();
+    return false;
+  }
+
+  size_t received = 0;
+  while (received < (size_t)contentLength) {
+    if (millis() > deadlineMs) {
+      Serial.printf("[camera] snapshot body read timed out at %u/%ld\n", (unsigned)received,
+                    contentLength);
+      client.stop();
+      return false;
+    }
+    int avail = client.available();
+    if (avail <= 0) {
+      if (!client.connected()) break;
+      delay(1);  // brief yield while waiting for more bytes -- this
+                 // whole function is already a documented blocking call
+                 // bounded by deadlineMs above, not the main loop
+      continue;
+    }
+    int n2 = client.read(buffer + received, (size_t)contentLength - received);
+    if (n2 <= 0) break;
+    received += (size_t)n2;
+  }
+  client.stop();
+
+  if (received != (size_t)contentLength) {
+    Serial.printf("[camera] snapshot incomplete: got %u of %ld bytes\n", (unsigned)received,
+                  contentLength);
+    return false;
+  }
+
+  *outLen = received;
+  return true;
+}
+
+// Fetches cameraAlert_.snapshotUrl and decodes it straight to the TFT.
+// Blocking, on purpose -- see DESIGN.md's "Camera snapshot fetch" note.
+// Must only ever be called from screenCameraFetchIfPending() (i.e. from
+// loop()), never from the MQTT callback: this can take up to
+// kSnapshotFetchTimeoutMs, which would stall mqttClient.loop() far
+// longer than the microseconds-long FastLED.show() call that caused
+// Bug 1.
+bool fetchAndDecodeSnapshot(const char* url) {
+  uint32_t freeHeap = ESP.getFreeHeap();
+  if (freeHeap < kMinFreeHeapForFetchBytes) {
+    Serial.printf("[camera] skipping snapshot fetch, low heap: %u\n", freeHeap);
+    return false;
+  }
+
+  // Scoped allocation, freed before every return below -- see
+  // kSnapshotBufferSize's comment for why this isn't a function-static
+  // buffer (doesn't fit in this board's DRAM alongside everything else
+  // already static).
+  uint8_t* buffer = (uint8_t*)malloc(kSnapshotBufferSize);
+  if (!buffer) {
+    Serial.println("[camera] snapshot buffer malloc failed");
+    return false;
+  }
+
+  unsigned long deadlineMs = millis() + kSnapshotFetchTimeoutMs;
+  size_t received = 0;
+  if (!httpGetToBuffer(url, buffer, kSnapshotBufferSize, deadlineMs, &received)) {
+    free(buffer);
+    return false;
+  }
+
+  tft.fillScreen(TFT_BLACK);
+  JRESULT decodeResult = TJpgDec.drawJpg(0, 0, buffer, received);
+  free(buffer);  // done with the compressed data either way; decoded
+                  // tiles already went straight to the TFT via the
+                  // callback, nothing else references this buffer
+  if (decodeResult != JDR_OK) {
+    Serial.println("[camera] JPEG decode failed");
+    return false;
+  }
+
+  drawCameraCaption();
+  return true;
 }
 
 // -- state transitions --
@@ -361,6 +627,14 @@ void enterCamera(const CameraAlert& alert) {
   cameraAlert_ = alert;
   state_ = State::CAMERA;
   cameraDeadlineMs_ = millis() + kIdleTimeoutMs;
+  // Re-arms the fetch every time, including when a second alert arrives
+  // while CAMERA is already showing -- overwrites cameraAlert_ above and
+  // starts a fresh fetch/decode cycle for it, same "newer thing cleanly
+  // replaces the old one" shape as gLatestStatus/gHasNewStatus in
+  // main.cpp.
+  cameraFetchPending_ = true;
+  cameraHasImage_ = false;
+  cameraFetchFailed_ = false;
   needsRedraw_ = true;
 }
 
@@ -372,6 +646,14 @@ void screenBegin() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextFont(2);
   nextAutoRotateMs_ = millis() + kCardRotationMs;
+
+  // TJpg_Decoder setup -- doesn't change per-alert, so this is done once
+  // here rather than inside fetchAndDecodeSnapshot(). setSwapBytes(true)
+  // matches TFT_eSPI's expected 16-bit colour byte order (the standard
+  // pairing for these two libraries).
+  TJpgDec.setJpgScale(1);
+  TJpgDec.setSwapBytes(true);
+  TJpgDec.setCallback(cameraTileOutput);
 }
 
 void screenUpdate(const StatusPayload& status, bool isNewStatus) {
@@ -574,4 +856,25 @@ void screenOnCameraAlert(const CameraAlert& alert) {
     return;
   }
   enterCamera(alert);
+}
+
+void screenCameraFetchIfPending() {
+  if (!cameraFetchPending_) return;
+  // Cleared immediately, before the blocking call below -- a fresh
+  // alert arriving later (screenOnCameraAlert() -> enterCamera()) sets
+  // it again, which is the only way a retry/overwrite happens. There's
+  // no retry-on-failure of the *same* alert; a failed fetch just shows
+  // "Snapshot unavailable" until something newer replaces it or the
+  // screen times out.
+  cameraFetchPending_ = false;
+
+  bool ok = fetchAndDecodeSnapshot(cameraAlert_.snapshotUrl);
+  cameraHasImage_ = ok;
+  cameraFetchFailed_ = !ok;
+  if (!ok) {
+    // Let the normal drawCamera() chrome show the failure text. On
+    // success, fetchAndDecodeSnapshot() already drew the final image +
+    // caption directly -- nothing else to redraw.
+    needsRedraw_ = true;
+  }
 }

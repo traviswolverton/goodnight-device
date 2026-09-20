@@ -215,4 +215,12 @@ void loop() {
   }
   screenUpdate(gLatestStatus, gHasNewStatus);
   gHasNewStatus = false;
+
+  // Called after screenUpdate() so a freshly-entered CAMERA screen gets
+  // its "Loading snapshot..." chrome drawn and actually shown before
+  // this potentially blocks for up to ~5s fetching/decoding the image --
+  // see screen.h and DESIGN.md's "Camera snapshot fetch" note for why
+  // this can't run from the MQTT callback instead. A no-op most loop()
+  // iterations (nothing pending).
+  screenCameraFetchIfPending();
 }

@@ -270,7 +270,7 @@ void drawCard() {
   drawCardLine(card.title, 0, top, lineHeight, colorForLevel(card.status), false, kTitleIconInset);
   drawTitleIcon(card.status, top, lineHeight);
   for (uint8_t i = 0; i < card.detailLineCount; i++) {
-    drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, false);
+    drawCardLine(card.detailLine(i), 1 + i, top, lineHeight, TFT_WHITE, false);
   }
   tft.setTextFont(2);  // restore the font the rest of the UI expects
 
@@ -293,7 +293,7 @@ void updateCardScroll(int top, int bottom) {
   tft.setTextDatum(ML_DATUM);
   drawCardLine(card.title, 0, top, lineHeight, colorForLevel(card.status), true, kTitleIconInset);
   for (uint8_t i = 0; i < card.detailLineCount; i++) {
-    drawCardLine(card.detailLines[i], 1 + i, top, lineHeight, TFT_WHITE, true);
+    drawCardLine(card.detailLine(i), 1 + i, top, lineHeight, TFT_WHITE, true);
   }
   tft.setTextFont(2);
 }

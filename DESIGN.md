@@ -295,6 +295,19 @@ sends one line and gets a simple card; one with several (like
 decisions about what's worth showing, matching the "intentionally dumb"
 principle elsewhere in this doc.
 
+Per-line character capacity (`kDetailLineLens` in `status_payload.h`) is
+asymmetric, not a single shared constant: 25 / 75 / 75 / 225 for lines
+1-4. Line 4 carries content that regularly runs long; a uniform cap sized
+for that would cost every line that space whether it used it or not
+(900 bytes/service vs. this table's 400). The asymmetry is contained to
+one place — `ServiceReading::detailLine(i)` — so parsing and rendering
+code still just loops `0..detailLineCount` without knowing the lengths
+differ. One consequence worth knowing: the legacy no-`lines` fallback
+(folding `value`/`unit`/`detail` into a single line, for an adapter that
+hasn't sent `lines` yet) always writes into line 1's 25-char slot now,
+down from the old uniform 100 — a `detail` string longer than 25 chars
+truncates harder than it used to on that fallback path specifically.
+
 `lines` was added to the locked schema specifically to support this —
 proposed from this repo, implemented and confirmed live by the server
 repo the same day. Originally optional (adapters opted in); the server

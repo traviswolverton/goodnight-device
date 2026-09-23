@@ -52,7 +52,7 @@ void buildServiceLine(char* dest, size_t destSize, JsonVariantConst service) {
   }
 }
 
-// Populates reading.detailLines/detailLineCount for one service. If the
+// Populates reading.detailLine(i)/detailLineCount for one service. If the
 // schema's optional `lines` array (1-4 strings) is present, uses those
 // directly -- pre-formatted exactly as the server wants them shown,
 // zero formatting logic here. If absent (an adapter that hasn't been
@@ -60,6 +60,8 @@ void buildServiceLine(char* dest, size_t destSize, JsonVariantConst service) {
 // to folding value/unit/detail into one line, exactly as before this
 // field existed. No per-service-name special-casing anywhere -- a
 // service gets however many lines its own message actually carries.
+// (Per-line capacity IS asymmetric -- kDetailLineLens[i] -- but that's
+// handled once inside detailLine()/kDetailLineLens, not here.)
 void populateDetailLines(ServiceReading& reading, JsonVariantConst service) {
   JsonVariantConst linesField = service["lines"];
   if (linesField.is<JsonArrayConst>()) {
@@ -69,8 +71,8 @@ void populateDetailLines(ServiceReading& reading, JsonVariantConst service) {
       if (reading.detailLineCount >= kMaxDetailLines) {
         break;  // schema caps at 4; this is just defense in depth
       }
-      copyTruncated(reading.detailLines[reading.detailLineCount], kLineLen,
-                    asCString(lineVal));
+      copyTruncated(reading.detailLine(reading.detailLineCount),
+                    kDetailLineLens[reading.detailLineCount], asCString(lineVal));
       reading.detailLineCount++;
     }
     if (reading.detailLineCount > 0) {
@@ -79,7 +81,7 @@ void populateDetailLines(ServiceReading& reading, JsonVariantConst service) {
     // Schema says minItems 1, so an empty array shouldn't happen -- but
     // don't leave a card with zero lines if it somehow does.
   }
-  buildServiceLine(reading.detailLines[0], kLineLen, service);
+  buildServiceLine(reading.detailLine(0), kDetailLineLens[0], service);
   reading.detailLineCount = 1;
 }
 

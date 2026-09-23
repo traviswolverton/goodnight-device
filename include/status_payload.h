@@ -21,7 +21,6 @@ constexpr uint8_t kNumPixels = 5;
 constexpr size_t kNameLen = 24;
 constexpr size_t kTitleLen = 24;
 constexpr size_t kStatusLen = 8;
-constexpr size_t kLineLen = 100;
 constexpr size_t kLevelLen = 8;
 constexpr size_t kTextLen = 48;
 constexpr size_t kPixelHexLen = 8;  // "#RRGGBB" + '\0'
@@ -32,10 +31,22 @@ constexpr size_t kAlertTextLen = 64;
 // A card's total line count is 1 (name) + detailLineCount. Matches the
 // server schema's `lines` array exactly (1-4 entries, optional) --
 // see DESIGN.md's "Card templates" note. When a service's `lines` is
-// present, detailLines/detailLineCount come from it directly; when
+// present, detailLine(i)/detailLineCount come from it directly; when
 // absent, they fall back to folding value/unit/detail into one line,
 // same as before this field existed.
 constexpr uint8_t kMaxDetailLines = 4;
+
+// Per-line capacity, deliberately NOT uniform: line 4 carries content
+// (see the service adapter that needs it) that regularly runs long,
+// while lines 1-3 stay short in every real payload seen so far. A
+// uniform kLineLen sized for line 4 would cost every line that space
+// whether it uses it or not -- 900 bytes/service instead of this
+// table's 400. The tradeoff this buys: detailLine(i)/kDetailLineLens[i]
+// below is the ONE place that knows about the asymmetry -- every call
+// site still loops 0..detailLineCount generically, same as when this
+// was one flat array. Don't index detailLine's backing fields directly;
+// go through detailLine()/kDetailLineLens so that stays true.
+constexpr size_t kDetailLineLens[kMaxDetailLines] = {25, 75, 75, 225};
 
 struct ServiceReading {
   char name[kNameLen] = "";  // stable identifier -- display code should
@@ -47,8 +58,35 @@ struct ServiceReading {
   char status[kStatusLen] = "ok";  // "ok" | "warn" | "down" -- also
                                     // colors the name line, same as
                                     // before this became multi-line
-  char detailLines[kMaxDetailLines][kLineLen] = {};
+
+  // Backing storage for detailLine(i) below -- sized per-line from
+  // kDetailLineLens, not a uniform [kMaxDetailLines][N] array. Access
+  // through detailLine(), never these fields directly.
+  char detailLine0_[kDetailLineLens[0]] = "";
+  char detailLine1_[kDetailLineLens[1]] = "";
+  char detailLine2_[kDetailLineLens[2]] = "";
+  char detailLine3_[kDetailLineLens[3]] = "";
   uint8_t detailLineCount = 0;  // 0..kMaxDetailLines
+
+  // Generic accessor so parsing/rendering code can still do
+  // `for (i = 0; i < detailLineCount; i++) ... detailLine(i) ...`
+  // without knowing the per-line lengths differ. i must be < kMaxDetailLines.
+  char* detailLine(uint8_t i) {
+    switch (i) {
+      case 0: return detailLine0_;
+      case 1: return detailLine1_;
+      case 2: return detailLine2_;
+      default: return detailLine3_;
+    }
+  }
+  const char* detailLine(uint8_t i) const {
+    switch (i) {
+      case 0: return detailLine0_;
+      case 1: return detailLine1_;
+      case 2: return detailLine2_;
+      default: return detailLine3_;
+    }
+  }
 };
 
 struct StatusPayload {

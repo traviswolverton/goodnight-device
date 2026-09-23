@@ -10,6 +10,7 @@
 #include <strings.h>  // strncasecmp, for the manual HTTP header parse below
 
 #include "backlight.h"
+#include "settings_store.h"
 #include "timing_config.h"
 
 namespace {
@@ -48,7 +49,11 @@ uint8_t configsSelection_ = 0;
 // rather than discarding it, so a series of small nudges still adds up
 // correctly instead of each one being rounded away.
 int32_t cardStepAccumulator_ = 0;
-int32_t cardStepDivisor_ = 4;
+constexpr int32_t kCardStepDivisorDefault = 4;
+// Overwritten in screenBegin() with whatever's persisted in NVS (falls
+// back to kCardStepDivisorDefault on first boot) -- can't load from NVS
+// here, this initializer runs before setup()/NVS is available.
+int32_t cardStepDivisor_ = kCardStepDivisorDefault;
 constexpr int32_t kCardStepDivisorMin = 1;
 constexpr int32_t kCardStepDivisorMax = 10;
 
@@ -647,6 +652,12 @@ void screenBegin() {
   tft.setTextFont(2);
   nextAutoRotateMs_ = millis() + kCardRotationMs;
 
+  // Card sensitivity persists across a reboot (see settings_store.h for
+  // why this one and backlight timeout, but not mute/pin). Backlight
+  // timeout's own load happens inside backlightBegin() instead, since
+  // that's the module that owns timeoutSeconds_.
+  cardStepDivisor_ = settingsLoadCardStepDivisor(kCardStepDivisorDefault);
+
   // TJpg_Decoder setup -- doesn't change per-alert, so this is done once
   // here rather than inside fetchAndDecodeSnapshot(). setSwapBytes(true)
   // matches TFT_eSPI's expected 16-bit colour byte order (the standard
@@ -791,8 +802,17 @@ void screenOnEncoderPress() {
       }
       if (menuShowingConfigs_) {
         if (configsEditing_ != ConfigsField::kNone) {
-          // Save (already applied live as it was rotated) and return to
-          // the Configs list, not all the way out to the top-level menu.
+          // Value's already applied live as it was rotated -- this is
+          // the one point where it's also written to NVS (see
+          // settings_store.h), so a reboot picks up where the user left
+          // it instead of dialing it back in from scratch. Then return
+          // to the Configs list, not all the way out to the top-level
+          // menu.
+          if (configsEditing_ == ConfigsField::kBacklightTimeout) {
+            backlightPersistTimeoutSeconds();
+          } else if (configsEditing_ == ConfigsField::kCardSensitivity) {
+            settingsSaveCardStepDivisor(cardStepDivisor_);
+          }
           configsEditing_ = ConfigsField::kNone;
         } else {
           switch (configsSelection_) {

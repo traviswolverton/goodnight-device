@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "settings_store.h"
+
 namespace {
 
 // See DESIGN.md's pin table.
@@ -33,8 +35,11 @@ void backlightBegin() {
   pinMode(kPirPin, INPUT);
   pinMode(kBacklightPin, OUTPUT);
   // Default to on at boot -- matches the "fail toward showing, not
-  // hiding" reasoning behind resetting mute/pin on every boot too.
+  // hiding" reasoning behind resetting mute/pin on every boot too. (The
+  // timeout *length* itself is persisted below; whether the backlight
+  // starts lit is not the same question and stays unconditional.)
   digitalWrite(kBacklightPin, HIGH);
+  timeoutSeconds_ = settingsLoadBacklightTimeoutSeconds(kDefaultTimeoutSeconds);
   onUntilMs_ = millis() + (unsigned long)timeoutSeconds_ * 1000UL;
 }
 
@@ -65,4 +70,8 @@ void backlightSetTimeoutSeconds(uint16_t seconds) {
   // Applies immediately, extending from now -- so dialing the timeout
   // down doesn't instantly flip the backlight off mid-edit.
   extendTimer(millis());
+}
+
+void backlightPersistTimeoutSeconds() {
+  settingsSaveBacklightTimeoutSeconds(timeoutSeconds_);
 }

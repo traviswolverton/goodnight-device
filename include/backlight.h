@@ -29,7 +29,19 @@ constexpr uint16_t kBacklightMaxTimeoutSeconds = 120;
 uint16_t backlightGetTimeoutSeconds();
 
 // Adjusts the timeout, clamped to [kBacklightMinTimeoutSeconds,
-// kBacklightMaxTimeoutSeconds]. Does not persist across a reboot --
-// resets to the compiled-in default every boot, same "fail toward
-// showing" reasoning as mute/pin (see DESIGN.md).
+// kBacklightMaxTimeoutSeconds]. Applies immediately but does NOT write
+// to NVS -- call backlightPersistTimeoutSeconds() separately once the
+// Configs menu commits the edit (see that function's own comment for
+// why saving isn't done on every call here).
 void backlightSetTimeoutSeconds(uint16_t seconds);
+
+// Writes the current timeout to NVS so it survives a reboot -- unlike
+// mute/pin (deliberately reset every boot, see DESIGN.md's "Backlight /
+// presence" section), the timeout has no safety angle either way, so
+// there's no reason to make the user re-dial it in after every restart.
+// Call this once when the Configs menu's edit is committed (encoder
+// press), not on every rotation step: writing NVS on every detent while
+// scrolling would both block the main loop (flash writes aren't fast)
+// and burn flash write cycles for no benefit over saving once at
+// commit time.
+void backlightPersistTimeoutSeconds();

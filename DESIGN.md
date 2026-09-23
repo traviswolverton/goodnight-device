@@ -258,10 +258,11 @@ whether the backlight is lit.
 The timeout itself is no longer DESIGN.md's shared `kIdleTimeoutMs`
 (still used by MENU/CAMERA) — it split into its own value in
 `backlight.cpp`, runtime-adjustable via the MENU's **Configs** item
-(rotate to change in 5s steps, clamped 5-120s, press to save). Like
-mute/pin, this does *not* persist across a reboot — it resets to its
-compiled-in default (18s) every boot, same "fail toward showing, not a
-surprising leftover setting" reasoning.
+(rotate to change in 5s steps, clamped 5-120s, press to save). Unlike
+mute/pin, this *does* persist across a reboot (see `settings_store.h`)
+— it has no safety angle either way, so there's no reason to make the
+user re-dial it in after every restart. Falls back to its compiled-in
+default (18s) on first boot or after a full chip erase.
 
 ### Non-blocking is mandatory
 No `delay()` calls anywhere in the main loop — use `millis()`-based timers
@@ -725,13 +726,20 @@ just not to the LAN-only broker.
 - ~~Decide whether "Mute alerts" and "Pin a screen" states need to persist
   across a reboot~~ — done: neither persists. Both reset to default
   (unmuted, auto-rotate) on every boot, from plain `setup()`
-  initialization — no NVS/Preferences writes needed. Reboots on this
-  device (power blip, reflash, watchdog reset) are usually unattended, and
-  a muted display that silently stays muted after an unattended reboot is
-  the worst failure mode for a status board — fail toward showing alerts,
-  not suppressing them. A pinned screen has no safety angle either way,
-  but resetting it too keeps the behavior consistent and the
-  implementation with zero persistence code.
+  initialization. Reboots on this device (power blip, reflash, watchdog
+  reset) are usually unattended, and a muted display that silently stays
+  muted after an unattended reboot is the worst failure mode for a
+  status board — fail toward showing alerts, not suppressing them. A
+  pinned screen has no safety angle either way, but resetting it too
+  keeps the behavior consistent.
+- ~~Decide whether backlight timeout / card sensitivity (the other two
+  Configs values) should persist too~~ — done: yes, both do, via
+  [`settings_store.h`](include/settings_store.h) (NVS-backed
+  Preferences). Unlike mute/pin, neither has a safety angle, so there's
+  no reason to make a reboot throw away a value the user deliberately
+  dialed in. Saved once when the Configs edit is committed (encoder
+  press), not on every rotation step — an NVS write per detent would
+  both block the main loop and burn flash write cycles for no benefit.
 - Confirm the heap fragmentation fix (see "Reliability" above) with a
   proper long soak — hours, ideally a full day — then remove the
   `TEMPORARY` heap diagnostic block from `main.cpp` once confident.

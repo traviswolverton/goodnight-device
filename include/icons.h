@@ -4,6 +4,7 @@
 #pragma once
 
 #include <cstdint>
+#include <cstring>
 
 namespace Icon {
 
@@ -92,5 +93,113 @@ constexpr uint16_t kClockAlert = 0xE051;  // clock-alert
 constexpr uint16_t kMinusCircle = 0xE052;  // minus-circle
 constexpr uint16_t kPlusCircle = 0xE053;  // plus-circle
 constexpr uint16_t kCircle = 0xE054;  // circle
+
+constexpr uint16_t kCodepointBase = 0xE000;
+constexpr size_t kCount = 85;
+
+struct Entry { const char* name; uint16_t codepoint; uint8_t advance; };
+
+constexpr Entry kTable[] = {
+    {"chip", kChip, 16},
+    {"memory", kMemory, 16},
+    {"server", kServer, 16},
+    {"server-network", kServerNetwork, 16},
+    {"database", kDatabase, 16},
+    {"lan", kLan, 16},
+    {"ethernet", kEthernet, 16},
+    {"wifi", kWifi, 16},
+    {"wifi-off", kWifiOff, 16},
+    {"bluetooth", kBluetooth, 16},
+    {"bluetooth-off", kBluetoothOff, 16},
+    {"usb", kUsb, 16},
+    {"harddisk", kHarddisk, 16},
+    {"monitor", kMonitor, 16},
+    {"laptop", kLaptop, 16},
+    {"desktop-tower", kDesktopTower, 16},
+    {"keyboard", kKeyboard, 16},
+    {"printer", kPrinter, 16},
+    {"power-plug", kPowerPlug, 16},
+    {"power-plug-off", kPowerPlugOff, 16},
+    {"power", kPower, 16},
+    {"restart", kRestart, 16},
+    {"update", kUpdate, 16},
+    {"download", kDownload, 16},
+    {"upload", kUpload, 16},
+    {"sync", kSync, 16},
+    {"sync-alert", kSyncAlert, 16},
+    {"cloud", kCloud, 16},
+    {"cloud-off", kCloudOff, 16},
+    {"cloud-check", kCloudCheck, 16},
+    {"cloud-alert", kCloudAlert, 16},
+    {"shield-check", kShieldCheck, 16},
+    {"shield-alert", kShieldAlert, 16},
+    {"lock", kLock, 16},
+    {"lock-open", kLockOpen, 16},
+    {"key-variant", kKeyVariant, 16},
+    {"cctv", kCctv, 16},
+    {"camera", kCamera, 16},
+    {"camera-off", kCameraOff, 16},
+    {"video", kVideo, 16},
+    {"motion-sensor", kMotionSensor, 16},
+    {"doorbell", kDoorbell, 16},
+    {"router-wireless", kRouterWireless, 16},
+    {"access-point", kAccessPoint, 16},
+    {"access-point-network", kAccessPointNetwork, 16},
+    {"signal", kSignal, 16},
+    {"signal-off", kSignalOff, 16},
+    {"battery", kBattery, 16},
+    {"battery-outline", kBatteryOutline, 16},
+    {"battery-charging", kBatteryCharging, 16},
+    {"battery-charging-outline", kBatteryChargingOutline, 16},
+    {"battery-alert", kBatteryAlert, 16},
+    {"battery-alert-variant-outline", kBatteryAlertVariantOutline, 16},
+    {"battery-20", kBattery20, 16},
+    {"battery-50", kBattery50, 16},
+    {"battery-unknown", kBatteryUnknown, 16},
+    {"weather-sunny", kWeatherSunny, 16},
+    {"weather-partly-cloudy", kWeatherPartlyCloudy, 16},
+    {"weather-cloudy", kWeatherCloudy, 16},
+    {"weather-rainy", kWeatherRainy, 16},
+    {"weather-pouring", kWeatherPouring, 16},
+    {"weather-lightning", kWeatherLightning, 16},
+    {"weather-lightning-rainy", kWeatherLightningRainy, 16},
+    {"weather-snowy", kWeatherSnowy, 16},
+    {"weather-fog", kWeatherFog, 16},
+    {"weather-windy", kWeatherWindy, 16},
+    {"weather-night", kWeatherNight, 16},
+    {"weather-hail", kWeatherHail, 16},
+    {"thermometer", kThermometer, 16},
+    {"thermometer-low", kThermometerLow, 16},
+    {"thermometer-high", kThermometerHigh, 16},
+    {"water-percent", kWaterPercent, 16},
+    {"check-circle", kCheckCircle, 16},
+    {"alert-circle", kAlertCircle, 16},
+    {"alert", kAlert, 16},
+    {"close-circle", kCloseCircle, 16},
+    {"close", kClose, 16},
+    {"information", kInformation, 16},
+    {"help-circle", kHelpCircle, 16},
+    {"pause-circle", kPauseCircle, 16},
+    {"play-circle", kPlayCircle, 16},
+    {"clock-alert", kClockAlert, 16},
+    {"minus-circle", kMinusCircle, 16},
+    {"plus-circle", kPlusCircle, 16},
+    {"circle", kCircle, 16},
+};
+
+inline const Entry* lookupByName(const char* name, size_t len) {
+  for (const Entry& e : kTable) {
+    if (strlen(e.name) == len && memcmp(e.name, name, len) == 0) return &e;
+  }
+  return nullptr;
+}
+
+// Advance width for a codepoint already known to be one of ours
+// (i.e. in [kCodepointBase, kCodepointBase+kCount) -- see
+// screen.cpp's splitLineRuns()). Returns 0 for anything else.
+inline uint8_t advanceForCodepoint(uint16_t codepoint) {
+  if (codepoint < kCodepointBase || codepoint >= kCodepointBase + kCount) return 0;
+  return kTable[codepoint - kCodepointBase].advance;
+}
 
 }  // namespace Icon

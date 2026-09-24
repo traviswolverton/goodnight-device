@@ -2,6 +2,8 @@
 
 #include <ArduinoJson.h>
 
+#include "icons.h"
+
 namespace {
 
 // Copies src into a fixed dest buffer, truncating rather than
@@ -17,6 +19,47 @@ void copyTruncated(char* dest, size_t destSize, const char* src) {
   }
   memcpy(dest, src, len);
   dest[len] = '\0';
+}
+
+// Same contract as copyTruncated, but expands a `:name:` icon code
+// (DESIGN.md "Card icons", app/icons.py on the server) into its 3-byte
+// UTF-8 glyph as it copies -- this is what makes an icon cost exactly 3
+// bytes against destSize regardless of how long its name is, and what
+// keeps a code from being split in half if it would straddle the end of
+// a full buffer (an icon that wouldn't fit whole is dropped, not
+// partially copied). The scan rule matches the server's exactly: a ':'
+// followed by a real icon name and another ':' is an icon and scanning
+// resumes after its closing ':'; any other ':' is plain text and
+// scanning resumes at the very next character (so "12:30:05" stays
+// text, and "a:b:wifi:" is "a:b" then the wifi icon). Only used for
+// detail lines -- the title row and every other field still go through
+// plain copyTruncated() above, which never interprets ':'.
+void copyTruncatedWithIcons(char* dest, size_t destSize, const char* src) {
+  if (!src) {
+    src = "";
+  }
+  size_t si = 0;
+  size_t di = 0;
+  while (src[si] != '\0' && di + 1 < destSize) {
+    if (src[si] == ':') {
+      size_t close = si + 1;
+      while (src[close] != '\0' && src[close] != ':') close++;
+      if (src[close] == ':') {
+        const Icon::Entry* found = Icon::lookupByName(src + si + 1, close - si - 1);
+        if (found) {
+          if (di + 3 >= destSize) break;  // glyph wouldn't fit -- stop, don't split it
+          uint16_t cp = found->codepoint;
+          dest[di++] = (char)(0xE0 | ((cp >> 12) & 0x0F));
+          dest[di++] = (char)(0x80 | ((cp >> 6) & 0x3F));
+          dest[di++] = (char)(0x80 | (cp & 0x3F));
+          si = close + 1;
+          continue;
+        }
+      }
+    }
+    dest[di++] = src[si++];
+  }
+  dest[di] = '\0';
 }
 
 const char* asCString(JsonVariantConst v) {
@@ -62,6 +105,11 @@ void buildServiceLine(char* dest, size_t destSize, JsonVariantConst service) {
 // service gets however many lines its own message actually carries.
 // (Per-line capacity IS asymmetric -- kDetailLineLens[i] -- but that's
 // handled once inside detailLine()/kDetailLineLens, not here.)
+//
+// The `lines` array goes through copyTruncatedWithIcons(), not plain
+// copyTruncated() -- any of its four entries may carry `:name:` icon
+// codes (DESIGN.md "Card icons"), which get expanded to their glyph
+// right here, once, rather than every time a line is drawn/measured.
 void populateDetailLines(ServiceReading& reading, JsonVariantConst service) {
   JsonVariantConst linesField = service["lines"];
   if (linesField.is<JsonArrayConst>()) {
@@ -71,8 +119,8 @@ void populateDetailLines(ServiceReading& reading, JsonVariantConst service) {
       if (reading.detailLineCount >= kMaxDetailLines) {
         break;  // schema caps at 4; this is just defense in depth
       }
-      copyTruncated(reading.detailLine(reading.detailLineCount),
-                    kDetailLineLens[reading.detailLineCount], asCString(lineVal));
+      copyTruncatedWithIcons(reading.detailLine(reading.detailLineCount),
+                             kDetailLineLens[reading.detailLineCount], asCString(lineVal));
       reading.detailLineCount++;
     }
     if (reading.detailLineCount > 0) {

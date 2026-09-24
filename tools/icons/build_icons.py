@@ -120,13 +120,53 @@ def main():
         "#pragma once",
         "",
         "#include <cstdint>",
+        "#include <cstring>",
         "",
         "namespace Icon {",
         "",
     ]
+    idents = []
     for cp, name, img, dX, dY, advance in glyphs:
         ident = "k" + "".join(part.capitalize() for part in name.split("-"))
+        idents.append(ident)
         lines.append(f"constexpr uint16_t {ident} = 0x{cp:04X};  // {name}")
+    lines.append("")
+    lines.append(f"constexpr uint16_t kCodepointBase = 0x{BASE_CODEPOINT:04X};")
+    lines.append(f"constexpr size_t kCount = {len(glyphs)};")
+    lines.append("")
+
+    # Name -> (codepoint, advance) lookup, for expanding a `:name:` code
+    # found in server-sent line text (see status_payload.cpp) into its
+    # glyph while copying a line into its fixed buffer. `name` here is a
+    # substring slice, not its own C string -- hence the explicit `len`
+    # rather than strcmp against a nul-terminated name.
+    lines.append("struct Entry { const char* name; uint16_t codepoint; uint8_t advance; };")
+    lines.append("")
+    lines.append("constexpr Entry kTable[] = {")
+    for (cp, name, img, dX, dY, advance), ident in zip(glyphs, idents):
+        lines.append(f'    {{"{name}", {ident}, {advance}}},')
+    lines.append("};")
+    lines.append("")
+    lines.append(
+        "inline const Entry* lookupByName(const char* name, size_t len) {\n"
+        "  for (const Entry& e : kTable) {\n"
+        "    if (strlen(e.name) == len && memcmp(e.name, name, len) == 0) return &e;\n"
+        "  }\n"
+        "  return nullptr;\n"
+        "}"
+    )
+    lines.append("")
+    lines.append(
+        "// Advance width for a codepoint already known to be one of ours\n"
+        "// (i.e. in [kCodepointBase, kCodepointBase+kCount) -- see\n"
+        "// screen.cpp's splitLineRuns()). Returns 0 for anything else."
+    )
+    lines.append(
+        "inline uint8_t advanceForCodepoint(uint16_t codepoint) {\n"
+        "  if (codepoint < kCodepointBase || codepoint >= kCodepointBase + kCount) return 0;\n"
+        "  return kTable[codepoint - kCodepointBase].advance;\n"
+        "}"
+    )
     lines.append("")
     lines.append("}  // namespace Icon")
     lines.append("")

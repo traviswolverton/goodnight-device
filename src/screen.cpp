@@ -163,20 +163,39 @@ uint16_t colorForLevel(const char* level) {
 // instead of loadFont() reading garbage off an unmounted filesystem.
 bool iconFontReady_ = false;
 
-// Draws one glyph from data/icons.vlw centred at (x, y), then restores the
-// text datum/colour the caller had set so its own drawString() calls right
-// after (e.g. the sibling detail lines in drawCard(), which never set
-// their own datum) aren't affected by the MC_DATUM this needs internally.
-//
-// Loads/unloads the smooth font around the single draw rather than keeping
-// it resident: TFT_eSPI holds only one smooth font's metrics in RAM at a
-// time, and the rest of the UI needs its own bitmap font (2 or 4) back
-// immediately after. Icons only redraw on a status change, not every
-// scroll tick, so the reload cost here is a non-issue.
+// Draws one glyph from data/icons.vlw centred at (x, y). Caller must
+// already have the font loaded (tft.loadFont("icons")) and is
+// responsible for unloading it again -- this is the shared primitive
+// both a single standalone icon (drawIcon(), below) and a detail row's
+// batched icon pass (drawCardLine()) use, so a row with several icons
+// pays for one load/unload total instead of one per icon. Restores the
+// text datum/colour the caller had set, since drawCardLine's sibling
+// drawString() calls right after don't set their own datum.
+void drawIconGlyph(uint16_t codepoint, int x, int y, uint16_t color) {
+  uint8_t savedDatum = tft.getTextDatum();
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(color, TFT_BLACK);
+  // Every codepoint here is >= 0xE000 (see tools/icons/build_icons.py),
+  // always a 3-byte UTF-8 sequence.
+  char utf8[4] = {
+      (char)(0xE0 | ((codepoint >> 12) & 0x0F)),
+      (char)(0x80 | ((codepoint >> 6) & 0x3F)),
+      (char)(0x80 | (codepoint & 0x3F)),
+      0,
+  };
+  tft.drawString(utf8, x, y);
+  tft.setTextDatum(savedDatum);
+}
+
+// Draws a single standalone icon: loads the font, draws it, unloads
+// again. Used only for the once-per-status-change title glyph
+// (drawTitleIcon()) -- a detail row with icon codes in its text uses
+// drawIconGlyph() directly, batched under one load/unload for the whole
+// row (see drawCardLine()), since loading per icon on every 120ms
+// scroll tick would be a real, measurable cost otherwise.
 void drawIcon(uint16_t codepoint, int x, int y, uint16_t color) {
   if (!iconFontReady_) return;
 
-  uint8_t savedDatum = tft.getTextDatum();
   // loadFont("icons", SPIFFS) looks equivalent but isn't: that overload
   // (Smooth_font.cpp) always forwards flash=false internally, which sets
   // TFT_eSPI's spiffs flag to false and switches drawGlyph() onto its
@@ -189,19 +208,138 @@ void drawIcon(uint16_t codepoint, int x, int y, uint16_t color) {
   // defaulted to true is the one that actually sets spiffs=true and
   // fontFS=SPIFFS together, taking the direct (correct) read path.
   tft.loadFont("icons");
-  tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(color, TFT_BLACK);
-  // Every codepoint here is >= 0xE000 (see tools/icons/build_icons.py),
-  // always a 3-byte UTF-8 sequence.
-  char utf8[4] = {
-      (char)(0xE0 | ((codepoint >> 12) & 0x0F)),
-      (char)(0x80 | ((codepoint >> 6) & 0x3F)),
-      (char)(0x80 | (codepoint & 0x3F)),
-      0,
-  };
-  tft.drawString(utf8, x, y);
+  drawIconGlyph(codepoint, x, y, color);
   tft.unloadFont();
-  tft.setTextDatum(savedDatum);
+}
+
+// One run of a detail line's text: either a stretch of plain bytes
+// (isIcon false) or a single icon glyph (isIcon true) -- see
+// splitLineRuns() below. byteStart/byteLen index into the *original*
+// already-icon-substituted line buffer, not a copy, so a run only costs
+// a copy into a scratch buffer at the point it's actually measured or
+// drawn.
+struct LineRun {
+  bool isIcon;
+  uint16_t codepoint;
+  uint16_t byteStart;
+  uint16_t byteLen;
+  int widthPx;  // filled by computeRunWidths(); 0 until then
+};
+
+// Generous relative to any realistic template -- the hard ceiling is a
+// line's own byte budget (up to kDetailLineLens[3]-1 = 224), and each
+// icon costs 3 of those bytes, so this is nowhere near a real limit;
+// it's just insurance against a pathological line silently overflowing
+// a fixed-size local array. Extra runs beyond this are simply not
+// added (splitLineRuns), same truncate-don't-crash rule as everywhere
+// else fixed buffers are used in this file.
+constexpr int kMaxLineRuns = 48;
+
+// Splits `text` (already icon-substituted, see status_payload.cpp) into
+// text/icon runs, in order. A 3-byte UTF-8 sequence decoding into our
+// icon codepoint range (Icon::kCodepointBase..+kCount) is an icon run;
+// everything else -- including any other multi-byte UTF-8, which
+// shouldn't occur since the client's other fonts are ASCII-only anyway
+// -- is folded into the surrounding text run untouched.
+int splitLineRuns(const char* text, LineRun* runs, int maxRuns) {
+  int count = 0;
+  size_t len = strlen(text);
+  size_t i = 0;
+  size_t runStart = 0;
+  while (i < len) {
+    uint8_t b0 = (uint8_t)text[i];
+    uint16_t decoded = 0;
+    bool isIconHere = false;
+    if (b0 >= 0xE0 && b0 <= 0xEF && i + 2 < len) {
+      uint8_t b1 = (uint8_t)text[i + 1];
+      uint8_t b2 = (uint8_t)text[i + 2];
+      if ((b1 & 0xC0) == 0x80 && (b2 & 0xC0) == 0x80) {
+        decoded = ((b0 & 0x0F) << 12) | ((b1 & 0x3F) << 6) | (b2 & 0x3F);
+        if (decoded >= Icon::kCodepointBase && decoded < Icon::kCodepointBase + Icon::kCount) {
+          isIconHere = true;
+        }
+      }
+    }
+    if (isIconHere) {
+      if (runStart < i && count < maxRuns) {
+        runs[count++] = {false, 0, (uint16_t)runStart, (uint16_t)(i - runStart), 0};
+      }
+      if (count < maxRuns) {
+        runs[count++] = {true, decoded, (uint16_t)i, 3, 0};
+      }
+      i += 3;
+      runStart = i;
+      continue;
+    }
+    i++;
+  }
+  if (runStart < len && count < maxRuns) {
+    runs[count++] = {false, 0, (uint16_t)runStart, (uint16_t)(len - runStart), 0};
+  }
+  return count;
+}
+
+// Fills widthPx for every run -- an icon's own advance width for an
+// icon run (independent of whether data/icons.vlw is actually mounted,
+// so layout/scroll math stays identical either way and doesn't jitter
+// if that ever changes at runtime), or its rendered width in font 4
+// for a text run, matching exactly what the server predicts
+// (app.aggregator.client_text_width_px) when it decides whether a line
+// needs padding.
+void computeRunWidths(const char* text, LineRun* runs, int count) {
+  char scratch[kDetailLineLens[kMaxDetailLines - 1]];
+  for (int i = 0; i < count; i++) {
+    if (runs[i].isIcon) {
+      runs[i].widthPx = Icon::advanceForCodepoint(runs[i].codepoint);
+    } else {
+      size_t n = runs[i].byteLen < sizeof(scratch) - 1 ? runs[i].byteLen : sizeof(scratch) - 1;
+      memcpy(scratch, text + runs[i].byteStart, n);
+      scratch[n] = '\0';
+      runs[i].widthPx = tft.textWidth(scratch);
+    }
+  }
+}
+
+int totalRunsWidth(const LineRun* runs, int count) {
+  int total = 0;
+  for (int i = 0; i < count; i++) total += runs[i].widthPx;
+  return total;
+}
+
+// Draws just the text runs at the given baseline x, in font 4 (whatever
+// the caller already set) -- the smooth icon font must NOT be loaded
+// while this runs, since TFT_eSPI's drawString() routes through the
+// smooth-font glyph path for *everything*, including plain ASCII, the
+// moment one is loaded (confirmed the hard way: with the icon font
+// loaded, ordinary text hit its "glyph not found" fallback instead of
+// drawing as text at all). See drawCardLine() for why text and icons
+// are drawn in two passes instead of interleaved font swaps per run.
+void drawRunsText(const char* text, const LineRun* runs, int count, int baseX, int midY) {
+  char scratch[kDetailLineLens[kMaxDetailLines - 1]];
+  int x = baseX;
+  for (int i = 0; i < count; i++) {
+    if (!runs[i].isIcon) {
+      size_t n = runs[i].byteLen < sizeof(scratch) - 1 ? runs[i].byteLen : sizeof(scratch) - 1;
+      memcpy(scratch, text + runs[i].byteStart, n);
+      scratch[n] = '\0';
+      tft.drawString(scratch, x, midY);
+    }
+    x += runs[i].widthPx;
+  }
+}
+
+// Draws just the icon runs at the given baseline x. Caller must already
+// have data/icons.vlw loaded and unloads it afterwards -- see
+// drawCardLine(), the only caller, for why this is batched one
+// load/unload per row rather than per icon.
+void drawRunsIcons(const LineRun* runs, int count, int baseX, int midY, uint16_t color) {
+  int x = baseX;
+  for (int i = 0; i < count; i++) {
+    if (runs[i].isIcon) {
+      drawIconGlyph(runs[i].codepoint, x + runs[i].widthPx / 2, midY, color);
+    }
+    x += runs[i].widthPx;
+  }
 }
 
 void drawBanner() {
@@ -253,22 +391,56 @@ void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint
                    bool onlyIfScrolling, int leftInset = 0) {
   int lineTop = top + lineIndex * lineHeight;
   int midY = lineHeight / 2;
-  int textW = tft.textWidth(text);
+
+  // text may carry `:name:` icon codes already expanded to their glyph
+  // by status_payload.cpp -- split into text/icon runs once, and use
+  // their combined width for the scroll decision (matching what the
+  // server predicted, app.aggregator.client_text_width_px) instead of
+  // tft.textWidth(text) directly, which would measure an icon's raw
+  // UTF-8 bytes as three made-up font-4 characters.
+  LineRun runs[kMaxLineRuns];
+  int runCount = splitLineRuns(text, runs, kMaxLineRuns);
+  computeRunWidths(text, runs, runCount);
+  int textW = totalRunsWidth(runs, runCount);
   int availW = tft.width() - 12 - leftInset;
   bool scrolls = textW > availW;
 
   if (onlyIfScrolling && !scrolls) return;
 
+  bool hasIcons = false;
+  for (int i = 0; i < runCount; i++) {
+    if (runs[i].isIcon) {
+      hasIcons = true;
+      break;
+    }
+  }
+
   tft.setViewport(6 + leftInset, lineTop, availW, lineHeight);
   tft.setTextColor(color, TFT_BLACK);
-  if (!scrolls) {
-    tft.drawString(text, 0, midY);
-  } else {
-    int cycle = textW + 40;  // 40px gap before the marquee repeats
-    int x = -(scrollOffsetPx_[lineIndex] % cycle);
-    tft.drawString(text, x, midY);
-    tft.drawString(text, x + cycle, midY);  // trailing copy, seamless wrap
+
+  int cycle = textW + 40;  // 40px gap before the marquee repeats
+  int x = scrolls ? -(scrollOffsetPx_[lineIndex] % cycle) : 0;
+
+  // Two passes, not one interleaved pass, and for a reason that bit us
+  // once already: TFT_eSPI's drawString() routes through the smooth
+  // icon font's glyph lookup for *everything* the moment it's loaded,
+  // even plain ASCII -- so text and icons can't share a loadFont() call
+  // while text is drawn through the normal font-4 path. Drawing all
+  // text first (icon font definitely unloaded), then loading once and
+  // drawing all icons, keeps that one load/unload pair per row-draw
+  // regardless of how many icons the row has, rather than one pair per
+  // icon -- the cost that mattered here, since a scrolling row redraws
+  // every 120ms (kScrollTickMs).
+  drawRunsText(text, runs, runCount, x, midY);
+  if (scrolls) drawRunsText(text, runs, runCount, x + cycle, midY);  // trailing copy, seamless wrap
+
+  if (hasIcons && iconFontReady_) {
+    tft.loadFont("icons");
+    drawRunsIcons(runs, runCount, x, midY, color);
+    if (scrolls) drawRunsIcons(runs, runCount, x + cycle, midY, color);
+    tft.unloadFont();
   }
+
   tft.resetViewport();
 }
 
@@ -278,14 +450,31 @@ void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint
 // TFT-primitive shape (circle/triangle/square) because our built-in fonts
 // (see include/User_Setup.h) are monochrome ASCII/Latin bitmap sets with
 // no symbol glyphs; data/icons.vlw (see tools/icons/) adds exactly that,
-// so this now draws a real check/alert/close glyph instead. Only called
-// from the full-card redraw path -- the icon never changes without a new
-// status message triggering that path anyway, so the scroll ticker has no
-// reason to touch it.
+// so this normally draws a real check/alert/close glyph instead. Falls
+// back to the old shapes if the icon font isn't mounted (e.g. firmware
+// updated over OTA but data/icons.vlw was never uploadfs'd to match) --
+// a status glyph missing entirely would be a silent downgrade nobody
+// asked for; the old shapes carried exactly the same information on
+// their own for as long as this UI existed without an icon font at all.
+// Only called from the full-card redraw path -- the icon never changes
+// without a new status message triggering that path anyway, so the
+// scroll ticker has no reason to touch it.
 void drawTitleIcon(const char* status, int top, int lineHeight) {
   int cx = 6 + kTitleIconInset / 2;
   int cy = top + lineHeight / 2;
   uint16_t color = colorForLevel(status);
+
+  if (!iconFontReady_) {
+    if (strcmp(status, "warn") == 0) {
+      tft.fillTriangle(cx, cy - 6, cx - 6, cy + 6, cx + 6, cy + 6, color);
+    } else if (strcmp(status, "down") == 0) {
+      tft.fillRect(cx - 6, cy - 6, 12, 12, color);
+    } else {
+      tft.fillCircle(cx, cy, 6, color);
+    }
+    return;
+  }
+
   uint16_t icon = Icon::kCheckCircle;
   if (strcmp(status, "warn") == 0) {
     icon = Icon::kAlert;

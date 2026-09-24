@@ -93,9 +93,34 @@ constexpr uint16_t kClockAlert = 0xE051;  // clock-alert
 constexpr uint16_t kMinusCircle = 0xE052;  // minus-circle
 constexpr uint16_t kPlusCircle = 0xE053;  // plus-circle
 constexpr uint16_t kCircle = 0xE054;  // circle
+constexpr uint16_t kDocker = 0xE055;  // docker
+constexpr uint16_t kKubernetes = 0xE056;  // kubernetes
+constexpr uint16_t kPackageVariant = 0xE057;  // package-variant
+constexpr uint16_t kHomeAssistant = 0xE058;  // home-assistant
+constexpr uint16_t kPlex = 0xE059;  // plex
+constexpr uint16_t kGithub = 0xE05A;  // github
+constexpr uint16_t kGitlab = 0xE05B;  // gitlab
+constexpr uint16_t kGit = 0xE05C;  // git
+constexpr uint16_t kNas = 0xE05D;  // nas
+constexpr uint16_t kBackupRestore = 0xE05E;  // backup-restore
+constexpr uint16_t kBell = 0xE05F;  // bell
+constexpr uint16_t kBellAlert = 0xE060;  // bell-alert
+constexpr uint16_t kDns = 0xE061;  // dns
+constexpr uint16_t kRouter = 0xE062;  // router
+constexpr uint16_t kRouterNetwork = 0xE063;  // router-network
+constexpr uint16_t kVpn = 0xE064;  // vpn
+constexpr uint16_t kConsoleNetwork = 0xE065;  // console-network
+constexpr uint16_t kDomain = 0xE066;  // domain
+constexpr uint16_t kWeb = 0xE067;  // web
+constexpr uint16_t kEarth = 0xE068;  // earth
+constexpr uint16_t kIpNetwork = 0xE069;  // ip-network
+constexpr uint16_t kFolderNetwork = 0xE06A;  // folder-network
+constexpr uint16_t kSwapHorizontal = 0xE06B;  // swap-horizontal
+constexpr uint16_t kMovieOpen = 0xE06C;  // movie-open
+constexpr uint16_t kMagnet = 0xE06D;  // magnet
 
 constexpr uint16_t kCodepointBase = 0xE000;
-constexpr size_t kCount = 85;
+constexpr size_t kCount = 110;
 
 struct Entry { const char* name; uint16_t codepoint; uint8_t advance; };
 
@@ -185,6 +210,31 @@ constexpr Entry kTable[] = {
     {"minus-circle", kMinusCircle, 16},
     {"plus-circle", kPlusCircle, 16},
     {"circle", kCircle, 16},
+    {"docker", kDocker, 16},
+    {"kubernetes", kKubernetes, 16},
+    {"package-variant", kPackageVariant, 16},
+    {"home-assistant", kHomeAssistant, 16},
+    {"plex", kPlex, 16},
+    {"github", kGithub, 16},
+    {"gitlab", kGitlab, 16},
+    {"git", kGit, 16},
+    {"nas", kNas, 16},
+    {"backup-restore", kBackupRestore, 16},
+    {"bell", kBell, 16},
+    {"bell-alert", kBellAlert, 16},
+    {"dns", kDns, 16},
+    {"router", kRouter, 16},
+    {"router-network", kRouterNetwork, 16},
+    {"vpn", kVpn, 16},
+    {"console-network", kConsoleNetwork, 16},
+    {"domain", kDomain, 16},
+    {"web", kWeb, 16},
+    {"earth", kEarth, 16},
+    {"ip-network", kIpNetwork, 16},
+    {"folder-network", kFolderNetwork, 16},
+    {"swap-horizontal", kSwapHorizontal, 16},
+    {"movie-open", kMovieOpen, 16},
+    {"magnet", kMagnet, 16},
 };
 
 inline const Entry* lookupByName(const char* name, size_t len) {

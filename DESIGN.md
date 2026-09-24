@@ -387,8 +387,10 @@ code is already near its practical floor; see the `HTTPClient`
 avoidance above for the one place real savings existed).
 `platformio.ini` now sets `board_build.partitions = min_spiffs.csv`,
 which keeps the same dual ota_0/ota_1 layout ArduinoOTA needs but grows
-each app slot to 1.9MB by shrinking the spiffs partition this project
-never uses down to its minimum. **This is a partition table change, not
+each app slot to 1.9MB by shrinking the spiffs partition (128KB) down
+to its minimum. That partition sat completely unused until the status
+icon font below started using it — see "Status icon font" for what
+now lives there and how much room is left. **This is a partition table change, not
 just a bigger binary** — the table itself lives at a fixed flash offset
 (0x8000) and is only written by a full USB flash, never by an OTA
 update (`espota` only writes into whichever app slot the
@@ -401,6 +403,43 @@ the device keeps running its current firmware) but also doesn't update
 it. A device on the old table needs one USB-connected flash with this
 partition scheme before OTA uploads against it will succeed again;
 every OTA after that one-time reflash works exactly as before.
+
+### Status icon font
+The built-in TFT_eSPI fonts (`include/User_Setup.h`) are monochrome
+ASCII/Latin bitmap sets with no symbol glyphs — there's no way to render
+a checkmark, wifi, or battery glyph with them. `data/icons.vlw` is a
+custom TFT_eSPI "smooth font" (an anti-aliased bitmap font format, not a
+vector one) built from a curated subset of Material Design Icons, loaded
+from the SPIFFS partition described above rather than compiled into the
+app binary — so it competes with the SPIFFS budget, not the already-tight
+app-partition flash. `include/icons.h` holds the matching `Icon::k*`
+codepoint constants; `screen.cpp`'s `drawIcon()` loads the font, draws one
+glyph, and unloads it again (TFT_eSPI only keeps one smooth font's glyph
+metrics in RAM at a time, so this can't stay loaded alongside the normal
+UI's bitmap fonts 2/4).
+
+Regenerate both files together with `tools/icons/build_icons.py` — see
+that script's header comment for setup. At the current 85-icon set,
+16x16px each, the font is ~16.3KB (~13% of the 128KB partition). Two
+things worth knowing before adding more icons:
+
+- **MDI's own codepoints don't survive the round trip.** MDI's real
+  codepoints (e.g. `wifi` = U+F05A9) sit in the Unicode supplementary
+  plane, but TFT_eSPI's smooth-font loader stores each glyph's codepoint
+  as a 16-bit value and its UTF-8 decoder explicitly refuses 4-byte
+  sequences (`Smooth_font.cpp`'s `loadMetrics`, `TFT_eSPI.cpp`'s
+  `decodeUTF8`). The build script renders the real MDI glyph artwork but
+  remaps every icon to its own codepoint starting at U+E000 (the Basic
+  Multilingual Plane's Private Use Area) — `icon_list.txt`'s order is
+  what determines each icon's assigned codepoint, so re-ordering that
+  file changes codepoints too (harmless as long as `icons.h` is
+  regenerated in the same step, which it always is).
+- **The 128KB partition is otherwise unused**, so there's room for a much
+  larger set if a future feature needs it — at 16px each icon costs
+  ~190 bytes on average (VLW only stores each glyph's ink bounding box,
+  not a fixed cell, so simple icons cost less than dense ones), meaning
+  even a few hundred more icons would stay well under half the
+  partition.
 
 ## MQTT JSON payload schema
 Locked against the server repo (`desk-dashboard-server/DESIGN.md`) — both
@@ -517,6 +556,10 @@ small module per concern: `status_payload` (JSON parsing), `encoder`,
 `leds`, `backlight`, `screen` (the HOME/MENU/CAMERA state machine), `ota`.
 Real credentials go in `include/secrets.h` (gitignored; copy
 `include/secrets.h.example` and fill it in) — never commit that file.
+`data/icons.vlw` and `include/icons.h` are generated together by
+`tools/icons/build_icons.py` — see "Status icon font" above. `data/`
+is uploaded to the device separately from firmware, via
+`pio run -t uploadfs`, not the normal `-t upload`/OTA flash step.
 
 ## OTA firmware updates
 `ota.cpp` runs ArduinoOTA (built into the ESP32 Arduino core, no extra

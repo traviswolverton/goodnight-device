@@ -1,0 +1,142 @@
+# Builds data/icons.vlw (the on-device icon font) and include/icons.h (the
+# matching codepoint constants) from a curated subset of Material Design
+# Icons. Run this from tools/icons/ whenever icon_list.txt changes.
+#
+# Setup (once):
+#   python3 -m venv venv && venv/bin/pip install Pillow
+#   curl -L -o mdi.ttf https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/fonts/materialdesignicons-webfont.ttf
+#   curl -L -o vars.scss https://cdn.jsdelivr.net/npm/@mdi/font@7.4.47/scss/_variables.scss
+#
+# Then:
+#   venv/bin/python build_icons.py
+#
+# mdi.ttf/vars.scss are build-time inputs only (~1.3MB TTF) -- nothing from
+# them ships to the device. Only the packed icons.vlw (a few KB, see the
+# printed size below) goes to the ESP32, via `pio run -t uploadfs`.
+#
+# Why not just point TFT_eSPI's own Processing-based font converter at the
+# MDI ttf directly: MDI's real codepoints (e.g. wifi = U+F05A9) live above
+# U+FFFF, but TFT_eSPI's smooth-font loader stores each glyph's codepoint as
+# a 16-bit value and its UTF-8 decoder explicitly refuses 4-byte sequences
+# (see Smooth_font.cpp's loadMetrics and TFT_eSPI.cpp's decodeUTF8) -- so
+# this script remaps every chosen icon to its own codepoint starting at
+# U+E000 (the Basic Multilingual Plane's Private Use Area) while still
+# rendering the original MDI glyph artwork.
+import re, struct, sys
+from pathlib import Path
+from PIL import Image, ImageFont, ImageDraw
+
+ROOT = Path(__file__).resolve().parent
+FONT_PATH = ROOT / "mdi.ttf"
+VARS_PATH = ROOT / "vars.scss"
+LIST_PATH = ROOT / "icon_list.txt"
+VLW_OUT = ROOT / "../../data/icons.vlw"
+HEADER_OUT = ROOT / "../../include/icons.h"
+PX_SIZE = 16
+BASE_CODEPOINT = 0xE000  # start of BMP Private Use Area -- avoids any collision
+                          # with real text and stays inside the 16-bit range
+                          # TFT_eSPI's smooth-font loader actually supports.
+PAD = 40  # generous canvas padding so no glyph's ink clips during render
+
+def load_codepoint_map():
+    m = {}
+    with open(VARS_PATH) as f:
+        for line in f:
+            match = re.match(r'\s*"([a-z0-9-]+)":\s*(F[0-9A-F]+),', line)
+            if match:
+                m[match.group(1)] = int(match.group(2), 16)
+    return m
+
+def main():
+    cp_map = load_codepoint_map()
+    with open(LIST_PATH) as f:
+        names = [l.strip() for l in f if l.strip()]
+
+    if len(names) > 0x1F00:  # 0xE000..0xFEFF is a comfortable, safely-unused PUA span
+        sys.exit(f"icon list too long ({len(names)}) for the codepoint budget")
+
+    font = ImageFont.truetype(FONT_PATH, PX_SIZE)
+    ascent, descent = font.getmetrics()
+
+    glyphs = []  # (custom_codepoint, name, PIL 'L' image, dX, dY, advance)
+    for i, name in enumerate(names):
+        if name not in cp_map:
+            sys.exit(f"unknown MDI icon name: {name}")
+        mdi_cp = cp_map[name]
+        ch = chr(mdi_cp)
+
+        img = Image.new("L", (PX_SIZE + PAD * 2, PX_SIZE + PAD * 2), 0)
+        draw = ImageDraw.Draw(img)
+        draw.text((PAD, PAD), ch, font=font, fill=255)
+        bbox = img.getbbox()
+        if bbox is None:
+            sys.exit(f"icon '{name}' (U+{mdi_cp:X}) rendered empty -- bad codepoint?")
+
+        left, top, right, bottom = bbox
+        cropped = img.crop(bbox)
+        width, height = cropped.size
+        if width > 255 or height > 255:
+            sys.exit(f"icon '{name}' glyph {width}x{height} exceeds VLW's uint8 size field")
+
+        dX = left - PAD
+        dY = ascent - (top - PAD)
+        advance = round(font.getlength(ch))
+
+        if not (-128 <= dX <= 127):
+            sys.exit(f"icon '{name}' dX={dX} out of int8 range")
+        if not (-32768 <= dY <= 32767):
+            sys.exit(f"icon '{name}' dY={dY} out of int16 range")
+
+        custom_cp = BASE_CODEPOINT + i
+        glyphs.append((custom_cp, name, cropped, dX, dY, advance))
+
+    # --- pack the .vlw ---
+    # Real layout (per TFT_eSPI's own Smooth_font.cpp loadFont() comment,
+    # confirmed the hard way on real hardware): file header, then ALL
+    # glyph headers back-to-back (28 bytes * gCount), THEN all bitmap
+    # data concatenated afterward in the same order -- NOT interleaved
+    # header+bitmap per glyph. loadMetrics() only reads the header block
+    # (computing each gBitmap[] as a running offset into the bitmap
+    # block) and never touches pixel bytes, so an interleaved file reads
+    # every glyph after the first out of what's actually the previous
+    # glyph's pixel data.
+    header = struct.pack(">iiiiii", len(glyphs), 11, PX_SIZE, 0, ascent, descent)
+    headers = bytearray()
+    bitmaps = bytearray()
+    for cp, name, img, dX, dY, advance in glyphs:
+        w, h = img.size
+        headers += struct.pack(">iiiiiii", cp, h, w, advance, dY, dX, 0)
+        bitmaps += img.tobytes()
+
+    vlw_bytes = header + bytes(headers) + bytes(bitmaps)
+    with open(VLW_OUT, "wb") as f:
+        f.write(vlw_bytes)
+
+    # --- generate the matching C++ header ---
+    lines = [
+        "// Generated by build_icons.py -- do not hand-edit.",
+        "// Regenerate this together with data/icons.vlw so the codepoints",
+        "// baked into the font file and the constants below never drift apart.",
+        "#pragma once",
+        "",
+        "#include <cstdint>",
+        "",
+        "namespace Icon {",
+        "",
+    ]
+    for cp, name, img, dX, dY, advance in glyphs:
+        ident = "k" + "".join(part.capitalize() for part in name.split("-"))
+        lines.append(f"constexpr uint16_t {ident} = 0x{cp:04X};  // {name}")
+    lines.append("")
+    lines.append("}  // namespace Icon")
+    lines.append("")
+    with open(HEADER_OUT, "w") as f:
+        f.write("\n".join(lines))
+
+    total = len(vlw_bytes)
+    print(f"{len(glyphs)} icons packed into icons.vlw: {total} bytes ({total/1024:.2f} KB)")
+    print(f"That's {total/65536*100:.1f}% of the 64KB (50%) budget, "
+          f"{total/131072*100:.1f}% of the full 128KB SPIFFS partition.")
+
+if __name__ == "__main__":
+    main()

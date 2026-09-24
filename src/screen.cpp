@@ -10,6 +10,7 @@
 #include <strings.h>  // strncasecmp, for the manual HTTP header parse below
 
 #include "backlight.h"
+#include "icons.h"
 #include "settings_store.h"
 #include "timing_config.h"
 
@@ -157,6 +158,52 @@ uint16_t colorForLevel(const char* level) {
   return TFT_GREEN;
 }
 
+// True once SPIFFS mounted successfully in screenBegin() -- guards every
+// drawIcon() call so a mount failure just means icons silently don't draw
+// instead of loadFont() reading garbage off an unmounted filesystem.
+bool iconFontReady_ = false;
+
+// Draws one glyph from data/icons.vlw centred at (x, y), then restores the
+// text datum/colour the caller had set so its own drawString() calls right
+// after (e.g. the sibling detail lines in drawCard(), which never set
+// their own datum) aren't affected by the MC_DATUM this needs internally.
+//
+// Loads/unloads the smooth font around the single draw rather than keeping
+// it resident: TFT_eSPI holds only one smooth font's metrics in RAM at a
+// time, and the rest of the UI needs its own bitmap font (2 or 4) back
+// immediately after. Icons only redraw on a status change, not every
+// scroll tick, so the reload cost here is a non-issue.
+void drawIcon(uint16_t codepoint, int x, int y, uint16_t color) {
+  if (!iconFontReady_) return;
+
+  uint8_t savedDatum = tft.getTextDatum();
+  // loadFont("icons", SPIFFS) looks equivalent but isn't: that overload
+  // (Smooth_font.cpp) always forwards flash=false internally, which sets
+  // TFT_eSPI's spiffs flag to false and switches drawGlyph() onto its
+  // SD-card path (an endWrite()/startWrite() SPI-transaction release
+  // around every glyph row, meant to let an SD card use the bus in
+  // between). On this display that breaks the addressing window and every
+  // glyph silently draws nothing -- confirmed on real hardware: font
+  // metrics loaded fine (gCount matched, no error), but not a single
+  // pixel changed. The plain string+bool overload with its bool
+  // defaulted to true is the one that actually sets spiffs=true and
+  // fontFS=SPIFFS together, taking the direct (correct) read path.
+  tft.loadFont("icons");
+  tft.setTextDatum(MC_DATUM);
+  tft.setTextColor(color, TFT_BLACK);
+  // Every codepoint here is >= 0xE000 (see tools/icons/build_icons.py),
+  // always a 3-byte UTF-8 sequence.
+  char utf8[4] = {
+      (char)(0xE0 | ((codepoint >> 12) & 0x0F)),
+      (char)(0x80 | ((codepoint >> 6) & 0x3F)),
+      (char)(0x80 | (codepoint & 0x3F)),
+      0,
+  };
+  tft.drawString(utf8, x, y);
+  tft.unloadFont();
+  tft.setTextDatum(savedDatum);
+}
+
 void drawBanner() {
   tft.setTextFont(2);  // explicit, not assumed -- card rendering now
                         // toggles fonts (font 4) between calls
@@ -225,27 +272,27 @@ void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint
   tft.resetViewport();
 }
 
-// Small shape indicating a card's status, drawn to the left of the
-// title text -- the same information already carried by the title's
-// text color, just readable at a glance without reading the color.
-// Distinct shapes rather than a checkmark/warning glyph: our fonts
-// (see include/User_Setup.h) are monochrome ASCII/Latin bitmap sets
-// with no emoji or symbol glyphs, so this is drawn with plain TFT
-// primitives instead of any font at all. Only called from the
-// full-card redraw path -- the shape never changes without a new
-// status message triggering that path anyway, so the scroll ticker
-// has no reason to touch it.
+// Icon indicating a card's status, drawn to the left of the title text --
+// the same information already carried by the title's text color, just
+// readable at a glance without reading the color. Used to be a plain
+// TFT-primitive shape (circle/triangle/square) because our built-in fonts
+// (see include/User_Setup.h) are monochrome ASCII/Latin bitmap sets with
+// no symbol glyphs; data/icons.vlw (see tools/icons/) adds exactly that,
+// so this now draws a real check/alert/close glyph instead. Only called
+// from the full-card redraw path -- the icon never changes without a new
+// status message triggering that path anyway, so the scroll ticker has no
+// reason to touch it.
 void drawTitleIcon(const char* status, int top, int lineHeight) {
   int cx = 6 + kTitleIconInset / 2;
   int cy = top + lineHeight / 2;
   uint16_t color = colorForLevel(status);
+  uint16_t icon = Icon::kCheckCircle;
   if (strcmp(status, "warn") == 0) {
-    tft.fillTriangle(cx, cy - 6, cx - 6, cy + 6, cx + 6, cy + 6, color);
+    icon = Icon::kAlert;
   } else if (strcmp(status, "down") == 0) {
-    tft.fillRect(cx - 6, cy - 6, 12, 12, color);
-  } else {
-    tft.fillCircle(cx, cy, 6, color);
+    icon = Icon::kCloseCircle;
   }
+  drawIcon(icon, cx, cy, color);
 }
 
 // Draws every line of the current card fresh (full redraw path).
@@ -651,6 +698,13 @@ void screenBegin() {
   tft.fillScreen(TFT_BLACK);
   tft.setTextFont(2);
   nextAutoRotateMs_ = millis() + kCardRotationMs;
+
+  // Mounts the same SPIFFS partition data/icons.vlw was uploaded to via
+  // `pio run -t uploadfs` (separate from the normal -t upload/OTA flash
+  // step, see platformio.ini's partition-table comment). false = don't
+  // format on mount failure -- an unmounted/missing filesystem should just
+  // mean drawIcon() no-ops, not silently wipe whatever's actually there.
+  iconFontReady_ = SPIFFS.begin(false);
 
   // Card sensitivity persists across a reboot (see settings_store.h for
   // why this one and backlight timeout, but not mute/pin). Backlight

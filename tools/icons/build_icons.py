@@ -32,7 +32,10 @@ VARS_PATH = ROOT / "vars.scss"
 LIST_PATH = ROOT / "icon_list.txt"
 VLW_OUT = ROOT / "../../data/icons.vlw"
 HEADER_OUT = ROOT / "../../include/icons.h"
-PX_SIZE = 16
+PX_SIZE = 24  # matches Font 4's ~26px line height (drawCard() renders every
+              # card line, title and detail rows alike, in Font 4 -- not
+              # Font 2, whose 16px line height this used to match instead,
+              # which is why icons looked small next to Font 4's numerals).
 BASE_CODEPOINT = 0xE000  # start of BMP Private Use Area -- avoids any collision
                           # with real text and stays inside the 16-bit range
                           # TFT_eSPI's smooth-font loader actually supports.

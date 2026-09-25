@@ -370,7 +370,10 @@ void drawDots() {
 // Width reserved on the title line (line 0 only) for the status icon
 // drawn by drawTitleIcon() -- the title's own text viewport starts
 // after this, so the marquee scroll never runs underneath the icon.
-constexpr int kTitleIconInset = 20;
+// 26, not the icon's own ~20-22px width, to leave a couple of pixels of
+// clearance on both sides (icons sized for Font 4's ~26px line height,
+// see tools/icons/build_icons.py's PX_SIZE).
+constexpr int kTitleIconInset = 26;
 
 // Generic multi-line card renderer. Line 0 is always the name/title
 // line (colored by status); indices 1.. are detail lines (white). A

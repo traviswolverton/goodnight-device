@@ -413,15 +413,27 @@ vector one) built from a curated subset of Material Design Icons, loaded
 from the SPIFFS partition described above rather than compiled into the
 app binary — so it competes with the SPIFFS budget, not the already-tight
 app-partition flash. `include/icons.h` holds the matching `Icon::k*`
-codepoint constants; `screen.cpp`'s `drawIcon()` loads the font, draws one
-glyph, and unloads it again (TFT_eSPI only keeps one smooth font's glyph
-metrics in RAM at a time, so this can't stay loaded alongside the normal
-UI's bitmap fonts 2/4).
+codepoint constants, plus a generated `Icon::lookupByName`/
+`Icon::advanceForCodepoint` pair used to expand a server-sent `:name:`
+code into its glyph — see the server repo's DESIGN.md "Card icons" for
+the wire format and the full worked example, and `status_payload.cpp`'s
+`copyTruncatedWithIcons`/`screen.cpp`'s `splitLineRuns` for how a line
+gets split into text/icon runs and drawn.
+
+TFT_eSPI only keeps one smooth font's glyph metrics in RAM at a time, so
+it can't stay loaded alongside the UI's normal bitmap fonts (2/4) —
+`drawIcon()` (the single standalone status glyph) loads, draws, and
+unloads per call; `drawCardLine()` (a detail row's inline icons) batches
+every icon in the row under one load/unload pair instead of one per
+icon, since a scrolling row redraws every 120ms and reloading per glyph
+there would be a real, measurable cost.
 
 Regenerate both files together with `tools/icons/build_icons.py` — see
-that script's header comment for setup. At the current 85-icon set,
-16x16px each, the font is ~16.3KB (~13% of the 128KB partition). Two
-things worth knowing before adding more icons:
+that script's header comment for setup. At the current 110-icon set,
+24x24px each (matching Font 4's ~26px line height, which every card row
+renders in — an earlier 16px pass looked small once actually next to
+Font 4's numerals on real hardware), the font is ~41.4KB (~32% of the
+128KB partition). Two things worth knowing before adding more icons:
 
 - **MDI's own codepoints don't survive the round trip.** MDI's real
   codepoints (e.g. `wifi` = U+F05A9) sit in the Unicode supplementary
@@ -433,13 +445,16 @@ things worth knowing before adding more icons:
   Multilingual Plane's Private Use Area) — `icon_list.txt`'s order is
   what determines each icon's assigned codepoint, so re-ordering that
   file changes codepoints too (harmless as long as `icons.h` is
-  regenerated in the same step, which it always is).
-- **The 128KB partition is otherwise unused**, so there's room for a much
-  larger set if a future feature needs it — at 16px each icon costs
-  ~190 bytes on average (VLW only stores each glyph's ink bounding box,
-  not a fixed cell, so simple icons cost less than dense ones), meaning
-  even a few hundred more icons would stay well under half the
-  partition.
+  regenerated in the same step, which it always is — but see the server
+  repo's own icon_catalog.json/icon-paths.ts, which only carry names, not
+  codepoints, precisely so they never need to agree on numbering).
+- **The 128KB partition still has real headroom left** (~32% used at
+  110 icons), so there's room for a larger set if a future feature needs
+  it — at 24px each icon costs ~386 bytes on average (VLW only stores
+  each glyph's ink bounding box, not a fixed cell, so simple icons cost
+  less than dense ones), meaning roughly 60 more icons would still fit
+  before crossing half the partition, or another ~230 before filling it
+  outright.
 
 ## MQTT JSON payload schema
 Locked against the server repo (`desk-dashboard-server/DESIGN.md`) — both

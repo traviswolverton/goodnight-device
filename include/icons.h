@@ -118,9 +118,45 @@ constexpr uint16_t kFolderNetwork = 0xE06A;  // folder-network
 constexpr uint16_t kSwapHorizontal = 0xE06B;  // swap-horizontal
 constexpr uint16_t kMovieOpen = 0xE06C;  // movie-open
 constexpr uint16_t kMagnet = 0xE06D;  // magnet
+constexpr uint16_t kAccount = 0xE06E;  // account
+constexpr uint16_t kAccountMultiple = 0xE06F;  // account-multiple
+constexpr uint16_t kAccountGroup = 0xE070;  // account-group
+constexpr uint16_t kWalk = 0xE071;  // walk
+constexpr uint16_t kHome = 0xE072;  // home
+constexpr uint16_t kLightbulb = 0xE073;  // lightbulb
+constexpr uint16_t kLightbulbOutline = 0xE074;  // lightbulb-outline
+constexpr uint16_t kCeilingLight = 0xE075;  // ceiling-light
+constexpr uint16_t kToggleSwitch = 0xE076;  // toggle-switch
+constexpr uint16_t kPowerSocket = 0xE077;  // power-socket
+constexpr uint16_t kThermostat = 0xE078;  // thermostat
+constexpr uint16_t kFan = 0xE079;  // fan
+constexpr uint16_t kAirConditioner = 0xE07A;  // air-conditioner
+constexpr uint16_t kGarage = 0xE07B;  // garage
+constexpr uint16_t kGarageOpen = 0xE07C;  // garage-open
+constexpr uint16_t kWindowShutter = 0xE07D;  // window-shutter
+constexpr uint16_t kDoor = 0xE07E;  // door
+constexpr uint16_t kDoorOpen = 0xE07F;  // door-open
+constexpr uint16_t kWindowClosed = 0xE080;  // window-closed
+constexpr uint16_t kWindowOpen = 0xE081;  // window-open
+constexpr uint16_t kWater = 0xE082;  // water
+constexpr uint16_t kWaterAlert = 0xE083;  // water-alert
+constexpr uint16_t kSmokeDetector = 0xE084;  // smoke-detector
+constexpr uint16_t kMoleculeCo = 0xE085;  // molecule-co
+constexpr uint16_t kSpeaker = 0xE086;  // speaker
+constexpr uint16_t kTelevision = 0xE087;  // television
+constexpr uint16_t kCast = 0xE088;  // cast
+constexpr uint16_t kWashingMachine = 0xE089;  // washing-machine
+constexpr uint16_t kFridge = 0xE08A;  // fridge
+constexpr uint16_t kDishwasher = 0xE08B;  // dishwasher
+constexpr uint16_t kSofa = 0xE08C;  // sofa
+constexpr uint16_t kBed = 0xE08D;  // bed
+constexpr uint16_t kGauge = 0xE08E;  // gauge
+constexpr uint16_t kTimer = 0xE08F;  // timer
+constexpr uint16_t kTimerOutline = 0xE090;  // timer-outline
+constexpr uint16_t kFlash = 0xE091;  // flash
 
 constexpr uint16_t kCodepointBase = 0xE000;
-constexpr size_t kCount = 110;
+constexpr size_t kCount = 146;
 
 struct Entry { const char* name; uint16_t codepoint; uint8_t advance; };
 
@@ -235,6 +271,42 @@ constexpr Entry kTable[] = {
     {"swap-horizontal", kSwapHorizontal, 24},
     {"movie-open", kMovieOpen, 24},
     {"magnet", kMagnet, 24},
+    {"account", kAccount, 24},
+    {"account-multiple", kAccountMultiple, 24},
+    {"account-group", kAccountGroup, 24},
+    {"walk", kWalk, 24},
+    {"home", kHome, 24},
+    {"lightbulb", kLightbulb, 24},
+    {"lightbulb-outline", kLightbulbOutline, 24},
+    {"ceiling-light", kCeilingLight, 24},
+    {"toggle-switch", kToggleSwitch, 24},
+    {"power-socket", kPowerSocket, 24},
+    {"thermostat", kThermostat, 24},
+    {"fan", kFan, 24},
+    {"air-conditioner", kAirConditioner, 24},
+    {"garage", kGarage, 24},
+    {"garage-open", kGarageOpen, 24},
+    {"window-shutter", kWindowShutter, 24},
+    {"door", kDoor, 24},
+    {"door-open", kDoorOpen, 24},
+    {"window-closed", kWindowClosed, 24},
+    {"window-open", kWindowOpen, 24},
+    {"water", kWater, 24},
+    {"water-alert", kWaterAlert, 24},
+    {"smoke-detector", kSmokeDetector, 24},
+    {"molecule-co", kMoleculeCo, 24},
+    {"speaker", kSpeaker, 24},
+    {"television", kTelevision, 24},
+    {"cast", kCast, 24},
+    {"washing-machine", kWashingMachine, 24},
+    {"fridge", kFridge, 24},
+    {"dishwasher", kDishwasher, 24},
+    {"sofa", kSofa, 24},
+    {"bed", kBed, 24},
+    {"gauge", kGauge, 24},
+    {"timer", kTimer, 24},
+    {"timer-outline", kTimerOutline, 24},
+    {"flash", kFlash, 24},
 };
 
 inline const Entry* lookupByName(const char* name, size_t len) {

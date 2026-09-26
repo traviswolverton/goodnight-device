@@ -458,10 +458,10 @@ icon, since a scrolling row redraws every 120ms and reloading per glyph
 there would be a real, measurable cost.
 
 Regenerate both files together with `tools/icons/build_icons.py` — see
-that script's header comment for setup. At the current 110-icon set,
+that script's header comment for setup. At the current 146-icon set,
 24x24px each (matching Font 4's ~26px line height, which every card row
 renders in — an earlier 16px pass looked small once actually next to
-Font 4's numerals on real hardware), the font is ~41.4KB (~32% of the
+Font 4's numerals on real hardware), the font is ~53.7KB (~42% of the
 128KB partition). Two things worth knowing before adding more icons:
 
 - **MDI's own codepoints don't survive the round trip.** MDI's real
@@ -477,12 +477,12 @@ Font 4's numerals on real hardware), the font is ~41.4KB (~32% of the
   regenerated in the same step, which it always is — but see the server
   repo's own icon_catalog.json/icon-paths.ts, which only carry names, not
   codepoints, precisely so they never need to agree on numbering).
-- **The 128KB partition still has real headroom left** (~32% used at
-  110 icons), so there's room for a larger set if a future feature needs
-  it — at 24px each icon costs ~386 bytes on average (VLW only stores
+- **The 128KB partition still has real headroom left** (~42% used at
+  146 icons), so there's room for a larger set if a future feature needs
+  it — at 24px each icon costs ~377 bytes on average (VLW only stores
   each glyph's ink bounding box, not a fixed cell, so simple icons cost
-  less than dense ones), meaning roughly 60 more icons would still fit
-  before crossing half the partition, or another ~230 before filling it
+  less than dense ones), meaning roughly 28 more icons would still fit
+  before crossing half the partition, or another ~200 before filling it
   outright.
 
 ## MQTT JSON payload schema

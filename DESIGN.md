@@ -484,6 +484,20 @@ Font 4's numerals on real hardware), the font is ~53.7KB (~42% of the
   less than dense ones), meaning roughly 28 more icons would still fit
   before crossing half the partition, or another ~200 before filling it
   outright.
+- **Changing `icon_list.txt` needs BOTH `uploadfs` AND a real firmware
+  `upload`, not just the first one.** `data/icons.vlw` (glyph bitmaps)
+  goes to SPIFFS via `uploadfs` — but `Icon::kTable`, the name→codepoint
+  lookup `copyTruncatedWithIcons` uses to recognize a `:name:` code at
+  all, is generated into `icons.h` and compiled straight into the
+  firmware binary. Confirmed the hard way: after adding icons with only
+  an `uploadfs` (reasoning that `screen.cpp`/`status_payload.cpp` hadn't
+  changed, which was true — `icons.h`'s *generated content* had, which
+  matters just as much since it's `#include`d into those same files),
+  the device kept running its old firmware's stale, smaller table.
+  Every new `:name:` code fell through `Icon::lookupByName` as
+  "unknown" and printed as literal text (`:account:` right there on the
+  screen) instead of drawing anything — no error, no crash, just a
+  wrong-looking card until the actual firmware got reflashed too.
 
 ## MQTT JSON payload schema
 Locked against the server repo (`desk-dashboard-server/DESIGN.md`) — both

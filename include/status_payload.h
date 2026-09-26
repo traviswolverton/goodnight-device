@@ -89,12 +89,32 @@ struct ServiceReading {
   }
 };
 
+// The Actions menu (DESIGN.md "Actions"): what the server says the
+// display can ask it to do. Sized to the server's own limits
+// (desk-dashboard-server app/actions.py: 12 actions, 23-byte id/label,
+// 11-byte state), so nothing it sends is ever cut here. The device
+// never learns what an action does -- it only sends the id back.
+constexpr uint8_t kMaxActions = 12;
+constexpr size_t kActionIdLen = 24;
+constexpr size_t kActionLabelLen = 24;
+constexpr size_t kActionStateLen = 12;
+constexpr size_t kActionResultTextLen = 16;
+
+struct ActionItem {
+  char id[kActionIdLen] = "";
+  char label[kActionLabelLen] = "";
+  char state[kActionStateLen] = "";  // "" = nothing shown beside the label
+  bool confirm = false;              // ask for a second press first
+};
+
 struct StatusPayload {
   char overallLevel[kLevelLen] = "ok";  // "ok" | "warn" | "down"
   char overallText[kTextLen] = "Waiting for data...";
   ServiceReading services[kMaxServices];
   uint8_t serviceCount = 0;
   char pixelHex[kNumPixels][kPixelHexLen] = {};  // "#RRGGBB", or "" = off
+  ActionItem actions[kMaxActions];
+  uint8_t actionCount = 0;
   bool valid = false;  // true once at least one message has parsed
 };
 
@@ -114,3 +134,17 @@ bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out);
 
 // Parses a homelab/alert/camera payload into `out`.
 bool parseCameraAlert(const uint8_t* data, size_t length, CameraAlert& out);
+
+// The server's reply to one action request, on homelab/action/result.
+struct ActionResult {
+  char id[kActionIdLen] = "";
+  uint16_t req = 0;  // echoes the request's counter
+  bool ok = false;
+  char text[kActionResultTextLen] = "";  // "Done", "Failed", "Too soon"...
+};
+
+bool parseActionResult(const uint8_t* data, size_t length, ActionResult& out);
+
+// Writes the homelab/action request for `actionId` into `dest`. Returns
+// the length written, or 0 if it didn't fit.
+size_t buildActionRequest(char* dest, size_t destSize, const char* actionId, uint16_t req);

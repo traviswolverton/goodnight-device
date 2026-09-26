@@ -27,3 +27,13 @@ void screenOnCameraAlert(const CameraAlert& alert);
 // ~5s on a real fetch; that gap is a deliberate, documented tradeoff
 // (see DESIGN.md), not an oversight.
 void screenCameraFetchIfPending();
+
+// Actions menu (DESIGN.md "Actions"). screen.cpp owns the menu and decides
+// when to send; main.cpp owns MQTT and supplies the sender. The sender
+// returns false when it couldn't send at all (e.g. offline).
+using ActionSender = bool (*)(const char* actionId, uint16_t requestId);
+void screenSetActionSender(ActionSender sender);
+
+// The server's reply to an action request. Safe to call from the MQTT
+// callback -- it only records the result and flags a redraw.
+void screenOnActionResult(const ActionResult& result);

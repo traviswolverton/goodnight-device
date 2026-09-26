@@ -180,6 +180,25 @@ bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out) 
     copyTruncated(out.pixelHex[i], kPixelHexLen, asCString(pixels[key]));
   }
 
+  // Absent (an older server) reads as no actions, same as an empty list.
+  JsonArrayConst actions = doc["actions"];
+  out.actionCount = 0;
+  for (JsonVariantConst action : actions) {
+    if (out.actionCount >= kMaxActions) {
+      break;  // the server caps at the same number; defense in depth
+    }
+    const char* id = asCString(action["id"]);
+    if (!id || id[0] == '\0') {
+      continue;  // nothing to send back for it -- useless as a menu row
+    }
+    ActionItem& item = out.actions[out.actionCount];
+    copyTruncated(item.id, kActionIdLen, id);
+    copyTruncated(item.label, kActionLabelLen, asCString(action["label"]) ?: id);
+    copyTruncated(item.state, kActionStateLen, asCString(action["state"]));
+    item.confirm = action["confirm"] | false;
+    out.actionCount++;
+  }
+
   out.valid = true;
   return true;
 }
@@ -197,4 +216,33 @@ bool parseCameraAlert(const uint8_t* data, size_t length, CameraAlert& out) {
   copyTruncated(out.snapshotUrl, kUrlLen, asCString(doc["snapshot_url"]));
   copyTruncated(out.text, kAlertTextLen, asCString(doc["text"]));
   return true;
+}
+
+bool parseActionResult(const uint8_t* data, size_t length, ActionResult& out) {
+  static JsonDocument doc;  // reused for the same reason as above
+  doc.clear();
+
+  DeserializationError err = deserializeJson(doc, data, length);
+  if (err) {
+    Serial.printf("[action] result JSON parse failed: %s\n", err.c_str());
+    return false;
+  }
+  copyTruncated(out.id, kActionIdLen, asCString(doc["id"]));
+  out.req = doc["req"] | 0;
+  out.ok = doc["ok"] | false;
+  copyTruncated(out.text, kActionResultTextLen, asCString(doc["text"]) ?: (out.ok ? "Done" : "Failed"));
+  return true;
+}
+
+size_t buildActionRequest(char* dest, size_t destSize, const char* actionId, uint16_t req) {
+  // snprintf rather than a JsonDocument: no heap, and no escaping is ever
+  // needed -- the server only issues ids of [a-z0-9_] (app/actions.py),
+  // and anything else is refused here rather than sent malformed.
+  for (const char* c = actionId; *c; c++) {
+    if (!((*c >= 'a' && *c <= 'z') || (*c >= '0' && *c <= '9') || *c == '_')) {
+      return 0;
+    }
+  }
+  int n = snprintf(dest, destSize, "{\"id\":\"%s\",\"req\":%u}", actionId, (unsigned)req);
+  return (n > 0 && (size_t)n < destSize) ? (size_t)n : 0;
 }

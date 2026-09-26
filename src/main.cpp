@@ -21,11 +21,17 @@ namespace {
 
 constexpr char kTopicStatus[] = "homelab/status";
 constexpr char kTopicCameraAlert[] = "homelab/alert/camera";
+// Actions (DESIGN.md "Actions"): the one topic this device publishes to,
+// and the server's replies.
+constexpr char kTopicAction[] = "homelab/action";
+constexpr char kTopicActionResult[] = "homelab/action/result";
 
 // PubSubClient's default 256-byte buffer is too small for homelab/status
 // once a couple of adapters are enabled (see DESIGN.md). Sized with
-// headroom for adapter count growing past the initial 2-3.
-constexpr size_t kMqttBufferSize = 2048;
+// headroom for adapter count growing past the initial 2-3. Doubled
+// 2048 -> 4096 with Actions: up to 12 menu entries add ~1KB to every
+// status message, and a message over the buffer is dropped whole.
+constexpr size_t kMqttBufferSize = 4096;
 
 constexpr unsigned long kWifiRetryIntervalMs = 5000;
 constexpr unsigned long kMqttRetryIntervalMs = 5000;
@@ -77,6 +83,11 @@ void onMqttMessage(char* topic, uint8_t* payload, unsigned int length) {
   if (strcmp(topic, kTopicStatus) == 0) {
     if (parseStatusPayload(payload, length, gLatestStatus)) {
       gHasNewStatus = true;
+    }
+  } else if (strcmp(topic, kTopicActionResult) == 0) {
+    ActionResult result;
+    if (parseActionResult(payload, length, result)) {
+      screenOnActionResult(result);  // records it; drawing happens in loop()
     }
   } else if (strcmp(topic, kTopicCameraAlert) == 0) {
     CameraAlert alert;
@@ -145,9 +156,27 @@ void ensureMqtt() {
     Serial.println("[mqtt] connected, subscribing...");
     mqttClient.subscribe(kTopicStatus);
     mqttClient.subscribe(kTopicCameraAlert);
+    mqttClient.subscribe(kTopicActionResult);
   } else {
     Serial.printf("[mqtt] connect failed, rc=%d\n", mqttClient.state());
   }
+}
+
+// Handed to screen.cpp, which decides WHEN to send (a press on the
+// Actions menu) but has no MQTT client of its own. False = not sent
+// (offline, or a malformed id), so the menu can say so straight away
+// instead of waiting out a reply that will never come.
+bool sendActionRequest(const char* actionId, uint16_t req) {
+  if (!mqttClient.connected()) {
+    return false;
+  }
+  char buffer[64];
+  size_t length = buildActionRequest(buffer, sizeof(buffer), actionId, req);
+  if (length == 0) {
+    return false;
+  }
+  Serial.printf("[action] sending %s (req %u)\n", actionId, (unsigned)req);
+  return mqttClient.publish(kTopicAction, reinterpret_cast<const uint8_t*>(buffer), length, false);
 }
 
 }  // namespace
@@ -166,6 +195,7 @@ void setup() {
   ledsBegin();
   backlightBegin();
   screenBegin();
+  screenSetActionSender(sendActionRequest);
 }
 
 void loop() {

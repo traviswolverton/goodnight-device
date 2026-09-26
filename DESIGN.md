@@ -224,9 +224,10 @@ Three states, not more:
 2. **MENU** — opened by encoder button press from HOME. Full-screen
    overlay, vertical list, 6 visible rows (grew from an original 5 when
    Configs was added — see Backlight/presence below), current selection
-   highlighted (inverted color). Items: Pin a screen, Mute alerts,
-   Refresh now, Network info, Configs, Back. 15-20s idle timeout returns
-   to HOME.
+   highlighted (inverted color). Items: Actions, Pin a screen, Mute
+   alerts, Refresh now, Network info, Configs, Back (7 rows at 32px since
+   Actions was added). 15-20s idle timeout returns to HOME — held off
+   while an action is in flight or showing its result.
 3. **CAMERA** — auto-triggered by an incoming `homelab/alert/camera`
    message (not reachable from the MENU item list above, and nothing in
    that list is camera-related). Suppressed entirely while muted, same
@@ -240,6 +241,34 @@ Three states, not more:
    otherwise no way to leave it once an alert had no viewer around to
    dismiss it. The fetch/decode itself runs from `loop()`, not the MQTT
    callback — see "Camera snapshot fetch" below.
+
+### Actions (MENU > Actions)
+Added 2026-09-26 with the server's Home Assistant adapter (see the
+server repo's DESIGN.md "Actions" for the full design and why it goes
+through the server rather than Home Assistant directly). This device
+stays as dumb as ever: it lists `actions[]` from the status payload,
+and a press publishes that row's `id` to `homelab/action`. It never
+knows what an action does and holds no Home Assistant credential.
+
+- Rotate to pick; the list scrolls 6 rows at a time ("more ^"/"more v"
+  hints), with a trailing Back row. No actions → a "set them up on the
+  server" note; press goes back.
+- Right side of a row, first match wins: `Sending...` (this row's request
+  in flight), the reply's `text` for 2.5s (green if ok, red if not),
+  `Press again` (a `confirm` row armed by its first press, for 3s —
+  rotating cancels it), else the server's `state`.
+- One request at a time. No reply within 5s shows `No reply`; not
+  connected to the broker shows `Offline` straight away.
+- A new status message redraws the list (fresh `state`s), keeps the
+  selection in range, and disarms any `confirm` press — the row under the
+  cursor may now be a different action.
+- screen.cpp owns the menu but not MQTT: main.cpp hands it a sender
+  (`screenSetActionSender`) and forwards replies
+  (`screenOnActionResult`, which only records — drawing stays in loop()).
+- **Broker ACL:** the `esp32-client` account needs write access to
+  `homelab/action` and read access to `homelab/action/result` (the
+  server repo's `mosquitto/config/acl.conf`). Without them the request is
+  dropped silently and the row shows `No reply`.
 
 ### Backlight / presence
 Independent of screen state — runs the same in HOME, MENU, and CAMERA.
@@ -500,7 +529,11 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
     "2": "#1D9E75",
     "3": "#1D9E75",
     "4": null
-  }
+  },
+  "actions": [
+    {"id": "desk_lamp", "label": "Desk lamp", "state": "on", "confirm": false},
+    {"id": "garage", "label": "Garage door", "state": "closed", "confirm": true}
+  ]
 }
 ```
 - `overall.level` is `"ok"` | `"warn"` | `"down"` — drives the HOME banner
@@ -526,6 +559,11 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
   does zero formatting logic on them, same as everything else here.
 - `pixels` keys are always strings `"0"`-`"4"` (JSON object keys can't be
   bare ints); `null` means "off/unassigned", not "no change".
+- `actions` (added 2026-09-26) is the MENU > Actions list, in order — see
+  "Actions" below. `state` is short live text drawn right-aligned on the
+  row (`null` = nothing); `confirm` means the row needs a second press.
+  Sized to the server's own limits (12 entries, 23-byte id/label, 11-byte
+  state), so nothing is truncated here. Absent = no actions.
 - `ts` is unix seconds. Not currently used by the firmware but parse it
   anyway — useful for staleness checks later (e.g. banner goes gray if no
   message for N minutes).
@@ -557,13 +595,31 @@ Published on any adapter state change and as a ~30-60s heartbeat regardless.
 - `text` is the pre-worded string for the CAMERA screen's caption, at
   most 63 characters (`kAlertTextLen`).
 
+### `homelab/action` (published by this device)
+```json
+{"id": "desk_lamp", "req": 17}
+```
+- The only topic this device publishes to. `id` comes straight from
+  `actions[]`; `req` is a counter this device keeps, echoed in the reply.
+  Built with `snprintf` (`buildActionRequest()`), no heap; an id outside
+  `[a-z0-9_]` is refused rather than sent unescaped.
+
+### `homelab/action/result` (published by the server)
+```json
+{"id": "desk_lamp", "req": 17, "ok": true, "text": "Done"}
+```
+- One reply per request. Only a reply matching the request in flight
+  (same `id` and `req`) is shown; anything else is ignored.
+
 ### Firmware implication
 Default `PubSubClient` payload buffer is 256 bytes — too small once
 `services` has more than 1-2 entries. Call
 `mqttClient.setBufferSize(...)` sized to the largest expected
 `homelab/status` payload, with headroom for adapter count growing past
-the initial 2-3. Done in [`src/main.cpp`](src/main.cpp) — currently 2048
-bytes, revisit if `services` grows enough to need more.
+the initial 2-3. Done in [`src/main.cpp`](src/main.cpp) — currently 4096
+bytes (was 2048 until `actions[]` added up to ~1KB to every status
+message); revisit if `services` grows enough to need more. A message
+bigger than the buffer is dropped whole, not truncated.
 
 ## Project layout
 PlatformIO project (`platformio.ini`). `src/main.cpp` wires together one

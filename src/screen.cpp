@@ -16,9 +16,19 @@
 
 namespace {
 
+// Bounded copy for the Actions bookkeeping below (status_payload.cpp has
+// its own, file-local).
+void copyTruncatedLocal(char* dest, size_t destSize, const char* src) {
+  size_t len = strlen(src);
+  if (len >= destSize) len = destSize - 1;
+  memcpy(dest, src, len);
+  dest[len] = '\0';
+}
+
 enum class State { HOME, MENU, CAMERA };
 
 const char* kMenuItems[] = {
+    "Actions",           // DESIGN.md "Actions" -- first, as the most used
     "Pin this screen",  // relabeled "Unpin screen" at draw time if pinned
     "Mute alerts",       // relabeled "Unmute alerts" at draw time if muted
     "Refresh now",
@@ -26,7 +36,7 @@ const char* kMenuItems[] = {
     "Configs",
     "Back",
 };
-constexpr uint8_t kMenuItemCount = 6;
+constexpr uint8_t kMenuItemCount = 7;
 // Seconds adjusted per encoder detent while editing the backlight
 // timeout in the Configs sub-panel.
 constexpr int32_t kBacklightStepSeconds = 5;
@@ -75,6 +85,29 @@ uint8_t menuSelection_ = 0;
 unsigned long menuIdleDeadlineMs_ = 0;
 bool menuShowingNetworkInfo_ = false;
 bool menuShowingConfigs_ = false;
+
+// MENU > Actions (DESIGN.md "Actions"). A list of lastStatus_.actions
+// plus a trailing "Back" row. Only one request is in flight at a time,
+// tracked by id rather than list position, since the list can change
+// under it when a new status arrives.
+constexpr uint8_t kActionsVisibleRows = 6;
+constexpr unsigned long kActionConfirmWindowMs = 3000;
+constexpr unsigned long kActionReplyTimeoutMs = 5000;
+constexpr unsigned long kActionFeedbackMs = 2500;
+bool menuShowingActions_ = false;
+uint8_t actionsSelection_ = 0;  // 0..actionCount; actionCount = "Back"
+uint8_t actionsScrollTop_ = 0;
+int8_t actionArmedIndex_ = -1;  // confirm-first action awaiting its second press
+unsigned long actionArmedUntilMs_ = 0;
+char actionPendingId_[kActionIdLen] = "";  // "" = nothing in flight
+uint16_t actionPendingReq_ = 0;
+unsigned long actionPendingDeadlineMs_ = 0;
+char actionFeedbackId_[kActionIdLen] = "";  // "" = no result showing
+char actionFeedbackText_[kActionResultTextLen] = "";
+bool actionFeedbackOk_ = false;
+unsigned long actionFeedbackUntilMs_ = 0;
+uint16_t actionNextReq_ = 1;
+ActionSender actionSender_ = nullptr;
 
 // CAMERA
 CameraAlert cameraAlert_;
@@ -543,6 +576,110 @@ void drawHome() {
   drawDots();
 }
 
+// Keeps the selected Actions row inside the visible window.
+void scrollActionsToSelection() {
+  if (actionsSelection_ < actionsScrollTop_) {
+    actionsScrollTop_ = actionsSelection_;
+  } else if (actionsSelection_ >= actionsScrollTop_ + kActionsVisibleRows) {
+    actionsScrollTop_ = actionsSelection_ - kActionsVisibleRows + 1;
+  }
+}
+
+// MENU > Actions: label on the left; on the right, whichever applies
+// first -- this row's request in flight, its result, "Press again" for
+// an armed confirm-first action, or the server's live state text.
+void drawActions() {
+  tft.setTextColor(TFT_WHITE, TFT_BLACK);
+  tft.setTextDatum(TL_DATUM);
+  tft.drawString("Actions", 10, 10);
+
+  uint8_t count = lastStatus_.actionCount;
+  if (count == 0) {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.drawString("No actions set up yet --", 10, 40);
+    tft.drawString("add them on the server's", 10, 60);
+    tft.drawString("Actions page.", 10, 80);
+    tft.drawString("Press to go back", 10, 120);
+    return;
+  }
+
+  uint8_t rows = count + 1;  // + "Back"
+  if (actionsScrollTop_ > 0) {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.setTextDatum(TR_DATUM);
+    tft.drawString("more ^", tft.width() - 10, 10);
+  }
+  for (uint8_t r = 0; r < kActionsVisibleRows && actionsScrollTop_ + r < rows; r++) {
+    uint8_t i = actionsScrollTop_ + r;
+    int y = 36 + r * 30;
+    bool selected = (i == actionsSelection_);
+    uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
+    tft.fillRect(0, y - 3, tft.width(), 26, bg);
+
+    tft.setTextDatum(TL_DATUM);
+    tft.setTextColor(selected ? TFT_BLACK : TFT_WHITE, bg);
+    if (i == count) {
+      tft.drawString("Back", 10, y + 2);
+      continue;
+    }
+    const ActionItem& item = lastStatus_.actions[i];
+    tft.drawString(item.label, 10, y + 2);
+
+    const char* right = item.state;
+    uint16_t rightColor = selected ? TFT_DARKGREY : TFT_LIGHTGREY;
+    if (actionPendingId_[0] && strcmp(actionPendingId_, item.id) == 0) {
+      right = "Sending...";
+      rightColor = selected ? TFT_BLUE : TFT_CYAN;
+    } else if (actionFeedbackId_[0] && strcmp(actionFeedbackId_, item.id) == 0) {
+      right = actionFeedbackText_;
+      rightColor = actionFeedbackOk_ ? (selected ? TFT_DARKGREEN : TFT_GREEN) : TFT_RED;
+    } else if (actionArmedIndex_ == (int8_t)i) {
+      right = "Press again";
+      rightColor = TFT_ORANGE;
+    }
+    if (right[0]) {
+      tft.setTextDatum(TR_DATUM);
+      tft.setTextColor(rightColor, bg);
+      tft.drawString(right, tft.width() - 10, y + 2);
+    }
+  }
+  if (actionsScrollTop_ + kActionsVisibleRows < rows) {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.setTextDatum(TR_DATUM);
+    tft.drawString("more v", tft.width() - 10, 36 + kActionsVisibleRows * 30 - 2);
+  }
+}
+
+void setActionFeedback(const char* id, const char* text, bool ok) {
+  copyTruncatedLocal(actionFeedbackId_, sizeof(actionFeedbackId_), id);
+  copyTruncatedLocal(actionFeedbackText_, sizeof(actionFeedbackText_), text);
+  actionFeedbackOk_ = ok;
+  actionFeedbackUntilMs_ = millis() + kActionFeedbackMs;
+}
+
+// Press on an Actions row (not "Back"): arm a confirm-first action, or
+// send the request.
+void pressAction(uint8_t index) {
+  const ActionItem& item = lastStatus_.actions[index];
+  if (actionPendingId_[0]) {
+    return;  // one at a time -- the reply (or its timeout) frees this up
+  }
+  if (item.confirm && actionArmedIndex_ != (int8_t)index) {
+    actionArmedIndex_ = (int8_t)index;
+    actionArmedUntilMs_ = millis() + kActionConfirmWindowMs;
+    return;
+  }
+  actionArmedIndex_ = -1;
+  uint16_t req = actionNextReq_++;
+  if (actionSender_ && actionSender_(item.id, req)) {
+    copyTruncatedLocal(actionPendingId_, sizeof(actionPendingId_), item.id);
+    actionPendingReq_ = req;
+    actionPendingDeadlineMs_ = millis() + kActionReplyTimeoutMs;
+  } else {
+    setActionFeedback(item.id, "Offline", false);
+  }
+}
+
 void drawMenu() {
   tft.setTextFont(2);  // explicit, not assumed -- see drawBanner()
   tft.fillScreen(TFT_BLACK);
@@ -558,6 +695,11 @@ void drawMenu() {
         10, 80);
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
     tft.drawString("Press to go back", 10, 120);
+    return;
+  }
+
+  if (menuShowingActions_) {
+    drawActions();
     return;
   }
 
@@ -603,23 +745,23 @@ void drawMenu() {
     return;
   }
 
-  // Row height/box tightened from the original 5-item spacing (40px,
-  // 34px box) to fit 6 items within the 240px landscape height with
-  // real margin left at the bottom, rather than landing right on the
-  // edge.
+  // Row height/box tightened twice: from the original 5-item spacing
+  // (40px, 34px box) to 36px/30px for 6 items, then to 32px/28px when
+  // Actions made it 7 -- the last row's box still ends at y=223, clear
+  // of the 240px landscape edge.
   tft.setTextDatum(TL_DATUM);
   for (uint8_t i = 0; i < kMenuItemCount; i++) {
-    int y = 8 + i * 36;
+    int y = 6 + i * 32;
     bool selected = (i == menuSelection_);
     uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
     uint16_t fg = selected ? TFT_BLACK : TFT_WHITE;
-    tft.fillRect(0, y - 3, tft.width(), 30, bg);
+    tft.fillRect(0, y - 3, tft.width(), 28, bg);
     tft.setTextColor(fg, bg);
 
     String label = kMenuItems[i];
-    if (i == 0) label = (pinnedCardIndex_ >= 0) ? "Unpin screen" : "Pin this screen";
-    if (i == 1) label = muted_ ? "Unmute alerts" : "Mute alerts";
-    tft.drawString(label, 10, y + 8);
+    if (i == 1) label = (pinnedCardIndex_ >= 0) ? "Unpin screen" : "Pin this screen";
+    if (i == 2) label = muted_ ? "Unmute alerts" : "Mute alerts";
+    tft.drawString(label, 10, y + 3);
   }
 }
 
@@ -861,6 +1003,8 @@ void enterMenu() {
   menuSelection_ = 0;
   menuShowingNetworkInfo_ = false;
   menuShowingConfigs_ = false;
+  menuShowingActions_ = false;
+  actionArmedIndex_ = -1;
   configsEditing_ = ConfigsField::kNone;
   configsSelection_ = 0;
   menuIdleDeadlineMs_ = millis() + kIdleTimeoutMs;
@@ -917,6 +1061,16 @@ void screenUpdate(const StatusPayload& status, bool isNewStatus) {
   if (isNewStatus) {
     lastStatus_ = status;
     if (state_ == State::HOME) needsRedraw_ = true;
+    if (state_ == State::MENU && menuShowingActions_) {
+      // Fresh live states. The list may have changed length or order:
+      // keep the selection in range and drop an arm made on a row that
+      // might now be a different action.
+      if (actionsSelection_ > lastStatus_.actionCount) actionsSelection_ = lastStatus_.actionCount;
+      actionsScrollTop_ = 0;
+      scrollActionsToSelection();
+      actionArmedIndex_ = -1;
+      needsRedraw_ = true;
+    }
   }
 
   unsigned long now = millis();
@@ -945,6 +1099,22 @@ void screenUpdate(const StatusPayload& status, bool isNewStatus) {
       updateCardScroll(34, tft.height() - 20);
     }
   } else if (state_ == State::MENU) {
+    if (actionArmedIndex_ >= 0 && now >= actionArmedUntilMs_) {
+      actionArmedIndex_ = -1;
+      needsRedraw_ = true;
+    }
+    if (actionPendingId_[0] && now >= actionPendingDeadlineMs_) {
+      setActionFeedback(actionPendingId_, "No reply", false);
+      actionPendingId_[0] = '\0';
+      needsRedraw_ = true;
+    }
+    if (actionFeedbackId_[0] && now >= actionFeedbackUntilMs_) {
+      actionFeedbackId_[0] = '\0';
+      needsRedraw_ = true;
+    }
+    if (actionPendingId_[0] || actionFeedbackId_[0]) {
+      menuIdleDeadlineMs_ = now + kIdleTimeoutMs;  // don't time out mid-action
+    }
     if (now >= menuIdleDeadlineMs_) {
       enterHome();
     }
@@ -1021,6 +1191,15 @@ void screenOnEncoderDelta(int32_t delta) {
     cardStepDivisor_ = next;
     menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
     needsRedraw_ = true;
+  } else if (state_ == State::MENU && menuShowingActions_) {
+    int32_t rows = (int32_t)lastStatus_.actionCount + 1;  // + "Back"
+    int32_t idx = ((int32_t)actionsSelection_ + delta) % rows;
+    if (idx < 0) idx += rows;
+    actionsSelection_ = (uint8_t)idx;
+    scrollActionsToSelection();
+    actionArmedIndex_ = -1;  // moving away cancels a pending confirm
+    menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
+    needsRedraw_ = true;
   } else if (state_ == State::MENU && !menuShowingNetworkInfo_) {
     int32_t idx = ((int32_t)menuSelection_ + delta) % (int32_t)kMenuItemCount;
     if (idx < 0) idx += kMenuItemCount;
@@ -1042,6 +1221,17 @@ void screenOnEncoderPress() {
     case State::MENU:
       if (menuShowingNetworkInfo_) {
         menuShowingNetworkInfo_ = false;
+        menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
+        needsRedraw_ = true;
+        break;
+      }
+      if (menuShowingActions_) {
+        if (actionsSelection_ >= lastStatus_.actionCount) {
+          menuShowingActions_ = false;  // "Back", or nothing to pick
+          actionArmedIndex_ = -1;
+        } else {
+          pressAction(actionsSelection_);
+        }
         menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
         needsRedraw_ = true;
         break;
@@ -1079,30 +1269,37 @@ void screenOnEncoderPress() {
       }
       menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
       switch (menuSelection_) {
-        case 0:  // Pin / unpin this screen
+        case 0:  // Actions
+          menuShowingActions_ = true;
+          actionsSelection_ = 0;
+          actionsScrollTop_ = 0;
+          actionArmedIndex_ = -1;
+          needsRedraw_ = true;
+          break;
+        case 1:  // Pin / unpin this screen
           pinnedCardIndex_ = (pinnedCardIndex_ >= 0) ? -1 : (int8_t)cardIndex_;
           enterHome();
           break;
-        case 1:  // Mute / unmute alerts
+        case 2:  // Mute / unmute alerts
           muted_ = !muted_;
           enterHome();
           break;
-        case 2:
+        case 3:
           // Refresh now -- there's no request/reply model here (the
           // server only pushes), so this just redraws HOME immediately
           // from the latest cached payload rather than triggering any
           // network activity.
           enterHome();
           break;
-        case 3:  // Network info
+        case 4:  // Network info
           menuShowingNetworkInfo_ = true;
           needsRedraw_ = true;
           break;
-        case 4:  // Configs
+        case 5:  // Configs
           menuShowingConfigs_ = true;
           needsRedraw_ = true;
           break;
-        case 5:  // Back
+        case 6:  // Back
           enterHome();
           break;
       }
@@ -1141,6 +1338,24 @@ void screenCameraFetchIfPending() {
     // Let the normal drawCamera() chrome show the failure text. On
     // success, fetchAndDecodeSnapshot() already drew the final image +
     // caption directly -- nothing else to redraw.
+    needsRedraw_ = true;
+  }
+}
+
+void screenSetActionSender(ActionSender sender) {
+  actionSender_ = sender;
+}
+
+void screenOnActionResult(const ActionResult& result) {
+  // Only the reply to the request actually in flight counts -- a late
+  // reply to one that already timed out is ignored.
+  if (!actionPendingId_[0] || result.req != actionPendingReq_ ||
+      strcmp(result.id, actionPendingId_) != 0) {
+    return;
+  }
+  setActionFeedback(result.id, result.text, result.ok);
+  actionPendingId_[0] = '\0';
+  if (state_ == State::MENU && menuShowingActions_) {
     needsRedraw_ = true;
   }
 }

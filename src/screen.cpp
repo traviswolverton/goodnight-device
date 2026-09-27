@@ -99,10 +99,6 @@ bool muted_ = false;
 
 // MENU
 uint8_t menuSelection_ = 0;
-// Top-level list scrolls now (kMenuVisibleRows of kMenuItemCount, big
-// text) -- same reason and same mechanics as Actions' own scroll below,
-// just for the item list every other MENU screen branches off of.
-uint8_t menuScrollTop_ = 0;
 unsigned long menuIdleDeadlineMs_ = 0;
 bool menuShowingNetworkInfo_ = false;
 bool menuShowingConfigs_ = false;
@@ -670,8 +666,13 @@ void scrollActionsToSelection() {
 // height) as the HOME card lines, rather than the small font 2 the rest
 // of the chrome uses -- the menu is read from further away than the
 // banner, so it gets the big text too. Rows: 34px pitch with a 32px
-// highlight box and the label vertically centered in it. That fits a
-// title row plus 5 list rows on the sub-screens (Actions, Configs).
+// highlight box and the label vertically centered in it. That fits the
+// top-level menu's 7 rows in the 240px landscape height (last box ends
+// at y=237), or a title row plus 5 list rows on the sub-screens. A
+// larger (2x) variant for the top-level list specifically was tried and
+// reverted (2026-09-27) -- looked "comically large" on real hardware;
+// this same size, matching every sub-screen and the HOME card lines, is
+// the one that actually reads right.
 constexpr int kMenuRowPitch = 34;
 constexpr int kMenuRowBox = 32;
 // Vertical centers for the plain-text lines on the non-list screens
@@ -681,45 +682,12 @@ constexpr int kMenuTitleY = 17;
 constexpr int kMenuLineY[] = {55, 85, 115};
 constexpr int kMenuHintY[] = {160, 190, 220};
 
-// The top-level list (Actions, Pin, Mute, ...) draws bigger than that --
-// it's the one screen read from furthest away and picked most often, so
-// it gets Font 4 at 2x scale (52px-tall glyphs) rather than the sub-screens'
-// 1x. That no longer fits all 7 items at once, so it scrolls
-// (kMenuVisibleRows/menuScrollTop_), same fits-some-not-all shape as
-// Actions already uses below, just for this list instead of that one.
-// 3 visible rows, not more: a 34px top strip for the "more ^" hint
-// (reusing kMenuRowPitch/kMenuTitleY -- same slot Actions' title row
-// sits in, just with no title text to share it with here) + 3*50px
-// rows = 184px, leaving a genuinely comfortable 56px for the "more v"
-// hint below instead of the few leftover pixels 4 rows would leave.
-constexpr int kMenuRowPitchBig = 50;
-constexpr int kMenuRowBoxBig = 48;
-constexpr uint8_t kMenuTextSizeBig = 2;
-constexpr uint8_t kMenuVisibleRows = 3;
-
-// One selectable row, box top at `top`, scaled by textSize (2 for the
-// top-level list, 1 -- the default, unscaled -- for every sub-screen's
-// list). Assumes ML_DATUM. boxHeight is the caller's own row box
-// constant (kMenuRowBox or kMenuRowBoxBig) since it has to match
-// whichever pitch the caller is stepping by.
-void drawMenuRow(int top, const String& label, bool selected, int boxHeight = kMenuRowBox,
-                  uint8_t textSize = 1) {
+// One selectable row, box top at `top`. Assumes ML_DATUM.
+void drawMenuRow(int top, const String& label, bool selected) {
   uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
-  tft.fillRect(0, top, tft.width(), boxHeight, bg);
+  tft.fillRect(0, top, tft.width(), kMenuRowBox, bg);
   tft.setTextColor(selected ? TFT_BLACK : TFT_WHITE, bg);
-  tft.setTextSize(textSize);
-  tft.drawString(label, 10, top + boxHeight / 2);
-  tft.setTextSize(1);  // every other MENU draw call assumes this
-}
-
-// Keeps the selected top-level item inside the visible window -- same
-// mechanics as scrollActionsToSelection(), for the list one level up.
-void scrollMenuToSelection() {
-  if (menuSelection_ < menuScrollTop_) {
-    menuScrollTop_ = menuSelection_;
-  } else if (menuSelection_ >= menuScrollTop_ + kMenuVisibleRows) {
-    menuScrollTop_ = menuSelection_ - kMenuVisibleRows + 1;
-  }
+  tft.drawString(label, 10, top + kMenuRowBox / 2);
 }
 
 // One non-selectable line centered on midY. Assumes ML_DATUM.
@@ -881,26 +849,11 @@ void drawMenuBody() {
     return;
   }
 
-  if (menuScrollTop_ > 0) {
-    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.setTextDatum(MR_DATUM);
-    tft.drawString("more ^", tft.width() - 10, kMenuTitleY);
-    tft.setTextDatum(ML_DATUM);
-  }
-  for (uint8_t r = 0; r < kMenuVisibleRows && menuScrollTop_ + r < kMenuItemCount; r++) {
-    uint8_t i = menuScrollTop_ + r;
+  for (uint8_t i = 0; i < kMenuItemCount; i++) {
     String label = kMenuItems[i];
     if (i == 1) label = (pinnedCardIndex_ >= 0) ? "Unpin screen" : "Pin this screen";
     if (i == 2) label = muted_ ? "Unmute alerts" : "Mute alerts";
-    int top = kMenuRowPitch + r * kMenuRowPitchBig;
-    drawMenuRow(top, label, i == menuSelection_, kMenuRowBoxBig, kMenuTextSizeBig);
-  }
-  if (menuScrollTop_ + kMenuVisibleRows < kMenuItemCount) {
-    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.setTextDatum(MR_DATUM);
-    tft.drawString("more v", tft.width() - 10,
-                    kMenuRowPitch + kMenuVisibleRows * kMenuRowPitchBig + 20);
-    tft.setTextDatum(ML_DATUM);
+    drawMenuRow(1 + i * kMenuRowPitch, label, i == menuSelection_);
   }
 }
 
@@ -1164,7 +1117,6 @@ void persistConfigsEdit() {
 void enterMenu() {
   state_ = State::MENU;
   menuSelection_ = 0;
-  menuScrollTop_ = 0;
   menuShowingNetworkInfo_ = false;
   menuShowingConfigs_ = false;
   menuShowingActions_ = false;
@@ -1393,7 +1345,6 @@ void screenOnEncoderDelta(int32_t delta) {
     int32_t idx = ((int32_t)menuSelection_ + delta) % (int32_t)kMenuItemCount;
     if (idx < 0) idx += kMenuItemCount;
     menuSelection_ = (uint8_t)idx;
-    scrollMenuToSelection();
     menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
     needsRedraw_ = true;
   }

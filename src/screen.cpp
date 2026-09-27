@@ -207,7 +207,10 @@ bool iconFontReady_ = false;
 void drawIconGlyph(uint16_t codepoint, int x, int y, uint16_t color) {
   uint8_t savedDatum = tft.getTextDatum();
   tft.setTextDatum(MC_DATUM);
-  tft.setTextColor(color, TFT_BLACK);
+  // bgfill=true: the smooth font otherwise only blends the glyph's own
+  // pixels and leaves the rest of its cell alone, so an icon on a
+  // scrolling line smeared a trail of its previous positions.
+  tft.setTextColor(color, TFT_BLACK, true);
   // Every codepoint here is >= 0xE000 (see tools/icons/build_icons.py),
   // always a 3-byte UTF-8 sequence.
   char utf8[4] = {
@@ -390,6 +393,9 @@ void drawBanner() {
 }
 
 void drawDots() {
+  // Cleared first: nothing else repaints this strip, so when the number of
+  // cards changed (say 3 -> 9) the old dots stayed under the new ones.
+  tft.fillRect(0, tft.height() - 20, tft.width(), 20, TFT_BLACK);
   if (lastStatus_.serviceCount == 0) return;
   int totalWidth = lastStatus_.serviceCount * 16;
   int startX = (tft.width() - totalWidth) / 2 + 8;
@@ -470,8 +476,24 @@ void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint
   drawRunsText(text, runs, runCount, x, midY);
   if (scrolls) drawRunsText(text, runs, runCount, x + cycle, midY);  // trailing copy, seamless wrap
 
+  if (scrolls) {
+    // Each tick moves the text left by kScrollStepPx, and drawString only
+    // repaints the character cells it draws: the strip each copy just
+    // vacated kept the previous frame's pixels, piling up into vertical
+    // stripes after the text (seen on hardware 2026-09-27). The gaps are
+    // meant to be empty, so clearing them costs nothing visible.
+    tft.fillRect(x + textW, 0, cycle - textW, lineHeight, TFT_BLACK);
+    tft.fillRect(x + cycle + textW, 0, cycle - textW, lineHeight, TFT_BLACK);
+  }
+
   if (hasIcons && iconFontReady_) {
     tft.loadFont("icons");
+    // Off, or a glyph reaching past the viewport's right edge gets
+    // "wrapped" onto the next line down (Smooth_font.cpp drawGlyph) --
+    // clipped by the viewport to just its top, a stray triangle under
+    // the row. A scrolling line's trailing copy crosses that edge on
+    // every lap.
+    tft.setTextWrap(false, false);
     drawRunsIcons(runs, runCount, x, midY, color);
     if (scrolls) drawRunsIcons(runs, runCount, x + cycle, midY, color);
     tft.unloadFont();

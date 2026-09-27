@@ -1,25 +1,19 @@
 #pragma once
 
-#include <stdint.h>
+#include "dimmer.h"
 
 // Thin wrapper around the ESP32's NVS-backed Preferences library, for the
-// two Configs-menu values that are meant to survive a reboot: backlight
-// timeout and card sensitivity. See DESIGN.md's "Backlight / presence"
-// and "Configs" sections for why those two (no safety angle either way)
-// and NOT mute/pin (deliberately reset every boot -- fail toward showing
-// alerts, not silently staying muted after an unattended reboot). Keep
-// it that way: don't add a persist function here for mute/pin without
-// re-reading that reasoning first.
+// settings that should survive a reboot even when the server is
+// unreachable. Today that's the dimmer: the server sends it on
+// bedside/config (retained), and the last copy received is kept here so a
+// power cut in the night doesn't bring the screen back at full brightness
+// with defaults until the WiFi and broker come up.
 //
-// Each getter falls back to the given default when nothing's been saved
-// yet (first boot, or after a full chip erase) -- callers don't need to
-// special-case "no value stored" themselves.
+// Loading falls back to the given defaults for anything never saved
+// (first boot, or after a full chip erase).
 
-uint16_t settingsLoadBacklightTimeoutSeconds(uint16_t defaultValue);
-void settingsSaveBacklightTimeoutSeconds(uint16_t seconds);
+DimmerSettings settingsLoadDimmer(const DimmerSettings& defaults);
 
-int32_t settingsLoadCardStepDivisor(int32_t defaultValue);
-void settingsSaveCardStepDivisor(int32_t divisor);
-
-uint16_t settingsLoadCardRotationSeconds(uint16_t defaultValue);
-void settingsSaveCardRotationSeconds(uint16_t seconds);
+// Writes only when something differs from what's stored, so a retained
+// config re-delivered on every reconnect costs no flash writes.
+void settingsSaveDimmer(const DimmerSettings& settings);

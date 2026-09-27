@@ -14,7 +14,7 @@ void otaBegin() {
              // skip the hostname/callback setup redundantly too.
   }
 
-  ArduinoOTA.setHostname("desk-dashboard-esp32");
+  ArduinoOTA.setHostname("bedside-dashboard-esp32");
   // Without a password, anything on the LAN could push firmware to this
   // board -- OTA_PASSWORD lives in secrets.h same as the WiFi/MQTT
   // credentials, never committed.

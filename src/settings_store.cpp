@@ -4,64 +4,45 @@
 
 namespace {
 
-// One shared NVS namespace for every persisted Configs value, rather
-// than a namespace per field -- this is a handful of small settings,
-// not a growing schema. (15-char limit on namespace/key names is an NVS
-// constraint, not a style choice, hence the abbreviations.)
-constexpr char kNamespace[] = "dashcfg";
-constexpr char kKeyBacklightTimeout[] = "bl_secs";
-constexpr char kKeyCardStepDivisor[] = "card_div";
-constexpr char kKeyCardRotationSecs[] = "card_secs";
+// 15-char limit on namespace/key names is an NVS constraint, hence the
+// abbreviations.
+constexpr char kNamespace[] = "bedcfg";
+constexpr char kKeyBrightLux[] = "bright_lux";
+constexpr char kKeyDarkLux[] = "dark_lux";
+constexpr char kKeyDimContrast[] = "dim_contrast";
+constexpr char kKeyWakeSeconds[] = "wake_secs";
 
 }  // namespace
 
 // Preferences::begin(..., /*readOnly=*/true) on a namespace that hasn't
-// been written to yet simply fails to open -- it doesn't crash or throw,
-// and every getter on an unopened Preferences instance falls through to
-// the caller-supplied default. So first boot (nothing saved) and a normal
-// "value not present" both take the same path here with no special-casing.
+// been written yet simply fails to open, and every getter then returns
+// the caller's default -- so "never saved" needs no special case.
 
-uint16_t settingsLoadBacklightTimeoutSeconds(uint16_t defaultValue) {
+DimmerSettings settingsLoadDimmer(const DimmerSettings& defaults) {
   Preferences prefs;
   prefs.begin(kNamespace, /*readOnly=*/true);
-  uint16_t value = prefs.getUShort(kKeyBacklightTimeout, defaultValue);
+  DimmerSettings s;
+  s.brightLux = prefs.getFloat(kKeyBrightLux, defaults.brightLux);
+  s.darkLux = prefs.getFloat(kKeyDarkLux, defaults.darkLux);
+  s.dimContrast = prefs.getUChar(kKeyDimContrast, defaults.dimContrast);
+  s.wakeSeconds = prefs.getUShort(kKeyWakeSeconds, defaults.wakeSeconds);
   prefs.end();
-  return value;
+  return s;
 }
 
-void settingsSaveBacklightTimeoutSeconds(uint16_t seconds) {
+void settingsSaveDimmer(const DimmerSettings& settings) {
   Preferences prefs;
   prefs.begin(kNamespace, /*readOnly=*/false);
-  prefs.putUShort(kKeyBacklightTimeout, seconds);
-  prefs.end();
-}
-
-int32_t settingsLoadCardStepDivisor(int32_t defaultValue) {
-  Preferences prefs;
-  prefs.begin(kNamespace, /*readOnly=*/true);
-  int32_t value = prefs.getInt(kKeyCardStepDivisor, defaultValue);
-  prefs.end();
-  return value;
-}
-
-void settingsSaveCardStepDivisor(int32_t divisor) {
-  Preferences prefs;
-  prefs.begin(kNamespace, /*readOnly=*/false);
-  prefs.putInt(kKeyCardStepDivisor, divisor);
-  prefs.end();
-}
-
-uint16_t settingsLoadCardRotationSeconds(uint16_t defaultValue) {
-  Preferences prefs;
-  prefs.begin(kNamespace, /*readOnly=*/true);
-  uint16_t value = prefs.getUShort(kKeyCardRotationSecs, defaultValue);
-  prefs.end();
-  return value;
-}
-
-void settingsSaveCardRotationSeconds(uint16_t seconds) {
-  Preferences prefs;
-  prefs.begin(kNamespace, /*readOnly=*/false);
-  prefs.putUShort(kKeyCardRotationSecs, seconds);
+  if (prefs.isKey(kKeyBrightLux) && prefs.getFloat(kKeyBrightLux) == settings.brightLux &&
+      prefs.getFloat(kKeyDarkLux) == settings.darkLux &&
+      prefs.getUChar(kKeyDimContrast) == settings.dimContrast &&
+      prefs.getUShort(kKeyWakeSeconds) == settings.wakeSeconds) {
+    prefs.end();
+    return;
+  }
+  prefs.putFloat(kKeyBrightLux, settings.brightLux);
+  prefs.putFloat(kKeyDarkLux, settings.darkLux);
+  prefs.putUChar(kKeyDimContrast, settings.dimContrast);
+  prefs.putUShort(kKeyWakeSeconds, settings.wakeSeconds);
   prefs.end();
 }

@@ -20,3 +20,6 @@ void settingsSaveBacklightTimeoutSeconds(uint16_t seconds);
 
 int32_t settingsLoadCardStepDivisor(int32_t defaultValue);
 void settingsSaveCardStepDivisor(int32_t divisor);
+
+uint16_t settingsLoadCardRotationSeconds(uint16_t defaultValue);
+void settingsSaveCardRotationSeconds(uint16_t seconds);

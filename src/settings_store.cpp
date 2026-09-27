@@ -11,6 +11,7 @@ namespace {
 constexpr char kNamespace[] = "dashcfg";
 constexpr char kKeyBacklightTimeout[] = "bl_secs";
 constexpr char kKeyCardStepDivisor[] = "card_div";
+constexpr char kKeyCardRotationSecs[] = "card_secs";
 
 }  // namespace
 
@@ -47,5 +48,20 @@ void settingsSaveCardStepDivisor(int32_t divisor) {
   Preferences prefs;
   prefs.begin(kNamespace, /*readOnly=*/false);
   prefs.putInt(kKeyCardStepDivisor, divisor);
+  prefs.end();
+}
+
+uint16_t settingsLoadCardRotationSeconds(uint16_t defaultValue) {
+  Preferences prefs;
+  prefs.begin(kNamespace, /*readOnly=*/true);
+  uint16_t value = prefs.getUShort(kKeyCardRotationSecs, defaultValue);
+  prefs.end();
+  return value;
+}
+
+void settingsSaveCardRotationSeconds(uint16_t seconds) {
+  Preferences prefs;
+  prefs.begin(kNamespace, /*readOnly=*/false);
+  prefs.putUShort(kKeyCardRotationSecs, seconds);
   prefs.end();
 }

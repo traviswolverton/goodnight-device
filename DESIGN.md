@@ -218,9 +218,14 @@ Notes:
 ### Screen state machine
 Three states, not more:
 1. **HOME** (default) — top banner (~30px) shows alert status
-   (green/amber/red + short text); body auto-rotates through status cards
-   every 4-5s; bottom shows position dots. Manual encoder rotation pauses
-   auto-rotate for ~10s then resumes.
+   (green/amber/red + short text); body auto-rotates through status
+   cards; bottom shows position dots. Manual encoder rotation pauses
+   auto-rotate for ~10s then resumes. Per-card display time is a
+   Configs-menu minimum (`cardRotationSeconds_`, 5s default), not a
+   fixed interval — extended, if needed, until every scrolling detail
+   line on that card has completed one full marquee pass, so a card
+   with long text never gets cut away mid-scroll (`computeCardDisplayMs()`
+   in `screen.cpp`).
 2. **MENU** — opened by encoder button press from HOME. Full-screen
    overlay, vertical list, 6 visible rows (grew from an original 5 when
    Configs was added — see Backlight/presence below), current selection

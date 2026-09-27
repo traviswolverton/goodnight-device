@@ -45,11 +45,20 @@ constexpr int32_t kBacklightStepSeconds = 5;
 // value), nested one level inside MENU the same way MENU nests inside
 // HOME: a list to pick a field from, then an edit view for whichever
 // field was picked.
-enum class ConfigsField : uint8_t { kNone, kBacklightTimeout, kCardSensitivity };
-const char* kConfigsItems[] = {"Backlight timeout", "Card sensitivity", "Back"};
-constexpr uint8_t kConfigsItemCount = 3;
+enum class ConfigsField : uint8_t { kNone, kBacklightTimeout, kCardSensitivity, kCardRotation };
+const char* kConfigsItems[] = {"Backlight timeout", "Card sensitivity", "Card display time", "Back"};
+constexpr uint8_t kConfigsItemCount = 4;
 ConfigsField configsEditing_ = ConfigsField::kNone;
 uint8_t configsSelection_ = 0;
+
+// Seconds adjusted per encoder detent while editing the card rotation
+// time (below), and the persisted value's own range -- see
+// computeCardDisplayMs() for how this becomes a MINIMUM, not a fixed
+// interval: a card with a scrolling line stays up past this until that
+// line finishes one full pass, rather than getting cut off mid-scroll.
+constexpr int32_t kCardRotationStepSeconds = 1;
+constexpr int32_t kCardRotationSecondsMin = 2;
+constexpr int32_t kCardRotationSecondsMax = 30;
 
 // Raw encoder counts per HOME card change -- higher = less sensitive.
 // Added after real-world use: a small physical turn was jumping through
@@ -67,6 +76,14 @@ constexpr int32_t kCardStepDivisorDefault = 4;
 int32_t cardStepDivisor_ = kCardStepDivisorDefault;
 constexpr int32_t kCardStepDivisorMin = 1;
 constexpr int32_t kCardStepDivisorMax = 10;
+
+// Minimum seconds each HOME card stays up before auto-rotating to the
+// next one -- see computeCardDisplayMs() for why this is a floor, not
+// the actual interval. 5s was the fixed value this replaced.
+constexpr uint16_t kCardRotationSecondsDefault = 5;
+// Overwritten in screenBegin() with whatever's persisted in NVS, same
+// reason cardStepDivisor_ is (can't load from NVS before setup() runs).
+uint16_t cardRotationSeconds_ = kCardRotationSecondsDefault;
 
 TFT_eSPI tft;
 State state_ = State::HOME;
@@ -502,6 +519,44 @@ void drawCardLine(const char* text, int lineIndex, int top, int lineHeight, uint
   tft.resetViewport();
 }
 
+// If `text` would scroll at the given inset (same test drawCardLine()
+// uses), returns the time in ms for one full marquee pass; 0 if it
+// fits and never scrolls. Font 4 must already be selected -- this is a
+// pure measurement, no drawing.
+unsigned long lineCycleMs(const char* text, int leftInset) {
+  LineRun runs[kMaxLineRuns];
+  int runCount = splitLineRuns(text, runs, kMaxLineRuns);
+  computeRunWidths(text, runs, runCount);
+  int textW = totalRunsWidth(runs, runCount);
+  int availW = tft.width() - 12 - leftInset;
+  if (textW <= availW) return 0;
+  int cycle = textW + 40;  // 40px gap before the marquee repeats, matches drawCardLine()
+  return (unsigned long)((cycle + kScrollStepPx - 1) / kScrollStepPx) * kScrollTickMs;
+}
+
+// How long the card at `index` should stay up on HOME before
+// auto-rotating: cardRotationSeconds_ as a floor, extended to whatever
+// the slowest-scrolling line (title or any detail line) needs for one
+// full marquee pass, so a card is never yanked away mid-scroll. A card
+// with nothing scrolling just gets exactly cardRotationSeconds_.
+unsigned long computeCardDisplayMs(uint8_t index) {
+  unsigned long minMs = (unsigned long)cardRotationSeconds_ * 1000UL;
+  if (index >= lastStatus_.serviceCount) return minMs;
+
+  const ServiceReading& card = lastStatus_.services[index];
+  uint8_t savedFont = tft.textfont;
+  tft.setTextFont(4);  // same font drawCardLine() measures/draws in
+
+  unsigned long neededMs = lineCycleMs(card.title, kTitleIconInset);
+  for (uint8_t i = 0; i < card.detailLineCount; i++) {
+    unsigned long ms = lineCycleMs(card.detailLine(i), 0);
+    if (ms > neededMs) neededMs = ms;
+  }
+
+  tft.setTextFont(savedFont);
+  return neededMs > minMs ? neededMs : minMs;
+}
+
 // Icon indicating a card's status, drawn to the left of the title text --
 // the same information already carried by the title's text color, just
 // readable at a glance without reading the color. Used to be a plain
@@ -755,15 +810,28 @@ void drawMenu() {
       return;
     }
 
-    // ConfigsField::kCardSensitivity
+    if (configsEditing_ == ConfigsField::kCardSensitivity) {
+      tft.setTextColor(TFT_WHITE, TFT_BLACK);
+      tft.drawString("Card sensitivity", 10, 10);
+      char line[40];
+      snprintf(line, sizeof(line), "%ld raw steps / card", (long)cardStepDivisor_);
+      tft.drawString(line, 10, 40);
+      tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+      tft.drawString("Rotate to adjust (lower = faster)", 10, 70);
+      tft.drawString("Press to save and go back", 10, 90);
+      return;
+    }
+
+    // ConfigsField::kCardRotation
     tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString("Card sensitivity", 10, 10);
+    tft.drawString("Card display time", 10, 10);
     char line[40];
-    snprintf(line, sizeof(line), "%ld raw steps / card", (long)cardStepDivisor_);
+    snprintf(line, sizeof(line), "%u s minimum", cardRotationSeconds_);
     tft.drawString(line, 10, 40);
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.drawString("Rotate to adjust (lower = faster)", 10, 70);
-    tft.drawString("Press to save and go back", 10, 90);
+    tft.drawString("Rotate to adjust (1s steps)", 10, 70);
+    tft.drawString("Extends for a scrolling line", 10, 90);
+    tft.drawString("Press to save and go back", 10, 110);
     return;
   }
 
@@ -1055,7 +1123,6 @@ void screenBegin() {
   tft.setRotation(1);  // portrait panel -> landscape 320x240, per DESIGN.md
   tft.fillScreen(TFT_BLACK);
   tft.setTextFont(2);
-  nextAutoRotateMs_ = millis() + kCardRotationMs;
 
   // Mounts the same SPIFFS partition data/icons.vlw was uploaded to via
   // `pio run -t uploadfs` (separate from the normal -t upload/OTA flash
@@ -1064,11 +1131,17 @@ void screenBegin() {
   // mean drawIcon() no-ops, not silently wipe whatever's actually there.
   iconFontReady_ = SPIFFS.begin(false);
 
-  // Card sensitivity persists across a reboot (see settings_store.h for
-  // why this one and backlight timeout, but not mute/pin). Backlight
-  // timeout's own load happens inside backlightBegin() instead, since
-  // that's the module that owns timeoutSeconds_.
+  // Card sensitivity and rotation time persist across a reboot (see
+  // settings_store.h for why these two and backlight timeout, but not
+  // mute/pin). Backlight timeout's own load happens inside
+  // backlightBegin() instead, since that's the module that owns
+  // timeoutSeconds_.
   cardStepDivisor_ = settingsLoadCardStepDivisor(kCardStepDivisorDefault);
+  cardRotationSeconds_ = settingsLoadCardRotationSeconds(kCardRotationSecondsDefault);
+  // No status yet (serviceCount == 0), so this is just
+  // cardRotationSeconds_ verbatim -- computeCardDisplayMs() reflects the
+  // just-loaded value rather than the compile-time default.
+  nextAutoRotateMs_ = millis() + computeCardDisplayMs(0);
 
   // TJpg_Decoder setup -- doesn't change per-alert, so this is done once
   // here rather than inside fetchAndDecodeSnapshot(). setSwapBytes(true)
@@ -1104,7 +1177,11 @@ void screenUpdate(const StatusPayload& status, bool isNewStatus) {
         cardIndex_ = (cardIndex_ + 1) % lastStatus_.serviceCount;
         resetCardScroll();  // fresh marquee start for the newly-shown card
       }
-      nextAutoRotateMs_ = now + kCardRotationMs;
+      // cardRotationSeconds_ is a floor, not the actual interval -- a
+      // card with a scrolling line stays up until that line completes
+      // one full marquee pass, however long that takes, rather than
+      // getting cut off mid-scroll (see computeCardDisplayMs()).
+      nextAutoRotateMs_ = now + computeCardDisplayMs(cardIndex_);
       needsRedraw_ = true;
     }
     // Ticks scroll offsets for whichever card is currently shown,
@@ -1181,6 +1258,10 @@ void screenOnEncoderDelta(int32_t delta) {
       if (idx < 0) idx += lastStatus_.serviceCount;
       cardIndex_ = (uint8_t)idx;
       resetCardScroll();  // fresh marquee start for the newly-shown card
+      // So the manually-picked card gets its own full window once the
+      // pause below ends, instead of auto-rotate immediately firing on
+      // a now-stale deadline from whatever card was showing before.
+      nextAutoRotateMs_ = now + kCardRotationPauseMs + computeCardDisplayMs(cardIndex_);
       needsRedraw_ = true;
     }
     autoRotatePausedUntilMs_ = now + kCardRotationPauseMs;
@@ -1205,12 +1286,20 @@ void screenOnEncoderDelta(int32_t delta) {
     backlightSetTimeoutSeconds((uint16_t)next);
     menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
     needsRedraw_ = true;
-  } else if (state_ == State::MENU && menuShowingConfigs_) {
-    // configsEditing_ == kCardSensitivity
+  } else if (state_ == State::MENU && menuShowingConfigs_ &&
+             configsEditing_ == ConfigsField::kCardSensitivity) {
     int32_t next = cardStepDivisor_ + delta;
     if (next < kCardStepDivisorMin) next = kCardStepDivisorMin;
     if (next > kCardStepDivisorMax) next = kCardStepDivisorMax;
     cardStepDivisor_ = next;
+    menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
+    needsRedraw_ = true;
+  } else if (state_ == State::MENU && menuShowingConfigs_) {
+    // configsEditing_ == kCardRotation
+    int32_t next = (int32_t)cardRotationSeconds_ + delta * kCardRotationStepSeconds;
+    if (next < kCardRotationSecondsMin) next = kCardRotationSecondsMin;
+    if (next > kCardRotationSecondsMax) next = kCardRotationSecondsMax;
+    cardRotationSeconds_ = (uint16_t)next;
     menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
     needsRedraw_ = true;
   } else if (state_ == State::MENU && menuShowingActions_) {
@@ -1270,6 +1359,8 @@ void screenOnEncoderPress() {
             backlightPersistTimeoutSeconds();
           } else if (configsEditing_ == ConfigsField::kCardSensitivity) {
             settingsSaveCardStepDivisor(cardStepDivisor_);
+          } else if (configsEditing_ == ConfigsField::kCardRotation) {
+            settingsSaveCardRotationSeconds(cardRotationSeconds_);
           }
           configsEditing_ = ConfigsField::kNone;
         } else {
@@ -1280,7 +1371,10 @@ void screenOnEncoderPress() {
             case 1:
               configsEditing_ = ConfigsField::kCardSensitivity;
               break;
-            case 2:  // Back
+            case 2:
+              configsEditing_ = ConfigsField::kCardRotation;
+              break;
+            case 3:  // Back
               menuShowingConfigs_ = false;
               break;
           }

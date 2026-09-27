@@ -10,8 +10,5 @@
 // "Backlight / presence" section.
 constexpr unsigned long kIdleTimeoutMs = 18000;
 
-// How often HOME auto-rotates to the next card.
-constexpr unsigned long kCardRotationMs = 4500;
-
 // How long manual encoder rotation on HOME pauses auto-rotation for.
 constexpr unsigned long kCardRotationPauseMs = 10000;

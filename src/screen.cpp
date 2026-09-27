@@ -99,6 +99,10 @@ bool muted_ = false;
 
 // MENU
 uint8_t menuSelection_ = 0;
+// Top-level list scrolls now (kMenuVisibleRows of kMenuItemCount, big
+// text) -- same reason and same mechanics as Actions' own scroll below,
+// just for the item list every other MENU screen branches off of.
+uint8_t menuScrollTop_ = 0;
 unsigned long menuIdleDeadlineMs_ = 0;
 bool menuShowingNetworkInfo_ = false;
 bool menuShowingConfigs_ = false;
@@ -107,7 +111,7 @@ bool menuShowingConfigs_ = false;
 // plus a trailing "Back" row. Only one request is in flight at a time,
 // tracked by id rather than list position, since the list can change
 // under it when a new status arrives.
-constexpr uint8_t kActionsVisibleRows = 6;
+constexpr uint8_t kActionsVisibleRows = 5;  // at font 4 -- see kMenuRowPitch
 constexpr unsigned long kActionConfirmWindowMs = 3000;
 constexpr unsigned long kActionReplyTimeoutMs = 5000;
 constexpr unsigned long kActionFeedbackMs = 2500;
@@ -662,45 +666,102 @@ void scrollActionsToSelection() {
   }
 }
 
+// Every MENU screen draws in font 4, the same font (and so the same text
+// height) as the HOME card lines, rather than the small font 2 the rest
+// of the chrome uses -- the menu is read from further away than the
+// banner, so it gets the big text too. Rows: 34px pitch with a 32px
+// highlight box and the label vertically centered in it. That fits a
+// title row plus 5 list rows on the sub-screens (Actions, Configs).
+constexpr int kMenuRowPitch = 34;
+constexpr int kMenuRowBox = 32;
+// Vertical centers for the plain-text lines on the non-list screens
+// (Network info, the Configs edit views, the empty Actions list): title,
+// then up to three content lines, then a gap before the grey hints.
+constexpr int kMenuTitleY = 17;
+constexpr int kMenuLineY[] = {55, 85, 115};
+constexpr int kMenuHintY[] = {160, 190, 220};
+
+// The top-level list (Actions, Pin, Mute, ...) draws bigger than that --
+// it's the one screen read from furthest away and picked most often, so
+// it gets Font 4 at 2x scale (52px-tall glyphs) rather than the sub-screens'
+// 1x. That no longer fits all 7 items at once, so it scrolls
+// (kMenuVisibleRows/menuScrollTop_), same fits-some-not-all shape as
+// Actions already uses below, just for this list instead of that one.
+// 3 visible rows, not more: a 34px top strip for the "more ^" hint
+// (reusing kMenuRowPitch/kMenuTitleY -- same slot Actions' title row
+// sits in, just with no title text to share it with here) + 3*50px
+// rows = 184px, leaving a genuinely comfortable 56px for the "more v"
+// hint below instead of the few leftover pixels 4 rows would leave.
+constexpr int kMenuRowPitchBig = 50;
+constexpr int kMenuRowBoxBig = 48;
+constexpr uint8_t kMenuTextSizeBig = 2;
+constexpr uint8_t kMenuVisibleRows = 3;
+
+// One selectable row, box top at `top`, scaled by textSize (2 for the
+// top-level list, 1 -- the default, unscaled -- for every sub-screen's
+// list). Assumes ML_DATUM. boxHeight is the caller's own row box
+// constant (kMenuRowBox or kMenuRowBoxBig) since it has to match
+// whichever pitch the caller is stepping by.
+void drawMenuRow(int top, const String& label, bool selected, int boxHeight = kMenuRowBox,
+                  uint8_t textSize = 1) {
+  uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
+  tft.fillRect(0, top, tft.width(), boxHeight, bg);
+  tft.setTextColor(selected ? TFT_BLACK : TFT_WHITE, bg);
+  tft.setTextSize(textSize);
+  tft.drawString(label, 10, top + boxHeight / 2);
+  tft.setTextSize(1);  // every other MENU draw call assumes this
+}
+
+// Keeps the selected top-level item inside the visible window -- same
+// mechanics as scrollActionsToSelection(), for the list one level up.
+void scrollMenuToSelection() {
+  if (menuSelection_ < menuScrollTop_) {
+    menuScrollTop_ = menuSelection_;
+  } else if (menuSelection_ >= menuScrollTop_ + kMenuVisibleRows) {
+    menuScrollTop_ = menuSelection_ - kMenuVisibleRows + 1;
+  }
+}
+
+// One non-selectable line centered on midY. Assumes ML_DATUM.
+void drawMenuLine(const String& text, int midY, uint16_t color) {
+  tft.setTextColor(color, TFT_BLACK);
+  tft.drawString(text, 10, midY);
+}
+
 // MENU > Actions: label on the left; on the right, whichever applies
 // first -- this row's request in flight, its result, "Press again" for
 // an armed confirm-first action, or the server's live state text.
 void drawActions() {
-  tft.setTextColor(TFT_WHITE, TFT_BLACK);
-  tft.setTextDatum(TL_DATUM);
-  tft.drawString("Actions", 10, 10);
+  drawMenuLine("Actions", kMenuTitleY, TFT_WHITE);
 
   uint8_t count = lastStatus_.actionCount;
   if (count == 0) {
-    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.drawString("No actions set up yet --", 10, 40);
-    tft.drawString("add them on the server's", 10, 60);
-    tft.drawString("Actions page.", 10, 80);
-    tft.drawString("Press to go back", 10, 120);
+    drawMenuLine("No actions set up yet", kMenuLineY[0], TFT_DARKGREY);
+    drawMenuLine("Add them on the server", kMenuLineY[1], TFT_DARKGREY);
+    drawMenuLine("Actions page.", kMenuLineY[2], TFT_DARKGREY);
+    drawMenuLine("Press to go back", kMenuHintY[0], TFT_DARKGREY);
     return;
   }
 
   uint8_t rows = count + 1;  // + "Back"
   if (actionsScrollTop_ > 0) {
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.setTextDatum(TR_DATUM);
-    tft.drawString("more ^", tft.width() - 10, 10);
+    tft.setTextDatum(MR_DATUM);
+    tft.drawString("more ^", tft.width() - 10, kMenuTitleY);
   }
   for (uint8_t r = 0; r < kActionsVisibleRows && actionsScrollTop_ + r < rows; r++) {
     uint8_t i = actionsScrollTop_ + r;
-    int y = 36 + r * 30;
+    int top = kMenuRowPitch + r * kMenuRowPitch;
     bool selected = (i == actionsSelection_);
     uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
-    tft.fillRect(0, y - 3, tft.width(), 26, bg);
 
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(selected ? TFT_BLACK : TFT_WHITE, bg);
+    tft.setTextDatum(ML_DATUM);
     if (i == count) {
-      tft.drawString("Back", 10, y + 2);
+      drawMenuRow(top, "Back", selected);
       continue;
     }
     const ActionItem& item = lastStatus_.actions[i];
-    tft.drawString(item.label, 10, y + 2);
+    drawMenuRow(top, item.label, selected);
 
     const char* right = item.state;
     uint16_t rightColor = selected ? TFT_DARKGREY : TFT_LIGHTGREY;
@@ -715,15 +776,20 @@ void drawActions() {
       rightColor = TFT_ORANGE;
     }
     if (right[0]) {
-      tft.setTextDatum(TR_DATUM);
+      // At font 4 a long label can run under the right-hand text --
+      // blank a little margin left of it so the two don't touch.
+      int rightW = tft.textWidth(right);
+      tft.fillRect(tft.width() - 10 - rightW - 8, top, rightW + 8, kMenuRowBox, bg);
+      tft.setTextDatum(MR_DATUM);
       tft.setTextColor(rightColor, bg);
-      tft.drawString(right, tft.width() - 10, y + 2);
+      tft.drawString(right, tft.width() - 10, top + kMenuRowBox / 2);
     }
   }
   if (actionsScrollTop_ + kActionsVisibleRows < rows) {
     tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.setTextDatum(TR_DATUM);
-    tft.drawString("more v", tft.width() - 10, 36 + kActionsVisibleRows * 30 - 2);
+    tft.setTextDatum(MR_DATUM);
+    tft.drawString("more v", tft.width() - 10,
+                   kMenuRowPitch * (1 + kActionsVisibleRows) + kMenuRowBox / 2);
   }
 }
 
@@ -757,21 +823,15 @@ void pressAction(uint8_t index) {
   }
 }
 
-void drawMenu() {
-  tft.setTextFont(2);  // explicit, not assumed -- see drawBanner()
-  tft.fillScreen(TFT_BLACK);
-
+void drawMenuBody() {
   if (menuShowingNetworkInfo_) {
-    tft.setTextDatum(TL_DATUM);
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString("Network info", 10, 10);
-    tft.drawString("SSID: " + WiFi.SSID(), 10, 40);
-    tft.drawString("IP: " + WiFi.localIP().toString(), 10, 60);
-    tft.drawString(
+    drawMenuLine("Network info", kMenuTitleY, TFT_WHITE);
+    drawMenuLine("SSID: " + WiFi.SSID(), kMenuLineY[0], TFT_WHITE);
+    drawMenuLine("IP: " + WiFi.localIP().toString(), kMenuLineY[1], TFT_WHITE);
+    drawMenuLine(
         String("WiFi: ") + (WiFi.status() == WL_CONNECTED ? "connected" : "disconnected"),
-        10, 80);
-    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.drawString("Press to go back", 10, 120);
+        kMenuLineY[2], TFT_WHITE);
+    drawMenuLine("Press to go back", kMenuHintY[0], TFT_DARKGREY);
     return;
   }
 
@@ -781,78 +841,75 @@ void drawMenu() {
   }
 
   if (menuShowingConfigs_) {
-    tft.setTextDatum(TL_DATUM);
-
     if (configsEditing_ == ConfigsField::kNone) {
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-      tft.drawString("Configs", 10, 10);
+      drawMenuLine("Configs", kMenuTitleY, TFT_WHITE);
       for (uint8_t i = 0; i < kConfigsItemCount; i++) {
-        int y = 40 + i * 30;
-        bool selected = (i == configsSelection_);
-        uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
-        uint16_t fg = selected ? TFT_BLACK : TFT_WHITE;
-        tft.fillRect(0, y - 3, tft.width(), 26, bg);
-        tft.setTextColor(fg, bg);
-        tft.drawString(kConfigsItems[i], 10, y + 5);
+        drawMenuRow(kMenuRowPitch + i * kMenuRowPitch, kConfigsItems[i],
+                    i == configsSelection_);
       }
       return;
     }
 
+    // Hint text is kept short enough to fit the 300px line width at
+    // font 4 -- the longer font-2 wording didn't.
+    char line[40];
     if (configsEditing_ == ConfigsField::kBacklightTimeout) {
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-      tft.drawString("Backlight timeout", 10, 10);
-      char line[40];
       snprintf(line, sizeof(line), "%u s", backlightGetTimeoutSeconds());
-      tft.drawString(line, 10, 40);
-      tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      tft.drawString("Rotate to adjust (5s steps)", 10, 70);
-      tft.drawString("Press to save and go back", 10, 90);
+      drawMenuLine("Backlight timeout", kMenuTitleY, TFT_WHITE);
+      drawMenuLine(line, kMenuLineY[0], TFT_WHITE);
+      drawMenuLine("Rotate: 5s steps", kMenuHintY[0], TFT_DARKGREY);
+      drawMenuLine("Press to save + back", kMenuHintY[1], TFT_DARKGREY);
       return;
     }
 
     if (configsEditing_ == ConfigsField::kCardSensitivity) {
-      tft.setTextColor(TFT_WHITE, TFT_BLACK);
-      tft.drawString("Card sensitivity", 10, 10);
-      char line[40];
       snprintf(line, sizeof(line), "%ld raw steps / card", (long)cardStepDivisor_);
-      tft.drawString(line, 10, 40);
-      tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-      tft.drawString("Rotate to adjust (lower = faster)", 10, 70);
-      tft.drawString("Press to save and go back", 10, 90);
+      drawMenuLine("Card sensitivity", kMenuTitleY, TFT_WHITE);
+      drawMenuLine(line, kMenuLineY[0], TFT_WHITE);
+      drawMenuLine("Rotate: lower = faster", kMenuHintY[0], TFT_DARKGREY);
+      drawMenuLine("Press to save + back", kMenuHintY[1], TFT_DARKGREY);
       return;
     }
 
     // ConfigsField::kCardRotation
-    tft.setTextColor(TFT_WHITE, TFT_BLACK);
-    tft.drawString("Card display time", 10, 10);
-    char line[40];
     snprintf(line, sizeof(line), "%u s minimum", cardRotationSeconds_);
-    tft.drawString(line, 10, 40);
-    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
-    tft.drawString("Rotate to adjust (1s steps)", 10, 70);
-    tft.drawString("Extends for a scrolling line", 10, 90);
-    tft.drawString("Press to save and go back", 10, 110);
+    drawMenuLine("Card display time", kMenuTitleY, TFT_WHITE);
+    drawMenuLine(line, kMenuLineY[0], TFT_WHITE);
+    drawMenuLine("Longer if a line scrolls", kMenuLineY[1], TFT_DARKGREY);
+    drawMenuLine("Rotate: 1s steps", kMenuHintY[0], TFT_DARKGREY);
+    drawMenuLine("Press to save + back", kMenuHintY[1], TFT_DARKGREY);
     return;
   }
 
-  // Row height/box tightened twice: from the original 5-item spacing
-  // (40px, 34px box) to 36px/30px for 6 items, then to 32px/28px when
-  // Actions made it 7 -- the last row's box still ends at y=223, clear
-  // of the 240px landscape edge.
-  tft.setTextDatum(TL_DATUM);
-  for (uint8_t i = 0; i < kMenuItemCount; i++) {
-    int y = 6 + i * 32;
-    bool selected = (i == menuSelection_);
-    uint16_t bg = selected ? TFT_WHITE : TFT_BLACK;
-    uint16_t fg = selected ? TFT_BLACK : TFT_WHITE;
-    tft.fillRect(0, y - 3, tft.width(), 28, bg);
-    tft.setTextColor(fg, bg);
-
+  if (menuScrollTop_ > 0) {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.setTextDatum(MR_DATUM);
+    tft.drawString("more ^", tft.width() - 10, kMenuTitleY);
+    tft.setTextDatum(ML_DATUM);
+  }
+  for (uint8_t r = 0; r < kMenuVisibleRows && menuScrollTop_ + r < kMenuItemCount; r++) {
+    uint8_t i = menuScrollTop_ + r;
     String label = kMenuItems[i];
     if (i == 1) label = (pinnedCardIndex_ >= 0) ? "Unpin screen" : "Pin this screen";
     if (i == 2) label = muted_ ? "Unmute alerts" : "Mute alerts";
-    tft.drawString(label, 10, y + 3);
+    int top = kMenuRowPitch + r * kMenuRowPitchBig;
+    drawMenuRow(top, label, i == menuSelection_, kMenuRowBoxBig, kMenuTextSizeBig);
   }
+  if (menuScrollTop_ + kMenuVisibleRows < kMenuItemCount) {
+    tft.setTextColor(TFT_DARKGREY, TFT_BLACK);
+    tft.setTextDatum(MR_DATUM);
+    tft.drawString("more v", tft.width() - 10,
+                    kMenuRowPitch + kMenuVisibleRows * kMenuRowPitchBig + 20);
+    tft.setTextDatum(ML_DATUM);
+  }
+}
+
+void drawMenu() {
+  tft.setTextFont(4);  // see kMenuRowPitch
+  tft.setTextDatum(ML_DATUM);
+  tft.fillScreen(TFT_BLACK);
+  drawMenuBody();
+  tft.setTextFont(2);  // restore the font the rest of the UI expects
 }
 
 // Placeholder/error chrome only -- drawn on entry (before a fetch has
@@ -1088,9 +1145,26 @@ void enterHome() {
   needsRedraw_ = true;
 }
 
+// Writes whichever Configs value is being edited to NVS (see
+// settings_store.h), so a reboot picks up where the user left it. The
+// value itself is already applied live as it's rotated; this is only
+// the save, done once at the end of an edit (encoder press or menu idle
+// timeout) rather than on every detent. No-op when nothing's being
+// edited.
+void persistConfigsEdit() {
+  if (configsEditing_ == ConfigsField::kBacklightTimeout) {
+    backlightPersistTimeoutSeconds();
+  } else if (configsEditing_ == ConfigsField::kCardSensitivity) {
+    settingsSaveCardStepDivisor(cardStepDivisor_);
+  } else if (configsEditing_ == ConfigsField::kCardRotation) {
+    settingsSaveCardRotationSeconds(cardRotationSeconds_);
+  }
+}
+
 void enterMenu() {
   state_ = State::MENU;
   menuSelection_ = 0;
+  menuScrollTop_ = 0;
   menuShowingNetworkInfo_ = false;
   menuShowingConfigs_ = false;
   menuShowingActions_ = false;
@@ -1215,6 +1289,10 @@ void screenUpdate(const StatusPayload& status, bool isNewStatus) {
       menuIdleDeadlineMs_ = now + kIdleTimeoutMs;  // don't time out mid-action
     }
     if (now >= menuIdleDeadlineMs_) {
+      // Walking away mid-edit counts as accepting it -- the value's
+      // been live since the last turn, so it should survive a reboot
+      // the same as if the user had pressed to save.
+      persistConfigsEdit();
       enterHome();
     }
   } else if (state_ == State::CAMERA) {
@@ -1315,6 +1393,7 @@ void screenOnEncoderDelta(int32_t delta) {
     int32_t idx = ((int32_t)menuSelection_ + delta) % (int32_t)kMenuItemCount;
     if (idx < 0) idx += kMenuItemCount;
     menuSelection_ = (uint8_t)idx;
+    scrollMenuToSelection();
     menuIdleDeadlineMs_ = now + kIdleTimeoutMs;
     needsRedraw_ = true;
   }
@@ -1349,19 +1428,9 @@ void screenOnEncoderPress() {
       }
       if (menuShowingConfigs_) {
         if (configsEditing_ != ConfigsField::kNone) {
-          // Value's already applied live as it was rotated -- this is
-          // the one point where it's also written to NVS (see
-          // settings_store.h), so a reboot picks up where the user left
-          // it instead of dialing it back in from scratch. Then return
-          // to the Configs list, not all the way out to the top-level
-          // menu.
-          if (configsEditing_ == ConfigsField::kBacklightTimeout) {
-            backlightPersistTimeoutSeconds();
-          } else if (configsEditing_ == ConfigsField::kCardSensitivity) {
-            settingsSaveCardStepDivisor(cardStepDivisor_);
-          } else if (configsEditing_ == ConfigsField::kCardRotation) {
-            settingsSaveCardRotationSeconds(cardRotationSeconds_);
-          }
+          // Save, then return to the Configs list, not all the way out
+          // to the top-level menu.
+          persistConfigsEdit();
           configsEditing_ = ConfigsField::kNone;
         } else {
           switch (configsSelection_) {

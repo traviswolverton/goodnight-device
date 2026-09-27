@@ -884,7 +884,9 @@ just not to the LAN-only broker.
   Preferences). Unlike mute/pin, neither has a safety angle, so there's
   no reason to make a reboot throw away a value the user deliberately
   dialed in. Saved once when the Configs edit is committed (encoder
-  press), not on every rotation step — an NVS write per detent would
+  press, or the menu idle-timing out mid-edit — the value was already
+  live, so walking away counts as accepting it), not on every rotation
+  step — an NVS write per detent would
   both block the main loop and burn flash write cycles for no benefit.
 - Confirm the heap fragmentation fix (see "Reliability" above) with a
   proper long soak — hours, ideally a full day — then remove the

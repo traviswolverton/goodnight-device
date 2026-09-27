@@ -40,8 +40,8 @@ void backlightSetTimeoutSeconds(uint16_t seconds);
 // presence" section), the timeout has no safety angle either way, so
 // there's no reason to make the user re-dial it in after every restart.
 // Call this once when the Configs menu's edit is committed (encoder
-// press), not on every rotation step: writing NVS on every detent while
-// scrolling would both block the main loop (flash writes aren't fast)
-// and burn flash write cycles for no benefit over saving once at
-// commit time.
+// press, or the menu idle-timing out mid-edit), not on every rotation
+// step: writing NVS on every detent while scrolling would both block the
+// main loop (flash writes aren't fast) and burn flash write cycles for no
+// benefit over saving once at commit time.
 void backlightPersistTimeoutSeconds();

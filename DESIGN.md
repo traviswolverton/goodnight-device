@@ -120,6 +120,8 @@ that mostly measures the screen.
 | `settings_store.*` | Dimmer settings in NVS, surviving reboots |
 | `status_payload.*` | Parses the server's status (inherited; reshaped for the small screen next) |
 | `ota.*` | ArduinoOTA, hostname `bedside-dashboard-esp32` |
+| `device_config.*` | Which broker to use, fetched from the server (below) |
+| `http_get.*` | The small HTTP client that fetch uses (from the desk unit) |
 
 Every module is non-blocking and polled from `loop()`, as on the desk
 unit. The one deliberate exception is the DHT11 read (a few milliseconds
@@ -200,6 +202,30 @@ replaying one later would trigger whatever it's bound to after the fact.
 Config values are clamped on arrival (`dark_lux` ≤ `bright_lux`, contrast
 0–255, wake 3–600s), so a bad server value can't produce a screen that
 never turns on.
+
+### Broker settings from the server
+Since 2026-09-28, the broker to use (host, port, `bedside-esp32` login)
+comes from the server's `GET /device/config` instead of being fixed at
+compile time (`device_config.cpp`, the same code as the desk unit). Moving
+the device to another broker is then a change on the server's Connections
+page, not a reflash. `secrets.h` needs `SERVER_URL` (the server's
+plain-http LAN address) and `DEVICE_TOKEN` (made on that page, sent as
+`Authorization: Bearer`). Without them, fetching compiles out and
+`MQTT_*` are used as before.
+
+- **When it asks:** at boot, before the first MQTT connect; every 15 min;
+  and after 3 failed connects in a row, at most once a minute. Each ask
+  is one blocking request, capped at 2 s. That's normally a few ms on the
+  LAN, and the 2 s cap only applies while the server is down.
+- **Trial, then keep:** an answer that differs from the settings in use
+  is tried at once. It's written to NVS (`brokercfg`, separate from
+  `settings_store`'s `bedcfg`) only after an MQTT connect succeeds with
+  it. After 5 failed connects it's rolled back to the previous settings
+  and ignored for an hour, so a mistake on the server can't strand the
+  device.
+- **Precedence at boot:** settings saved in NVS beat `MQTT_*` in
+  `secrets.h`. The compiled-in values only matter until the server first
+  gives a working answer.
 
 ## Bench bring-up
 

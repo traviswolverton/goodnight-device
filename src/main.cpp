@@ -12,6 +12,7 @@
 #include <Wire.h>
 #include <math.h>
 
+#include "device_config.h"
 #include "dimmer.h"
 #include "display.h"
 #include "input.h"
@@ -45,6 +46,10 @@ PubSubClient mqttClient(wifiClient);
 
 unsigned long lastWifiAttemptMs = 0;
 unsigned long lastMqttAttemptMs = 0;
+// The last ensureMqtt() connect attempt's outcome, handed to
+// deviceConfigUpdate() (which refetches / rolls back on failures).
+bool mqttAttempted = false;
+bool mqttSucceeded = false;
 unsigned long lastSensorPublishMs = 0;
 bool sensorPublishDue = true;
 DisplayLevel lastPublishedLevel = DisplayLevel::Full;
@@ -140,8 +145,14 @@ void ensureMqtt() {
   Serial.println("[mqtt] (re)connecting...");
   // Last will: the broker marks the device offline (retained) if the
   // connection drops, which is what Home Assistant's availability reads.
-  if (mqttClient.connect(kClientId, MQTT_USERNAME, MQTT_PASSWORD, kTopicAvailability, 0, true,
-                         "offline")) {
+  // Broker and login come from the server when it's set up to hand them
+  // out (device_config.h), else from secrets.h.
+  const BrokerConfig& broker = deviceBroker();
+  mqttAttempted = true;
+  mqttSucceeded = mqttClient.connect(kClientId, broker.username[0] ? broker.username : nullptr,
+                                     broker.username[0] ? broker.password : nullptr,
+                                     kTopicAvailability, 0, true, "offline");
+  if (mqttSucceeded) {
     Serial.println("[mqtt] connected");
     mqttClient.publish(kTopicAvailability, "online", true);
     mqttClient.subscribe(kTopicStatus);
@@ -234,6 +245,24 @@ void scanI2c() {
   Serial.println();
 }
 
+// Asks the server which broker to use when that's due (device_config.h)
+// and switches to it. Before ensureMqtt(), so the first connect after boot
+// already uses the server's answer.
+void ensureBrokerConfig() {
+  if (WiFi.status() != WL_CONNECTED) {
+    return;
+  }
+  bool changed = deviceConfigUpdate(mqttAttempted, mqttSucceeded);
+  mqttAttempted = false;
+  if (changed) {
+    const BrokerConfig& broker = deviceBroker();
+    Serial.printf("[mqtt] switching to %s:%u\n", broker.host, broker.port);
+    mqttClient.disconnect();
+    mqttClient.setServer(broker.host, broker.port);
+    lastMqttAttemptMs = millis() - kMqttRetryIntervalMs;  // connect right away
+  }
+}
+
 }  // namespace
 
 void setup() {
@@ -244,7 +273,8 @@ void setup() {
   scanI2c();
 
   WiFi.mode(WIFI_STA);
-  mqttClient.setServer(MQTT_HOST, MQTT_PORT);
+  deviceConfigBegin();
+  mqttClient.setServer(deviceBroker().host, deviceBroker().port);
   mqttClient.setBufferSize(kMqttBufferSize);
   mqttClient.setCallback(onMqttMessage);
 
@@ -270,6 +300,7 @@ void setup() {
 
 void loop() {
   ensureWifi();
+  ensureBrokerConfig();
   ensureMqtt();
   mqttClient.loop();
 

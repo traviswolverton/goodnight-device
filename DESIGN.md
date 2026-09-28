@@ -179,8 +179,11 @@ thresholds before WiFi is up.
 
 ## MQTT
 
-Client ID `bedside-dashboard-esp32`, the bedside stack's own broker on
-port 1884.
+Client ID `bedside-dashboard-esp32`, login `bedside-esp32`, on the
+homelab's central broker (192.0.2.10:1883) — shared with Home Assistant,
+which is how the sensors and button triggers reach it. The account's ACL
+limits it to the topics below (bedside-dashboard-server's
+`docs/mqtt-broker.md`).
 
 | Topic | Direction | Retained | Payload |
 |---|---|---|---|
@@ -216,6 +219,6 @@ never turns on.
   lines of 21 characters (or one large line), and the screen to render it
   with joystick navigation.
 - **A clock** — NTP time is the obvious resting screen at night.
-- **Server side** — the bedside server stack (port 8001, broker 1884),
+- **Server side** — the bedside server stack (port 8001),
   button bindings, the dimmer settings UI, and Home Assistant MQTT
   discovery for the three sensors.

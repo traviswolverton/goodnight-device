@@ -6,8 +6,8 @@
 
 // What the OLED shows. For now this is a bench-bring-up view -- readings,
 // connection state, and the last control touched -- so every part of the
-// hardware can be checked on the desk. The real bedside layout arrives
-// with the server's small-card payload.
+// hardware can be checked on the desk. The real bedside layout (a clock
+// and the room readings) comes later.
 
 struct ScreenModel {
   float temperatureC;
@@ -15,7 +15,6 @@ struct ScreenModel {
   float lux;
   bool wifi;
   bool mqtt;
-  const char* statusText;  // server's overall text, or nullptr before any
   const char* hardwareNote;  // e.g. "no BH1750", or nullptr when all found
 };
 

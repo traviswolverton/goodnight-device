@@ -126,7 +126,6 @@ that mostly measures the screen.
 | `screen.*` | What's drawn — currently the bench bring-up view |
 | `settings_store.*` | Dimmer and buzzer settings in NVS, surviving reboots |
 | `sound.*` | The piezo: named tunes, non-blocking, quieter in the dark |
-| `status_payload.*` | Parses the server's status (inherited; reshaped for the small screen next) |
 | `ota.*` | ArduinoOTA, hostname `bedside-dashboard-esp32` |
 | `device_config.*` | Which broker to use, fetched from the server (below) |
 | `http_get.*` | The small HTTP client that fetch uses (from the desk unit) |
@@ -198,7 +197,6 @@ limits it to the topics below (bedside-dashboard-server's
 
 | Topic | Direction | Retained | Payload |
 |---|---|---|---|
-| `bedside/status` | server → device | yes | status payload (small-screen format: next step) |
 | `bedside/config` | server → device | yes | `{"dimmer":{"bright_lux":20,"dark_lux":2,"dim_contrast":1,"wake_seconds":15},"sounds":{"enabled":true,"volume":80,"dark_volume":10}}` — any field optional |
 | `bedside/sound` | server → device | no | `{"sound":"armed","urgent":false}` — see "Sounds" |
 | `bedside/sensors` | device → server | yes | `{"temperature_c":21.5,"humidity":44,"lux":3.5,"screen":"off"}` — `null` for a sensor with no reading |
@@ -277,16 +275,15 @@ duty squared so the quiet end has usable steps. Kept in NVS like the
 dimmer.
 
 ## Still to build
-- **Small-card status format** — the server's cards are laid out for the
-  desk's 320×240 color LCD. The bedside needs its own payload shape for 3
-  lines of 21 characters (or one large line), and the screen to render it
-  with joystick navigation.
 - **A clock** — NTP time is the obvious resting screen at night, with
   the light, temperature and humidity readings.
 - **On-screen confirmations** — a brief message alongside each button
   sound ("Press again: Close garage", "Garage closed", "Failed: timed
   out"), worded by the server. No menus: the screen is too small to
   scroll through lists, so actions are reached through buttons only.
+- **Icons** — the desk's icon set was a TFT_eSPI `.vlw` font the OLED
+  can't draw, so it's gone. Icons come back from U8g2's own icon fonts
+  once the screen is designed.
 - **Server side** — the bedside server stack (port 8001),
   button bindings, the dimmer settings UI, and Home Assistant MQTT
   discovery for the three sensors.

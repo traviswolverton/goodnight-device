@@ -71,7 +71,7 @@ void screenUpdate(const ScreenModel& m) {
   } else if (!m.mqtt) {
     snprintf(lines[1], kLineLen, "Connecting MQTT...");
   } else {
-    snprintf(lines[1], kLineLen, "%s", m.statusText ? m.statusText : "Waiting for server");
+    snprintf(lines[1], kLineLen, "Connected");
   }
 
   if (inputLine_[0] && millis() - inputShownAtMs_ < kInputShownMs) {

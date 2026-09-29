@@ -24,14 +24,12 @@
 #include "sensors.h"
 #include "settings_store.h"
 #include "sound.h"
-#include "status_payload.h"
 
 namespace {
 
 constexpr char kClientId[] = "bedside-dashboard-esp32";
 
 // Subscribed.
-constexpr char kTopicStatus[] = "bedside/status";
 constexpr char kTopicConfig[] = "bedside/config";
 constexpr char kTopicSound[] = "bedside/sound";
 // Published.
@@ -57,7 +55,6 @@ unsigned long lastSensorPublishMs = 0;
 bool sensorPublishDue = true;
 DisplayLevel lastPublishedLevel = DisplayLevel::Full;
 
-StatusPayload gLatestStatus;
 
 char hardwareNote[32] = "";
 
@@ -125,9 +122,7 @@ void playSoundMessage(const uint8_t* payload, unsigned int length) {
 
 void onMqttMessage(char* topic, uint8_t* payload, unsigned int length) {
   // Kept fast: parse and return. Drawing happens from loop().
-  if (strcmp(topic, kTopicStatus) == 0) {
-    parseStatusPayload(payload, length, gLatestStatus);
-  } else if (strcmp(topic, kTopicConfig) == 0) {
+  if (strcmp(topic, kTopicConfig) == 0) {
     applyConfig(payload, length);
   } else if (strcmp(topic, kTopicSound) == 0) {
     playSoundMessage(payload, length);
@@ -191,7 +186,6 @@ void ensureMqtt() {
   if (mqttSucceeded) {
     Serial.println("[mqtt] connected");
     mqttClient.publish(kTopicAvailability, "online", true);
-    mqttClient.subscribe(kTopicStatus);
     mqttClient.subscribe(kTopicConfig);
     mqttClient.subscribe(kTopicSound);
     sensorPublishDue = true;
@@ -367,7 +361,6 @@ void loop() {
       sensorsLux(),
       WiFi.status() == WL_CONNECTED,
       mqttClient.connected(),
-      gLatestStatus.valid ? gLatestStatus.overallText : nullptr,
       hardwareNote[0] ? hardwareNote : nullptr,
   };
   screenUpdate(model);

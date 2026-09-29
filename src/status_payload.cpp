@@ -174,25 +174,6 @@ bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out) 
     out.serviceCount++;
   }
 
-  // Absent (an older server) reads as no actions, same as an empty list.
-  JsonArrayConst actions = doc["actions"];
-  out.actionCount = 0;
-  for (JsonVariantConst action : actions) {
-    if (out.actionCount >= kMaxActions) {
-      break;  // the server caps at the same number; defense in depth
-    }
-    const char* id = asCString(action["id"]);
-    if (!id || id[0] == '\0') {
-      continue;  // nothing to send back for it -- useless as a menu row
-    }
-    ActionItem& item = out.actions[out.actionCount];
-    copyTruncated(item.id, kActionIdLen, id);
-    copyTruncated(item.label, kActionLabelLen, asCString(action["label"]) ?: id);
-    copyTruncated(item.state, kActionStateLen, asCString(action["state"]));
-    item.confirm = action["confirm"] | false;
-    out.actionCount++;
-  }
-
   out.valid = true;
   return true;
 }

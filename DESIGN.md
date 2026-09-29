@@ -281,7 +281,12 @@ dimmer.
   desk's 320×240 color LCD. The bedside needs its own payload shape for 3
   lines of 21 characters (or one large line), and the screen to render it
   with joystick navigation.
-- **A clock** — NTP time is the obvious resting screen at night.
+- **A clock** — NTP time is the obvious resting screen at night, with
+  the light, temperature and humidity readings.
+- **On-screen confirmations** — a brief message alongside each button
+  sound ("Press again: Close garage", "Garage closed", "Failed: timed
+  out"), worded by the server. No menus: the screen is too small to
+  scroll through lists, so actions are reached through buttons only.
 - **Server side** — the bedside server stack (port 8001),
   button bindings, the dimmer settings UI, and Home Assistant MQTT
   discovery for the three sensors.

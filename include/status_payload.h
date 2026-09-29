@@ -87,31 +87,18 @@ struct ServiceReading {
   }
 };
 
-// The Actions menu (DESIGN.md "Actions"): what the server says the
-// display can ask it to do. Sized to the server's own limits
-// (desk-dashboard-server app/actions.py: 12 actions, 23-byte id/label,
-// 11-byte state), so nothing it sends is ever cut here. The device
-// never learns what an action does -- it only sends the id back.
-constexpr uint8_t kMaxActions = 12;
+// Action request/reply (bedside/action, bedside/action/result), from the
+// desk unit's Actions menu. The bedside has no menu -- buttons run
+// actions, bound on the server -- so the status payload carries no
+// action list; ids are sized to the server's (23 bytes + '\0').
 constexpr size_t kActionIdLen = 24;
-constexpr size_t kActionLabelLen = 24;
-constexpr size_t kActionStateLen = 12;
 constexpr size_t kActionResultTextLen = 16;
-
-struct ActionItem {
-  char id[kActionIdLen] = "";
-  char label[kActionLabelLen] = "";
-  char state[kActionStateLen] = "";  // "" = nothing shown beside the label
-  bool confirm = false;              // ask for a second press first
-};
 
 struct StatusPayload {
   char overallLevel[kLevelLen] = "ok";  // "ok" | "warn" | "down"
   char overallText[kTextLen] = "Waiting for data...";
   ServiceReading services[kMaxServices];
   uint8_t serviceCount = 0;
-  ActionItem actions[kMaxActions];
-  uint8_t actionCount = 0;
   bool valid = false;  // true once at least one message has parsed
 };
 

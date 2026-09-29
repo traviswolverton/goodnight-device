@@ -87,13 +87,6 @@ struct ServiceReading {
   }
 };
 
-// Action request/reply (bedside/action, bedside/action/result), from the
-// desk unit's Actions menu. The bedside has no menu -- buttons run
-// actions, bound on the server -- so the status payload carries no
-// action list; ids are sized to the server's (23 bytes + '\0').
-constexpr size_t kActionIdLen = 24;
-constexpr size_t kActionResultTextLen = 16;
-
 struct StatusPayload {
   char overallLevel[kLevelLen] = "ok";  // "ok" | "warn" | "down"
   char overallText[kTextLen] = "Waiting for data...";
@@ -119,16 +112,3 @@ bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out);
 // Parses a homelab/alert/camera payload into `out`.
 bool parseCameraAlert(const uint8_t* data, size_t length, CameraAlert& out);
 
-// The server's reply to one action request, on homelab/action/result.
-struct ActionResult {
-  char id[kActionIdLen] = "";
-  uint16_t req = 0;  // echoes the request's counter
-  bool ok = false;
-  char text[kActionResultTextLen] = "";  // "Done", "Failed", "Too soon"...
-};
-
-bool parseActionResult(const uint8_t* data, size_t length, ActionResult& out);
-
-// Writes the homelab/action request for `actionId` into `dest`. Returns
-// the length written, or 0 if it didn't fit.
-size_t buildActionRequest(char* dest, size_t destSize, const char* actionId, uint16_t req);

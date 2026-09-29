@@ -2,7 +2,8 @@
 //
 // Wires together connectivity (WiFi + MQTT + OTA), input (8 buttons and a
 // joystick through the MCP23017 and ADC), sensors (BH1750 light, DHT11
-// climate), and output (SSD1306 OLED, dimmed by room light). See
+// climate), and output (SSD1306 OLED, dimmed by room light; a piezo
+// buzzer). See
 // DESIGN.md for the design -- this file is just the glue.
 
 #include <Arduino.h>
@@ -22,6 +23,7 @@
 #include "secrets.h"
 #include "sensors.h"
 #include "settings_store.h"
+#include "sound.h"
 #include "status_payload.h"
 
 namespace {
@@ -31,6 +33,7 @@ constexpr char kClientId[] = "bedside-dashboard-esp32";
 // Subscribed.
 constexpr char kTopicStatus[] = "bedside/status";
 constexpr char kTopicConfig[] = "bedside/config";
+constexpr char kTopicSound[] = "bedside/sound";
 // Published.
 constexpr char kTopicButton[] = "bedside/button";
 constexpr char kTopicSensors[] = "bedside/sensors";
@@ -64,17 +67,7 @@ float clampF(float v, float lo, float hi) {
   return v < lo ? lo : (v > hi ? hi : v);
 }
 
-// bedside/config, retained, from the server:
-//   {"dimmer": {"bright_lux": 20, "dark_lux": 2, "dim_contrast": 1,
-//               "wake_seconds": 15}}
-// Any field left out keeps its current value.
-void applyConfig(const uint8_t* payload, unsigned int length) {
-  JsonDocument doc;
-  if (deserializeJson(doc, payload, length)) {
-    Serial.println("[config] unparseable, ignored");
-    return;
-  }
-  JsonObjectConst d = doc["dimmer"];
+void applyDimmer(JsonObjectConst d) {
   if (d.isNull()) {
     return;
   }
@@ -89,12 +82,55 @@ void applyConfig(const uint8_t* payload, unsigned int length) {
                 s.darkLux, s.dimContrast, s.wakeSeconds);
 }
 
+void applySounds(JsonObjectConst d) {
+  if (d.isNull()) {
+    return;
+  }
+  SoundSettings s = soundSettings();
+  s.enabled = d["enabled"] | s.enabled;
+  s.volume = (uint8_t)clampF(d["volume"] | (float)s.volume, 0.0f, 100.0f);
+  s.darkVolume = (uint8_t)clampF(d["dark_volume"] | (float)s.darkVolume, 0.0f, 100.0f);
+  soundApply(s);
+  settingsSaveSound(s);
+  Serial.printf("[config] sounds %s volume=%u dark=%u\n", s.enabled ? "on" : "off", s.volume,
+                s.darkVolume);
+}
+
+// bedside/config, retained, from the server:
+//   {"dimmer": {"bright_lux": 20, "dark_lux": 2, "dim_contrast": 1,
+//               "wake_seconds": 15},
+//    "sounds": {"enabled": true, "volume": 80, "dark_volume": 10}}
+// Any field left out keeps its current value.
+void applyConfig(const uint8_t* payload, unsigned int length) {
+  JsonDocument doc;
+  if (deserializeJson(doc, payload, length)) {
+    Serial.println("[config] unparseable, ignored");
+    return;
+  }
+  applyDimmer(doc["dimmer"]);
+  applySounds(doc["sounds"]);
+}
+
+// bedside/sound, from the server: {"sound": "armed", "urgent": false}.
+// Not retained -- a beep that arrives late is worse than none.
+void playSoundMessage(const uint8_t* payload, unsigned int length) {
+  JsonDocument doc;
+  Sound sound;
+  if (deserializeJson(doc, payload, length) || !soundFromName(doc["sound"], sound)) {
+    Serial.println("[sound] unknown or unparseable, ignored");
+    return;
+  }
+  soundPlay(sound, doc["urgent"] | false);
+}
+
 void onMqttMessage(char* topic, uint8_t* payload, unsigned int length) {
   // Kept fast: parse and return. Drawing happens from loop().
   if (strcmp(topic, kTopicStatus) == 0) {
     parseStatusPayload(payload, length, gLatestStatus);
   } else if (strcmp(topic, kTopicConfig) == 0) {
     applyConfig(payload, length);
+  } else if (strcmp(topic, kTopicSound) == 0) {
+    playSoundMessage(payload, length);
   } else {
     Serial.printf("[mqtt] unexpected topic: %s\n", topic);
   }
@@ -157,6 +193,7 @@ void ensureMqtt() {
     mqttClient.publish(kTopicAvailability, "online", true);
     mqttClient.subscribe(kTopicStatus);
     mqttClient.subscribe(kTopicConfig);
+    mqttClient.subscribe(kTopicSound);
     sensorPublishDue = true;
   } else {
     Serial.printf("[mqtt] connect failed, rc=%d\n", mqttClient.state());
@@ -224,6 +261,11 @@ void handleInput() {
       case InputKind::ButtonLong:
         Serial.printf("[input] button %u %s\n", event.button,
                       event.kind == InputKind::ButtonLong ? "long" : "short");
+        if (event.kind == InputKind::ButtonLong) {
+          // Fires the moment a hold counts as long, so you know you can
+          // let go. The only sound played without the server asking.
+          soundPlay(Sound::Tick, false);
+        }
         publishButton(event.button, event.kind == InputKind::ButtonLong);
         break;
       default:
@@ -281,6 +323,7 @@ void setup() {
   displayBegin();
   sensorsBegin();
   dimmerBegin(settingsLoadDimmer(DimmerSettings{}));
+  soundBegin(settingsLoadSound(SoundSettings{}));
   inputBegin(dimmerWake);
 
   // One line naming whatever's missing, so a loose wire shows on the
@@ -315,6 +358,7 @@ void loop() {
   inputUpdate();
   handleInput();
   dimmerUpdate(sensorsLux());
+  soundUpdate();
   maybePublishSensors();
 
   ScreenModel model{

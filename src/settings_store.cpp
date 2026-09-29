@@ -11,6 +11,9 @@ constexpr char kKeyBrightLux[] = "bright_lux";
 constexpr char kKeyDarkLux[] = "dark_lux";
 constexpr char kKeyDimContrast[] = "dim_contrast";
 constexpr char kKeyWakeSeconds[] = "wake_secs";
+constexpr char kKeySoundOn[] = "snd_on";
+constexpr char kKeySoundVolume[] = "snd_vol";
+constexpr char kKeySoundDark[] = "snd_dark";
 
 }  // namespace
 
@@ -44,5 +47,31 @@ void settingsSaveDimmer(const DimmerSettings& settings) {
   prefs.putFloat(kKeyDarkLux, settings.darkLux);
   prefs.putUChar(kKeyDimContrast, settings.dimContrast);
   prefs.putUShort(kKeyWakeSeconds, settings.wakeSeconds);
+  prefs.end();
+}
+
+SoundSettings settingsLoadSound(const SoundSettings& defaults) {
+  Preferences prefs;
+  prefs.begin(kNamespace, /*readOnly=*/true);
+  SoundSettings s;
+  s.enabled = prefs.getBool(kKeySoundOn, defaults.enabled);
+  s.volume = prefs.getUChar(kKeySoundVolume, defaults.volume);
+  s.darkVolume = prefs.getUChar(kKeySoundDark, defaults.darkVolume);
+  prefs.end();
+  return s;
+}
+
+void settingsSaveSound(const SoundSettings& settings) {
+  Preferences prefs;
+  prefs.begin(kNamespace, /*readOnly=*/false);
+  if (prefs.isKey(kKeySoundOn) && prefs.getBool(kKeySoundOn) == settings.enabled &&
+      prefs.getUChar(kKeySoundVolume) == settings.volume &&
+      prefs.getUChar(kKeySoundDark) == settings.darkVolume) {
+    prefs.end();
+    return;
+  }
+  prefs.putBool(kKeySoundOn, settings.enabled);
+  prefs.putUChar(kKeySoundVolume, settings.volume);
+  prefs.putUChar(kKeySoundDark, settings.darkVolume);
   prefs.end();
 }

@@ -108,6 +108,10 @@ DisplayLevel dimmerLevel() {
   return levelNow();
 }
 
+bool dimmerRoomIsDark() {
+  return zone_ == Zone::Dark;
+}
+
 const char* dimmerLevelName() {
   switch (levelNow()) {
     case DisplayLevel::Off: return "off";

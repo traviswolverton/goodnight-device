@@ -26,6 +26,10 @@ lives on the server.
 - **Light:** BH1750 on a GY-302 board (I2C, 0x23 with ADDR low/floating).
 - **Temperature/humidity:** DHT11 on an HW-507 board (single-wire, own GPIO;
   the board carries the data pull-up).
+- **Buzzer:** a passive piezo, driven directly from a GPIO by LEDC PWM —
+  distinct pitches, volume by duty cycle. (Passive, not active: an active
+  buzzer only has its one built-in tone, so sounds could differ only by
+  rhythm.)
 - **Power:** 5V USB into the ESP32. Everything else runs from its 3.3V pin.
 
 **Everything is 3.3V.** Two boards invite 5V — the KY-023's pin is
@@ -44,6 +48,7 @@ supply.
 | DHT11 | data (`S`/`DAT`) | 4 | `D4` |
 | Joystick | `VRx` | 34 | `D34` |
 | Joystick | `VRy` | 35 | `D35` |
+| Piezo buzzer | `+` | 25 | `D25` (its `−` to `GND`) |
 | MCP23017 | GPA0–GPA7 | — | buttons 1–8, other leg to GND |
 | MCP23017 | GPB0 | — | joystick `SW`, other side is its `GND` |
 | MCP23017 | A0–A2 | — | leave at default (address 0x20) |
@@ -65,7 +70,9 @@ Why these pins:
   (configured that way on purpose, so the ESP32's pull-up sets the idle
   level). Both expander ports are mirrored onto `INTA`, so `INTB` is unused.
 - Still avoid: GPIO0/2/12/15 (boot straps), 1/3 (serial), 6–11 (flash).
-- Free for later: 13, 14, 16–19, 23, 25, 26, 32, 33.
+- **25 for the buzzer:** a plain output with no boot-strap role (it's
+  also DAC1, unused here).
+- Free for later: 13, 14, 16–19, 23, 26, 32, 33.
 
 ```mermaid
 graph LR
@@ -117,7 +124,8 @@ that mostly measures the screen.
 | `input.*` | Buttons, joystick press and axes → debounced events |
 | `sensors.*` | BH1750 (smoothed) and DHT11 readings |
 | `screen.*` | What's drawn — currently the bench bring-up view |
-| `settings_store.*` | Dimmer settings in NVS, surviving reboots |
+| `settings_store.*` | Dimmer and buzzer settings in NVS, surviving reboots |
+| `sound.*` | The piezo: named tunes, non-blocking, quieter in the dark |
 | `status_payload.*` | Parses the server's status (inherited; reshaped for the small screen next) |
 | `ota.*` | ArduinoOTA, hostname `bedside-dashboard-esp32` |
 | `device_config.*` | Which broker to use, fetched from the server (below) |
@@ -170,8 +178,9 @@ thresholds before WiFi is up.
 ## Controls
 
 - **Buttons 1–8:** 25ms debounce. A press released before 600ms is
-  `short`; held to 600ms fires `long` once (and nothing on release).
-  Published as raw presses — what each does is configured on the server.
+  `short`; held to 600ms fires `long` once (and nothing on release) and
+  plays a tiny tick, so you know you can let go. Published as raw presses —
+  what each does is configured on the server.
 - **Joystick:** centre calibrated at boot (so don't hold it while
   powering on). Enters a direction past ~40% deflection, leaves below
   ~25%. Holding repeats after 450ms, then every 150ms. Its press is a
@@ -190,7 +199,8 @@ limits it to the topics below (bedside-dashboard-server's
 | Topic | Direction | Retained | Payload |
 |---|---|---|---|
 | `bedside/status` | server → device | yes | status payload (small-screen format: next step) |
-| `bedside/config` | server → device | yes | `{"dimmer":{"bright_lux":20,"dark_lux":2,"dim_contrast":1,"wake_seconds":15}}` — any field optional |
+| `bedside/config` | server → device | yes | `{"dimmer":{"bright_lux":20,"dark_lux":2,"dim_contrast":1,"wake_seconds":15},"sounds":{"enabled":true,"volume":80,"dark_volume":10}}` — any field optional |
+| `bedside/sound` | server → device | no | `{"sound":"armed","urgent":false}` — see "Sounds" |
 | `bedside/sensors` | device → server | yes | `{"temperature_c":21.5,"humidity":44,"lux":3.5,"screen":"off"}` — `null` for a sensor with no reading |
 | `bedside/button` | device → server | no | `{"button":3,"press":"short"}` or `"long"` |
 | `bedside/availability` | device → server | yes | `online`, or `offline` (the connection's last will) |
@@ -238,6 +248,33 @@ plain-http LAN address) and `DEVICE_TOKEN` (made on that page, sent as
    any missing hardware, and shows each button or stick movement for 3s.
 5. Cover the light sensor: the screen dims, then turns off. Press a button:
    it comes back at Dim, and that press isn't published.
+
+## Sounds
+The server decides what a press did and says which sound to play on
+`bedside/sound` (bedside-dashboard-server's DESIGN.md, "Button feedback":
+confirm presses, and checking in Home Assistant that an action really
+happened). The firmware only knows the tunes:
+
+| Name | Means | Tune |
+|---|---|---|
+| (tick) | a hold just became a long press — played locally | 4 kHz click, 8 ms |
+| `armed` | press the same way again to run it | one 1.76 kHz beep |
+| `running` | sent to Home Assistant | two quick rising beeps |
+| `success` | done (and checked, if the action has a check) | three rising notes |
+| `failure` | failed, timed out, or never reached its state | three falling low notes, ~1.2 s |
+| `cancel` | an armed action timed out or was cancelled | a short 880 Hz blip |
+
+Rising means good, falling means bad, so they can be told apart half
+asleep. A new sound cuts off whatever is still playing (the tick is
+immediately replaced by `armed` for a confirm action).
+
+**Volume:** `sounds.volume` normally; `sounds.dark_volume` while the
+dimmer says the room is dark (below `dark_lux`, woken or not) — unless the
+message is `urgent`, which the server sets for `failure` so a door that
+didn't close is heard at night. `enabled: false` silences everything.
+Duty cycle sets loudness (50% is the loudest a piezo gets); 0–100 maps to
+duty squared so the quiet end has usable steps. Kept in NVS like the
+dimmer.
 
 ## Still to build
 - **Small-card status format** — the server's cards are laid out for the

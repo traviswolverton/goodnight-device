@@ -38,4 +38,8 @@ void dimmerUpdate(float lux);
 bool dimmerWake();
 
 DisplayLevel dimmerLevel();
+
+// True while the room is below darkLux (whether or not a touch has woken
+// the screen) -- when sound.h plays at its quieter dark volume.
+bool dimmerRoomIsDark();
 const char* dimmerLevelName();

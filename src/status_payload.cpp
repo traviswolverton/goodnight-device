@@ -174,12 +174,6 @@ bool parseStatusPayload(const uint8_t* data, size_t length, StatusPayload& out) 
     out.serviceCount++;
   }
 
-  JsonVariantConst pixels = doc["pixels"];
-  for (uint8_t i = 0; i < kNumPixels; i++) {
-    char key[2] = {char('0' + i), '\0'};
-    copyTruncated(out.pixelHex[i], kPixelHexLen, asCString(pixels[key]));
-  }
-
   // Absent (an older server) reads as no actions, same as an empty list.
   JsonArrayConst actions = doc["actions"];
   out.actionCount = 0;

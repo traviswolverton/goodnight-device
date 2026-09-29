@@ -8,7 +8,6 @@
 // but the cap needed to cover all 10 before that becomes a silently
 // missing card rather than a design choice).
 constexpr uint8_t kMaxServices = 10;
-constexpr uint8_t kNumPixels = 5;
 
 // All fields below are fixed-size char buffers, not String -- see
 // DESIGN.md's heap fragmentation note. A message arrives roughly every
@@ -23,7 +22,6 @@ constexpr size_t kTitleLen = 24;
 constexpr size_t kStatusLen = 8;
 constexpr size_t kLevelLen = 8;
 constexpr size_t kTextLen = 48;
-constexpr size_t kPixelHexLen = 8;  // "#RRGGBB" + '\0'
 constexpr size_t kCameraNameLen = 32;
 constexpr size_t kUrlLen = 160;
 constexpr size_t kAlertTextLen = 64;
@@ -112,7 +110,6 @@ struct StatusPayload {
   char overallText[kTextLen] = "Waiting for data...";
   ServiceReading services[kMaxServices];
   uint8_t serviceCount = 0;
-  char pixelHex[kNumPixels][kPixelHexLen] = {};  // "#RRGGBB", or "" = off
   ActionItem actions[kMaxActions];
   uint8_t actionCount = 0;
   bool valid = false;  // true once at least one message has parsed

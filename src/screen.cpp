@@ -64,9 +64,18 @@ void screenUpdate(const ScreenModel& m) {
     return;
   }
   char lines[3][kLineLen];
-  formatReadings(lines[0], m);
+  if (m.setup.active) {
+    snprintf(lines[0], kLineLen, "Setup: %s", m.setup.name);
+    snprintf(lines[1], kLineLen, "Code %06u  %u:%02u", (unsigned)m.setup.passkey,
+             m.setup.secondsLeft / 60, m.setup.secondsLeft % 60);
+    snprintf(lines[2], kLineLen, "%s", m.setup.status);
+  } else {
+    formatReadings(lines[0], m);
+  }
 
-  if (!m.wifi) {
+  if (m.setup.active) {
+    // lines[1] and [2] are already the setup text.
+  } else if (!m.wifi) {
     snprintf(lines[1], kLineLen, "Joining WiFi...");
   } else if (!m.mqtt) {
     snprintf(lines[1], kLineLen, "Connecting MQTT...");
@@ -74,7 +83,9 @@ void screenUpdate(const ScreenModel& m) {
     snprintf(lines[1], kLineLen, "Connected");
   }
 
-  if (inputLine_[0] && millis() - inputShownAtMs_ < kInputShownMs) {
+  if (m.setup.active) {
+    inputLine_[0] = '\0';
+  } else if (inputLine_[0] && millis() - inputShownAtMs_ < kInputShownMs) {
     snprintf(lines[2], kLineLen, "%s", inputLine_);
   } else {
     inputLine_[0] = '\0';
@@ -106,7 +117,9 @@ void screenUpdate(const ScreenModel& m) {
     g.drawStr(x, kBaselines[i] + y, lines[i]);
   }
   // Connection marks, top right: W = WiFi, M = MQTT, blank when down.
-  g.drawStr(x + kDisplayWidth - 1 - 12, kBaselines[0] + y, m.wifi ? "W" : " ");
-  g.drawStr(x + kDisplayWidth - 1 - 6, kBaselines[0] + y, m.mqtt ? "M" : " ");
+  if (!m.setup.active) {
+    g.drawStr(x + kDisplayWidth - 1 - 12, kBaselines[0] + y, m.wifi ? "W" : " ");
+    g.drawStr(x + kDisplayWidth - 1 - 6, kBaselines[0] + y, m.mqtt ? "M" : " ");
+  }
   displaySend();
 }

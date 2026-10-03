@@ -14,16 +14,19 @@
 #include <math.h>
 
 #include "device_config.h"
+#include "diagnostics.h"
 #include "dimmer.h"
 #include "display.h"
 #include "input.h"
 #include "ota.h"
 #include "pins.h"
+#include "provisioning.h"
 #include "screen.h"
 #include "secrets.h"
 #include "sensors.h"
 #include "settings_store.h"
 #include "sound.h"
+#include "wifi_config.h"
 
 namespace {
 
@@ -32,8 +35,11 @@ constexpr char kClientId[] = "bedside-dashboard-esp32";
 // Subscribed.
 constexpr char kTopicConfig[] = "bedside/config";
 constexpr char kTopicSound[] = "bedside/sound";
+constexpr char kTopicDiagnosticsRequest[] = "bedside/diagnostics/request";
 // Published.
 constexpr char kTopicButton[] = "bedside/button";
+constexpr char kTopicStick[] = "bedside/stick";
+constexpr char kTopicDiagnostics[] = "bedside/diagnostics";
 constexpr char kTopicSensors[] = "bedside/sensors";
 constexpr char kTopicAvailability[] = "bedside/availability";
 
@@ -41,6 +47,10 @@ constexpr size_t kMqttBufferSize = 4096;
 constexpr unsigned long kWifiRetryIntervalMs = 5000;
 constexpr unsigned long kMqttRetryIntervalMs = 5000;
 constexpr unsigned long kSensorPublishMs = 30000;
+
+// Holding the joystick pressed in while powering up starts WiFi setup mode
+// (BLE provisioning), for moving the device to another network.
+constexpr unsigned long kSetupHoldMs = 3000;
 
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
@@ -126,6 +136,8 @@ void onMqttMessage(char* topic, uint8_t* payload, unsigned int length) {
     applyConfig(payload, length);
   } else if (strcmp(topic, kTopicSound) == 0) {
     playSoundMessage(payload, length);
+  } else if (strcmp(topic, kTopicDiagnosticsRequest) == 0) {
+    diagnosticsApplyRequest(payload, length);
   } else {
     Serial.printf("[mqtt] unexpected topic: %s\n", topic);
   }
@@ -139,6 +151,7 @@ bool wifiWasConnected = false;
 // and the handshake finishes in the background.
 void ensureWifi() {
   bool isConnected = (WiFi.status() == WL_CONNECTED);
+  provisioningOnTrialResult(wifiConfigUpdate(isConnected));
   if (isConnected != wifiWasConnected) {
     wifiWasConnected = isConnected;
     if (isConnected) {
@@ -148,7 +161,7 @@ void ensureWifi() {
       Serial.println("[wifi] disconnected");
     }
   }
-  if (isConnected) {
+  if (isConnected || !wifiConfigHasCredentials()) {
     return;
   }
   unsigned long now = millis();
@@ -158,7 +171,7 @@ void ensureWifi() {
   lastWifiAttemptMs = now;
   Serial.println("[wifi] (re)connecting...");
   WiFi.disconnect();
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  WiFi.begin(wifiCredentials().ssid, wifiCredentials().password);
 }
 
 // PubSubClient's connect() blocks for the TCP handshake, so it's
@@ -188,6 +201,8 @@ void ensureMqtt() {
     mqttClient.publish(kTopicAvailability, "online", true);
     mqttClient.subscribe(kTopicConfig);
     mqttClient.subscribe(kTopicSound);
+    mqttClient.subscribe(kTopicDiagnosticsRequest);
+    diagnosticsPublishSoon();
     sensorPublishDue = true;
   } else {
     Serial.printf("[mqtt] connect failed, rc=%d\n", mqttClient.state());
@@ -225,7 +240,8 @@ void maybePublishSensors() {
   }
   unsigned long now = millis();
   DisplayLevel level = dimmerLevel();
-  if (sensorPublishDue || level != lastPublishedLevel || now - lastSensorPublishMs >= kSensorPublishMs) {
+  unsigned long interval = diagnosticsFast() ? 1000 : kSensorPublishMs;
+  if (sensorPublishDue || level != lastPublishedLevel || now - lastSensorPublishMs >= interval) {
     publishSensors();
     sensorPublishDue = false;
     lastPublishedLevel = level;
@@ -246,6 +262,32 @@ void publishButton(uint8_t button, bool longPress) {
   mqttClient.publish(kTopicButton, reinterpret_cast<const uint8_t*>(buffer), length, false);
 }
 
+// bedside/diagnostics, retained. See diagnostics.h.
+void maybePublishDiagnostics() {
+  if (!mqttClient.connected() || !diagnosticsDue()) {
+    return;
+  }
+  char buffer[640];
+  size_t length = diagnosticsBuild(buffer, sizeof(buffer));
+  static bool logged = false;
+  if (!logged) {
+    logged = true;
+    Serial.printf("[diag] %s\n", buffer);  // once, so the shape can be checked
+  }
+  mqttClient.publish(kTopicDiagnostics, reinterpret_cast<const uint8_t*>(buffer), length, true);
+}
+
+// bedside/stick: {"stick": "up"|"down"|"left"|"right"|"press"}. An event,
+// like bedside/button: not retained, dropped while disconnected.
+void publishStick(const char* name) {
+  if (!mqttClient.connected()) {
+    return;
+  }
+  char buffer[32];
+  int length = snprintf(buffer, sizeof(buffer), "{\"stick\":\"%s\"}", name);
+  mqttClient.publish(kTopicStick, reinterpret_cast<const uint8_t*>(buffer), length, false);
+}
+
 void handleInput() {
   InputEvent event;
   while (inputNextEvent(event)) {
@@ -262,12 +304,34 @@ void handleInput() {
         }
         publishButton(event.button, event.kind == InputKind::ButtonLong);
         break;
-      default:
+      default: {
         // The joystick drives on-device navigation; nothing to navigate
-        // yet on the bench screen, so it's only shown.
+        // yet on the bench screen, so it's only shown (and logged).
+        const char* name = event.kind == InputKind::JoyUp      ? "up"
+                           : event.kind == InputKind::JoyDown  ? "down"
+                           : event.kind == InputKind::JoyLeft  ? "left"
+                           : event.kind == InputKind::JoyRight ? "right"
+                                                               : "press";
+        Serial.printf("[input] stick %s\n", name);
+        publishStick(name);
         break;
+      }
     }
   }
+}
+
+// True when the joystick is pressed at power-up and stays pressed for
+// kSetupHoldMs. Returns at once when it isn't pressed, so a normal boot
+// isn't delayed.
+bool setupButtonHeld() {
+  unsigned long start = millis();
+  while (inputJoystickPressDown()) {
+    if (millis() - start >= kSetupHoldMs) {
+      return true;
+    }
+    delay(20);
+  }
+  return false;
 }
 
 void scanI2c() {
@@ -309,6 +373,7 @@ void setup() {
   scanI2c();
 
   WiFi.mode(WIFI_STA);
+  wifiConfigBegin();
   deviceConfigBegin();
   mqttClient.setServer(deviceBroker().host, deviceBroker().port);
   mqttClient.setBufferSize(kMqttBufferSize);
@@ -319,6 +384,10 @@ void setup() {
   dimmerBegin(settingsLoadDimmer(DimmerSettings{}));
   soundBegin(settingsLoadSound(SoundSettings{}));
   inputBegin(dimmerWake);
+
+  if (!wifiConfigHasCredentials() || setupButtonHeld()) {
+    provisioningStart();
+  }
 
   // One line naming whatever's missing, so a loose wire shows on the
   // screen itself during bring-up rather than only over serial.
@@ -354,6 +423,9 @@ void loop() {
   dimmerUpdate(sensorsLux());
   soundUpdate();
   maybePublishSensors();
+  maybePublishDiagnostics();
+  provisioningUpdate();
+  displayRefresh();
 
   ScreenModel model{
       sensorsTemperatureC(),
@@ -362,6 +434,7 @@ void loop() {
       WiFi.status() == WL_CONNECTED,
       mqttClient.connected(),
       hardwareNote[0] ? hardwareNote : nullptr,
+      provisioningView(),
   };
   screenUpdate(model);
 }

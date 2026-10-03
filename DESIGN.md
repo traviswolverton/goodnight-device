@@ -19,7 +19,7 @@ lives on the server.
   AMOLED, despite the listings — a small passive OLED. Draws nothing on
   black pixels, can be powered off by command, and has a contrast register.
 - **Buttons:** 8 momentary push buttons on a Waveshare MCP23017 I/O
-  expander (I2C, 0x20), GPA0–GPA7, each switching to GND. The expander's
+  expander (I2C, 0x27), GPA0–GPA7, each switching to GND. The expander's
   internal pull-ups are enabled; no resistors needed.
 - **Joystick:** KY-023 (two potentiometers + a push switch). Axes on
   ESP32 ADC1; the switch on the expander's GPB0.
@@ -51,11 +51,15 @@ supply.
 | Piezo buzzer | `+` | 25 | `D25` (its `−` to `GND`) |
 | MCP23017 | GPA0–GPA7 | — | buttons 1–8, other leg to GND |
 | MCP23017 | GPB0 | — | joystick `SW`, other side is its `GND` |
-| MCP23017 | A0–A2 | — | leave at default (address 0x20) |
+| MCP23017 | A0–A2 | — | leave at default (address 0x27: the Waveshare board ships with all three high) |
 | All modules | VCC / GND | — | `3V3` / `GND` |
 
 `include/pins.h` holds the same assignments in code. If the two ever
 disagree, this table is what the hardware was built from.
+
+See [`docs/pinout.html`](docs/pinout.html) for a visual wiring diagram of
+the same pins (open it in a browser). It's drawn from this table and
+`pins.h`, not from a built unit, so keep all three in step.
 
 Why these pins:
 - **21/22** are the ESP32's default I2C pins. The three I2C devices have
@@ -88,7 +92,7 @@ graph LR
   subgraph I2C["I2C bus"]
     OLED["SSD1306 0x3C"]
     LUX["BH1750 0x23"]
-    MCP["MCP23017 0x20"]
+    MCP["MCP23017 0x27"]
   end
   subgraph Controls
     BTN["Buttons 1-8 → GPA0-7"]
@@ -129,6 +133,9 @@ that mostly measures the screen.
 | `ota.*` | ArduinoOTA, hostname `bedside-dashboard-esp32` |
 | `device_config.*` | Which broker to use, fetched from the server (below) |
 | `http_get.*` | The small HTTP client that fetch uses (from the desk unit) |
+| `wifi_config.*` | Which WiFi network to join: NVS, else `secrets.h`; new ones are a trial |
+| `provisioning.*` | Setting the WiFi network from a phone over BLE (below) |
+| `diagnostics.*` | The device's self-report for a server diagnostics page (below) |
 
 Every module is non-blocking and polled from `loop()`, as on the desk
 unit. The one deliberate exception is the DHT11 read (a few milliseconds
@@ -201,6 +208,9 @@ limits it to the topics below (bedside-dashboard-server's
 | `bedside/sound` | server → device | no | `{"sound":"armed","urgent":false}` — see "Sounds" |
 | `bedside/sensors` | device → server | yes | `{"temperature_c":21.5,"humidity":44,"lux":3.5,"screen":"off"}` — `null` for a sensor with no reading |
 | `bedside/button` | device → server | no | `{"button":3,"press":"short"}` or `"long"` |
+| `bedside/stick` | device → server | no | `{"stick":"up"}`: `up`, `down`, `left`, `right` (repeats while held) or `press` |
+| `bedside/diagnostics` | device → server | yes | see "Diagnostics" |
+| `bedside/diagnostics/request` | server → device | no | `{"fast_seconds":120}` — see "Diagnostics" |
 | `bedside/availability` | device → server | yes | `online`, or `offline` (the connection's last will) |
 
 `bedside/sensors` goes out every 30s, on every (re)connect, and whenever
@@ -235,12 +245,66 @@ plain-http LAN address) and `DEVICE_TOKEN` (made on that page, sent as
   `secrets.h`. The compiled-in values only matter until the server first
   gives a working answer.
 
+## WiFi provisioning
+The WiFi network is set from a phone over Bluetooth LE, so moving the
+device to another network needs no reflash and no password in a file.
+Code: `provisioning.*` (NimBLE) and `wifi_config.*` (storage).
+
+- **Where the network comes from, in order:** saved in NVS (`wificfg`),
+  else `WIFI_SSID`/`WIFI_PASSWORD` from `secrets.h` (both optional now),
+  else none. A saved network wins over `secrets.h`.
+- **Trial, then keep:** credentials from the phone are only a trial. They
+  are saved after a connection succeeds; after 20s without one the
+  previous network comes back. A wrong password changes nothing.
+- **Setup mode** starts when there is no network at all, or when the
+  joystick centre is held pressed for 3s at power-up. The OLED then shows
+  `Setup: Bedside-XXXX`, a 6-digit passkey and a countdown. It ends when a
+  trial succeeds, or after 5 minutes without phone activity (with no
+  network at all it starts over instead).
+- **Security:** BLE is up only in setup mode. The phone has to pair using
+  the passkey shown on the OLED (MITM + Secure Connections, no bonding);
+  the characteristics only accept encrypted, authenticated writes.
+- **Phone side:** service `6e5b0001-2f5c-4c0e-9b7d-5a8f0c3e1d00`;
+  characteristics `…0002` network name (write), `…0003` password (write),
+  `…0004` apply (write any byte), `…0005` status (read, notify:
+  `connecting`, `connected <ip>`, `failed: wrong password` / `network not
+  found` / `could not connect`). nRF Connect on iOS works for this.
+- **Cost:** about 283 KB of flash. The BLE stack is shut down when setup
+  mode ends and its memory returned.
+
+Status: written and flashed; setup mode starting has been seen, but a
+phone has not yet completed a provisioning run (see `todo.md`).
+
+## Diagnostics
+For a server diagnostics page. The device publishes `bedside/diagnostics`
+(retained) on every (re)connect and every 30s; the server asks for more
+by publishing `{"fast_seconds": N}` (1–600, 0 to stop) to
+`bedside/diagnostics/request`, and then diagnostics and `bedside/sensors`
+both go out once a second for N seconds. Button presses and stick moves
+arrive as events on `bedside/button` and `bedside/stick`.
+
+```json
+{"firmware":"Oct  3 2026 14:55:13","uptime_s":7,"heap_free":146316,
+ "setup_mode":false,"wifi":{"rssi":-45,"ip":"192.0.2.30"},
+ "hardware":{"oled":true,"light":true,"expander":true,"joystick":true,
+             "climate":true},
+ "stick":{"x":1910,"y":1902,"direction":"none","pressed":false},
+ "buttons_down":[]}
+```
+
+- `hardware` says what answered: a `false` is a wiring problem. `climate`
+  is false while the DHT11 has no reading.
+- `stick.x`/`y` are raw 12-bit readings (centre about 1900); `null` when no
+  joystick. `direction` is `none`, `up`, `down`, `left` or `right`.
+- `buttons_down` lists the buttons held right now (debounced), 1–8.
+- `firmware` is the build date and time.
+
 ## Bench bring-up
 
 1. `cp include/secrets.h.example include/secrets.h` and fill it in.
 2. `pio run -t upload` over USB (first flash must be USB — see the
    partition note in `platformio.ini`), then `pio device monitor`.
-3. The serial log's `[i2c] found:` line should list `0x20 0x23 0x3C`.
+3. The serial log's `[i2c] found:` line should list `0x23 0x27 0x3C`.
 4. The screen's top line shows temperature, humidity and lux, with `W`
    and `M` at the right once WiFi and MQTT are up. The bottom line names
    any missing hardware, and shows each button or stick movement for 3s.

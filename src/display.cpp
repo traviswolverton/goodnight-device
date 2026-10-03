@@ -31,6 +31,17 @@ constexpr uint8_t kPrechargeDim = 0x11;
 constexpr uint8_t kVcomhFull = 0x40;
 constexpr uint8_t kVcomhDim = 0x00;
 
+// The panel can't be read back, and a glitch or a brief power dip on a
+// marginal bus resets it to "display off, charge pump off, memory blank"
+// without the firmware ever knowing. So the setup is re-sent this often.
+constexpr unsigned long kRefreshIntervalMs = 10UL * 1000UL;
+unsigned long lastRefreshMs_ = 0;
+
+bool probePanel() {
+  Wire.beginTransmission(kI2cAddrOled);
+  return Wire.endTransmission() == 0;
+}
+
 void applyLevel() {
   if (!present_) {
     return;
@@ -57,8 +68,7 @@ void applyLevel() {
 }  // namespace
 
 bool displayBegin() {
-  Wire.beginTransmission(kI2cAddrOled);
-  present_ = (Wire.endTransmission() == 0);
+  present_ = probePanel();
   if (!present_) {
     Serial.println("[display] no SSD1306 at 0x3C");
     return false;
@@ -68,6 +78,32 @@ bool displayBegin() {
   applyLevel();
   lastDriftMs_ = millis();
   return true;
+}
+
+void displayRefresh() {
+  unsigned long now = millis();
+  if (now - lastRefreshMs_ < kRefreshIntervalMs) {
+    return;
+  }
+  lastRefreshMs_ = now;
+  if (!present_) {
+    // Missing at boot: the panel may just have answered late.
+    if (!probePanel()) {
+      return;
+    }
+    present_ = true;
+    Serial.println("[display] SSD1306 found late; starting it");
+    u8g2_.setBusClock(kI2cClockHz);
+    u8g2_.begin();
+    applyLevel();
+    return;
+  }
+  // A glitch on the bus can leave the controller with garbage settings,
+  // not only reset, so re-send the whole init sequence. Its memory (the
+  // image) survives this, and the panel is back on within a millisecond.
+  u8g2_.initDisplay();
+  applyLevel();
+  displaySend();  // the frame buffer still holds what should be showing
 }
 
 bool displayPresent() {

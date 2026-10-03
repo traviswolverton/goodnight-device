@@ -92,6 +92,13 @@ void updateSwitches(unsigned long now) {
 
   // Reading the port also clears the expander's interrupt.
   uint16_t bits = mcp_.readGPIOAB();
+  // A failed I2C read comes back as all zeros, which would read as every
+  // button and the stick held down at once. No real press looks like that
+  // (the pins are pulled up), so drop the read and try again next time.
+  // The same goes for a half-failed read: all 8 button pins low at once.
+  if ((bits & 0x00FF) == 0) {
+    return;
+  }
   for (uint8_t i = 0; i < kNumSwitches; i++) {
     Switch& s = switches_[i];
     bool rawDown = !(bits & (1u << expanderPin(i)));  // pulled up; pressed = low
@@ -118,7 +125,7 @@ void updateSwitches(unsigned long now) {
 void beginExpander() {
   expanderPresent_ = mcp_.begin_I2C(kI2cAddrExpander, &Wire);
   if (!expanderPresent_) {
-    Serial.println("[input] no MCP23017 at 0x20 -- buttons disabled");
+    Serial.printf("[input] no MCP23017 at 0x%02X -- buttons disabled\n", kI2cAddrExpander);
     return;
   }
   // Both ports on INTA (mirroring), open-drain so the ESP32's pull-up sets
@@ -287,6 +294,50 @@ bool inputNextEvent(InputEvent& out) {
   queueHead_ = (queueHead_ + 1) % kQueueSize;
   queueCount_--;
   return true;
+}
+
+uint8_t inputButtonsDown() {
+  uint8_t mask = 0;
+  for (uint8_t i = 0; i < kNumButtons; i++) {
+    if (switches_[i].down) {
+      mask |= (1u << i);
+    }
+  }
+  return mask;
+}
+
+bool inputJoystickPressed() {
+  return switches_[kJoyPressIndex].down;
+}
+
+bool inputJoystickRaw(int& x, int& y) {
+  if (!joystickPresent_) {
+    return false;
+  }
+  x = readAverage(kPinJoystickX);
+  y = readAverage(kPinJoystickY);
+  return true;
+}
+
+const char* inputJoystickDirection() {
+  switch (dir_) {
+    case Dir::Up: return "up";
+    case Dir::Down: return "down";
+    case Dir::Left: return "left";
+    case Dir::Right: return "right";
+    default: return "none";
+  }
+}
+
+bool inputJoystickPressDown() {
+  if (!expanderPresent_) {
+    return false;
+  }
+  uint16_t bits = mcp_.readGPIOAB();
+  if ((bits & 0x00FF) == 0) {
+    return false;  // see updateSwitches(): a failed read, not eight presses
+  }
+  return (bits & (1u << kExpanderJoystickPressPin)) == 0;
 }
 
 bool inputExpanderPresent() {

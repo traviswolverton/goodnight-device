@@ -40,5 +40,21 @@ void inputUpdate();
 // Pops the oldest pending event. False when there are none.
 bool inputNextEvent(InputEvent& out);
 
+// True while the joystick is pressed in, read straight from the expander
+// (no debounce, no events). For checks at power-up, before inputUpdate()
+// is running. False when the expander isn't present, and for a read that
+// has every pin low at once: that's what a failed I2C read looks like,
+// not eight buttons and a stick all held down.
+bool inputJoystickPressDown();
+
+// What the controls are doing right now, for diagnostics. Buttons are
+// debounced; bit 0 is button 1, bit 7 is button 8.
+uint8_t inputButtonsDown();
+bool inputJoystickPressed();
+// Current raw ADC reading (0-4095). False when the joystick isn't present.
+bool inputJoystickRaw(int& x, int& y);
+// "none", "up", "down", "left" or "right".
+const char* inputJoystickDirection();
+
 bool inputExpanderPresent();
 bool inputJoystickPresent();

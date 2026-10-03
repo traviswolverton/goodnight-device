@@ -8,7 +8,7 @@
 //
 // Board: ELEGOO ESP32-WROOM-32 (38-pin DEVKIT V1), same as the desk unit.
 
-// Shared I2C bus: SSD1306 OLED (0x3C), BH1750 (0x23), MCP23017 (0x20).
+// Shared I2C bus: SSD1306 OLED (0x3C), BH1750 (0x23), MCP23017 (0x27).
 // The ESP32's default Wire pins, printed D21/D22 on the board.
 constexpr uint8_t kPinI2cSda = 21;
 constexpr uint8_t kPinI2cScl = 22;
@@ -16,7 +16,7 @@ constexpr uint32_t kI2cClockHz = 400000;
 
 constexpr uint8_t kI2cAddrOled = 0x3C;
 constexpr uint8_t kI2cAddrLight = 0x23;  // BH1750 ADDR pin low or floating
-constexpr uint8_t kI2cAddrExpander = 0x20;  // MCP23017 A0-A2 all low
+constexpr uint8_t kI2cAddrExpander = 0x27;  // MCP23017 A0-A2 all high: how the Waveshare board ships
 
 // MCP23017 INTA. The expander mirrors both ports onto INTA and drives it
 // open-drain, active-low, so this pin needs a pull-up (the ESP32's own).

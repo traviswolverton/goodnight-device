@@ -1,0 +1,488 @@
+<title>Bedside Dashboard Pinout</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+  :root {
+    --paper: #f5f2ea;
+    --ink: #201d16;
+    --ink-dim: #7a7566;
+    --rule: #ded7c4;
+    --accent: #8a5a2b;
+    --card: #ffffff;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper: #14171a;
+      --ink: #eae6d9;
+      --ink-dim: #96917f;
+      --rule: #2c2f2a;
+      --accent: #d9a35f;
+      --card: #1b1e1a;
+    }
+  }
+  :root[data-theme="dark"] {
+    --paper: #14171a;
+    --ink: #eae6d9;
+    --ink-dim: #96917f;
+    --rule: #2c2f2a;
+    --accent: #d9a35f;
+    --card: #1b1e1a;
+  }
+
+  /* Diagram panel — fixed "instrument panel" palette, same in both themes */
+  svg.wiring {
+    --panel-bg: #0c1210;
+    --pcb: #123d2e;
+    --pcb-edge: #1f5c45;
+    --silk: #eef1ea;
+    --silk-dim: #5b6a63;
+    --pad: #d9a35f;
+    --wire-power: #d9a35f;
+    --wire-gnd: #7b8a82;
+    --wire-signal: #45c2b3;
+    --wire-warn: #e2666a;
+  }
+
+  * { box-sizing: border-box; }
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "IBM Plex Sans", system-ui, sans-serif;
+    padding: 28px 20px 64px;
+    max-width: 980px;
+    margin: 0 auto;
+  }
+  h1, h2, h3 { font-family: "IBM Plex Mono", "SF Mono", monospace; text-wrap: balance; }
+  h1 {
+    font-size: clamp(1.4rem, 1rem + 2vw, 1.9rem);
+    font-weight: 700;
+    margin: 0 0 4px;
+    letter-spacing: -0.01em;
+  }
+  .subtitle {
+    color: var(--ink-dim);
+    font-size: 0.95rem;
+    margin: 0 0 28px;
+    max-width: 62ch;
+  }
+  .eyebrow {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.72rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin: 0 0 6px;
+  }
+
+  figure.diagram-figure {
+    margin: 0 0 20px;
+    padding: 0;
+  }
+  .diagram-scroll {
+    overflow-x: auto;
+    background: #0c1210;
+    border-radius: 10px;
+    padding: 6px;
+  }
+  svg.wiring { display: block; width: 100%; height: auto; min-width: 720px; }
+  figcaption {
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+    margin-top: 10px;
+    max-width: 68ch;
+  }
+
+  .legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 18px;
+    margin: 0 0 40px;
+    padding: 14px 16px;
+    background: var(--card);
+    border: 1px solid var(--rule);
+    border-radius: 8px;
+  }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 0.82rem; color: var(--ink-dim); }
+  .legend-swatch { width: 22px; height: 4px; border-radius: 2px; flex: none; }
+
+  h2 {
+    font-size: 1.05rem;
+    font-weight: 600;
+    margin: 40px 0 4px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--rule);
+  }
+  .table-wrap { overflow-x: auto; margin-top: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 0.88rem; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--rule); }
+  th {
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--ink-dim);
+    font-weight: 500;
+  }
+  td.mono, .mono { font-family: "IBM Plex Mono", monospace; font-variant-numeric: tabular-nums; }
+  tr.group-start td { border-top: 2px solid var(--rule); }
+  .gpio { color: var(--accent); font-weight: 600; }
+  .note { color: var(--ink-dim); font-size: 0.85em; }
+  .flag {
+    display: inline-block;
+    font-family: "IBM Plex Mono", monospace;
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
+    background: color-mix(in srgb, #e2666a 22%, transparent);
+    color: #c94b50;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 6px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .flag { color: #f0989b; }
+  }
+  :root[data-theme="dark"] .flag { color: #f0989b; }
+
+  footer {
+    margin-top: 48px;
+    padding-top: 18px;
+    border-top: 1px solid var(--rule);
+    font-size: 0.85rem;
+    color: var(--ink-dim);
+  }
+  footer strong { color: var(--ink); }
+</style>
+
+<p class="eyebrow">bedside-dashboard-esp32 · hardware reference</p>
+<h1>Wiring reference</h1>
+<p class="subtitle">
+  Every GPIO in use, drawn from <code>include/pins.h</code> and the pin table in DESIGN.md. The device
+  isn&rsquo;t built yet, so nothing here has been checked against real hardware: treat it as the plan
+  to wire from, and correct it if a board turns out different. Full rationale lives in DESIGN.md; this
+  is the at-the-bench version.
+</p>
+
+<figure class="diagram-figure">
+  <div class="diagram-scroll">
+    <svg class="wiring" viewBox="0 0 1500 830" role="img" aria-label="Wiring diagram: ESP32 DEVKIT V1 in the centre with its used pins drawn in real physical row order. On the left: a KY-023 joystick (axes to GPIO34 and 35), a passive piezo (GPIO25) and an MCP23017 I/O expander (interrupt to GPIO27) with the eight buttons and the joystick switch on it; the I2C bus reaches the expander over the top of the board. On the right: the shared I2C bus (SDA GPIO21, SCL GPIO22) to the SSD1306 OLED and BH1750 light sensor, and a DHT11 on GPIO4. Power and ground are shown as 3V3 and GND tags: every 3V3 tag joins the single 3V3 pin and every GND tag joins a GND pin.">
+      <rect x="640" y="70" width="180" height="560" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <rect x="672" y="86" width="116" height="70" rx="3" fill="#2b2f2c" opacity="0.55"/>
+      <text x="730" y="126" text-anchor="middle" font-size="11" fill="var(--silk)">WROOM-32</text>
+      <rect x="700" y="600" width="60" height="16" rx="2" fill="#2b2f2c" opacity="0.55"/>
+      <text x="730" y="645" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">ESP32 · DEVKIT V1</text>
+      <text x="730" y="660" text-anchor="middle" font-size="9" fill="var(--silk-dim)">ELEGOO · WROOM-32</text>
+      <text x="730" y="675" text-anchor="middle" font-size="9" fill="var(--wire-power)">5V USB powers the board</text>
+      <line x1="600" y1="100" x2="640" y2="100" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="104" text-anchor="end" font-size="10" fill="var(--silk-dim)">EN</text>
+      <line x1="600" y1="136" x2="640" y2="136" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="140" text-anchor="end" font-size="10" fill="var(--silk-dim)">VP</text>
+      <line x1="600" y1="172" x2="640" y2="172" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="176" text-anchor="end" font-size="10" fill="var(--silk-dim)">VN</text>
+      <line x1="600" y1="208" x2="640" y2="208" stroke="var(--wire-signal)" stroke-width="2.5"/>
+      <circle cx="600" cy="208" r="3.2" fill="var(--wire-signal)"/>
+      <text x="594" y="203" text-anchor="end" font-size="12" fill="var(--silk)" font-weight="600">D34</text>
+      <text x="594" y="220" text-anchor="end" font-size="9.5" fill="var(--silk-dim)">joystick VRx</text>
+      <line x1="600" y1="244" x2="640" y2="244" stroke="var(--wire-signal)" stroke-width="2.5"/>
+      <circle cx="600" cy="244" r="3.2" fill="var(--wire-signal)"/>
+      <text x="594" y="239" text-anchor="end" font-size="12" fill="var(--silk)" font-weight="600">D35</text>
+      <text x="594" y="256" text-anchor="end" font-size="9.5" fill="var(--silk-dim)">joystick VRy</text>
+      <line x1="600" y1="280" x2="640" y2="280" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="284" text-anchor="end" font-size="10" fill="var(--silk-dim)">D32</text>
+      <line x1="600" y1="316" x2="640" y2="316" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="320" text-anchor="end" font-size="10" fill="var(--silk-dim)">D33</text>
+      <line x1="600" y1="352" x2="640" y2="352" stroke="var(--wire-signal)" stroke-width="2.5"/>
+      <circle cx="600" cy="352" r="3.2" fill="var(--wire-signal)"/>
+      <text x="594" y="347" text-anchor="end" font-size="12" fill="var(--silk)" font-weight="600">D25</text>
+      <text x="594" y="364" text-anchor="end" font-size="9.5" fill="var(--silk-dim)">piezo +</text>
+      <line x1="600" y1="388" x2="640" y2="388" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="392" text-anchor="end" font-size="10" fill="var(--silk-dim)">D26</text>
+      <line x1="600" y1="424" x2="640" y2="424" stroke="var(--wire-signal)" stroke-width="2.5"/>
+      <circle cx="600" cy="424" r="3.2" fill="var(--wire-signal)"/>
+      <text x="594" y="419" text-anchor="end" font-size="12" fill="var(--silk)" font-weight="600">D27</text>
+      <text x="594" y="436" text-anchor="end" font-size="9.5" fill="var(--silk-dim)">MCP23017 INTA</text>
+      <line x1="600" y1="460" x2="640" y2="460" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="464" text-anchor="end" font-size="10" fill="var(--silk-dim)">D14</text>
+      <line x1="600" y1="496" x2="640" y2="496" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="500" text-anchor="end" font-size="10" fill="var(--silk-dim)">D12</text>
+      <line x1="600" y1="532" x2="640" y2="532" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="536" text-anchor="end" font-size="10" fill="var(--silk-dim)">D13</text>
+      <line x1="600" y1="568" x2="640" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <circle cx="600" cy="568" r="3.2" fill="var(--wire-gnd)"/>
+      
+      <line x1="600" y1="568" x2="584" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="538" y="559" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="561" y="572" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <text x="534" y="588" text-anchor="end" font-size="9.5" fill="var(--silk-dim)">either GND pin: same net</text>
+      <line x1="600" y1="604" x2="640" y2="604" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="594" y="608" text-anchor="end" font-size="10" fill="var(--silk-dim)">VIN (unused)</text>
+      <line x1="820" y1="100" x2="860" y2="100" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="104" text-anchor="start" font-size="10" fill="var(--silk-dim)">D23</text>
+      <line x1="820" y1="136" x2="860" y2="136" stroke="var(--wire-signal)" stroke-width="2.5"/>
+      <circle cx="820" cy="136" r="3.2" fill="var(--wire-signal)"/>
+      <text x="866" y="131" text-anchor="start" font-size="12" fill="var(--silk)" font-weight="600">D22</text>
+      <text x="898" y="131" text-anchor="start" font-size="9.5" fill="var(--silk-dim)">SCL</text>
+      <line x1="820" y1="172" x2="860" y2="172" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="176" text-anchor="start" font-size="10" fill="var(--silk-dim)">TX0</text>
+      <line x1="820" y1="208" x2="860" y2="208" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="212" text-anchor="start" font-size="10" fill="var(--silk-dim)">RX0</text>
+      <line x1="820" y1="244" x2="860" y2="244" stroke="var(--wire-signal)" stroke-width="2.5"/>
+      <circle cx="820" cy="244" r="3.2" fill="var(--wire-signal)"/>
+      <text x="866" y="239" text-anchor="start" font-size="12" fill="var(--silk)" font-weight="600">D21</text>
+      <text x="898" y="239" text-anchor="start" font-size="9.5" fill="var(--silk-dim)">SDA</text>
+      <line x1="820" y1="280" x2="860" y2="280" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="284" text-anchor="start" font-size="10" fill="var(--silk-dim)">D19</text>
+      <line x1="820" y1="316" x2="860" y2="316" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="320" text-anchor="start" font-size="10" fill="var(--silk-dim)">D18</text>
+      <line x1="820" y1="352" x2="860" y2="352" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="356" text-anchor="start" font-size="10" fill="var(--silk-dim)">D5</text>
+      <line x1="820" y1="388" x2="860" y2="388" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="392" text-anchor="start" font-size="10" fill="var(--silk-dim)">TX2</text>
+      <line x1="820" y1="424" x2="860" y2="424" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="428" text-anchor="start" font-size="10" fill="var(--silk-dim)">RX2</text>
+      <line x1="820" y1="460" x2="860" y2="460" stroke="var(--wire-signal)" stroke-width="2.5"/>
+      <circle cx="820" cy="460" r="3.2" fill="var(--wire-signal)"/>
+      <text x="866" y="455" text-anchor="start" font-size="12" fill="var(--silk)" font-weight="600">D4</text>
+      <text x="898" y="455" text-anchor="start" font-size="9.5" fill="var(--silk-dim)">data</text>
+      <line x1="820" y1="496" x2="860" y2="496" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="500" text-anchor="start" font-size="10" fill="var(--silk-dim)">D2</text>
+      <line x1="820" y1="532" x2="860" y2="532" stroke="var(--silk-dim)" stroke-width="1"/>
+      <text x="866" y="536" text-anchor="start" font-size="10" fill="var(--silk-dim)">D15</text>
+      <line x1="820" y1="568" x2="860" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <circle cx="820" cy="568" r="3.2" fill="var(--wire-gnd)"/>
+      <line x1="860" y1="568" x2="876" y2="568" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="876" y="559" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="899" y="572" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <text x="928" y="572" text-anchor="start" font-size="9.5" fill="var(--silk-dim)">either GND pin: same net</text>
+      <line x1="820" y1="604" x2="860" y2="604" stroke="var(--wire-power)" stroke-width="2.5"/>
+      <circle cx="820" cy="604" r="3.2" fill="var(--wire-power)"/>
+      <line x1="860" y1="604" x2="876" y2="604" stroke="var(--wire-power)" stroke-width="2.5"/>
+      <rect x="876" y="595" width="46" height="18" rx="9" fill="none" stroke="var(--wire-power)" stroke-width="1.6"/>
+      <text x="899" y="608" text-anchor="middle" font-size="10.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+      <text x="928" y="608" text-anchor="start" font-size="9.5" fill="var(--wire-power)">the only 3.3V pin: every 3V3 tag lands here</text>
+      <rect x="120" y="140" width="180" height="195" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="210.0" y="160" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">KY-023 JOYSTICK</text>
+      <text x="210.0" y="174" text-anchor="middle" font-size="9" fill="var(--silk-dim)">2 × pot + push switch</text>
+      <circle cx="300" cy="208" r="3" fill="var(--silk)"/>
+      <text x="292" y="212" text-anchor="end" font-size="10.5" fill="var(--silk)">VRx</text>
+      <circle cx="300" cy="244" r="3" fill="var(--silk)"/>
+      <text x="292" y="248" text-anchor="end" font-size="10.5" fill="var(--silk)">VRy</text>
+      <circle cx="300" cy="280" r="3" fill="var(--silk)"/>
+      <text x="292" y="284" text-anchor="end" font-size="10.5" fill="var(--silk)">SW</text>
+      <line x1="300" y1="280" x2="316" y2="280" stroke="var(--wire-signal)" stroke-width="2"/>
+      <rect x="316" y="271" width="72.0" height="18" rx="9" fill="none" stroke="var(--wire-signal)" stroke-width="1.6" stroke-dasharray="4 3"/>
+      <text x="352.0" y="284" text-anchor="middle" font-size="10" fill="var(--wire-signal)" font-weight="600">→ MCP PB0</text>
+      <circle cx="300" cy="300" r="3" fill="var(--wire-warn)"/>
+      <text x="292" y="304" text-anchor="end" font-size="10.5" fill="var(--wire-warn)">+5V pin</text>
+      <line x1="300" y1="300" x2="316" y2="300" stroke="var(--wire-power)" stroke-width="2.5"/>
+      <rect x="316" y="291" width="46" height="18" rx="9" fill="none" stroke="var(--wire-power)" stroke-width="1.6"/>
+      <text x="339" y="304" text-anchor="middle" font-size="10.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+      <text x="368" y="304" text-anchor="start" font-size="9.5" fill="var(--wire-warn)" font-weight="600">⚠ 3V3, never 5V</text>
+      <circle cx="300" cy="320" r="3" fill="var(--silk)"/>
+      <text x="292" y="324" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      <line x1="300" y1="320" x2="316" y2="320" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="316" y="311" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="339" y="324" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <rect x="120" y="348" width="180" height="62" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="210.0" y="368" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">PASSIVE PIEZO</text>
+      <text x="210.0" y="382" text-anchor="middle" font-size="9" fill="var(--silk-dim)">buzzer, PWM-driven</text>
+      <circle cx="300" cy="372" r="3" fill="var(--silk)"/>
+      <text x="292" y="376" text-anchor="end" font-size="10.5" fill="var(--silk)">+</text>
+      <circle cx="300" cy="394" r="3" fill="var(--silk)"/>
+      <text x="292" y="398" text-anchor="end" font-size="10.5" fill="var(--silk)">−</text>
+      <line x1="300" y1="394" x2="316" y2="394" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="316" y="385" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="339" y="398" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <rect x="120" y="430" width="180" height="232" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="210.0" y="450" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">MCP23017 · I/O EXPANDER</text>
+      <text x="210.0" y="464" text-anchor="middle" font-size="9" fill="var(--silk-dim)">Waveshare IO Expansion Board · 0x27</text>
+      <circle cx="300" cy="470" r="3" fill="var(--silk)"/>
+      <text x="292" y="474" text-anchor="end" font-size="10.5" fill="var(--silk)">INTA</text>
+      <circle cx="300" cy="490" r="3" fill="var(--silk)"/>
+      <text x="292" y="494" text-anchor="end" font-size="10.5" fill="var(--silk-dim)">INTB</text>
+      <text x="308" y="494" text-anchor="start" font-size="9.5" fill="var(--silk-dim)">unused</text>
+      <circle cx="300" cy="510" r="3" fill="var(--silk)"/>
+      <text x="292" y="514" text-anchor="end" font-size="10.5" fill="var(--silk)">VCC</text>
+      <line x1="300" y1="510" x2="316" y2="510" stroke="var(--wire-power)" stroke-width="2.5"/>
+      <rect x="316" y="501" width="46" height="18" rx="9" fill="none" stroke="var(--wire-power)" stroke-width="1.6"/>
+      <text x="339" y="514" text-anchor="middle" font-size="10.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+      <circle cx="300" cy="530" r="3" fill="var(--silk)"/>
+      <text x="292" y="534" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      <line x1="300" y1="530" x2="316" y2="530" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="316" y="521" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="339" y="534" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <circle cx="300" cy="550" r="3" fill="var(--silk)"/>
+      <text x="292" y="554" text-anchor="end" font-size="10.5" fill="var(--silk)">PB0</text>
+      <line x1="300" y1="550" x2="316" y2="550" stroke="var(--wire-signal)" stroke-width="2"/>
+      <rect x="316" y="541" width="91.2" height="18" rx="9" fill="none" stroke="var(--wire-signal)" stroke-width="1.6" stroke-dasharray="4 3"/>
+      <text x="361.6" y="554" text-anchor="middle" font-size="10" fill="var(--wire-signal)" font-weight="600">← Joystick SW</text>
+      <circle cx="120" cy="500" r="3" fill="var(--silk)"/>
+      <text x="128" y="504" text-anchor="start" font-size="10.5" fill="var(--silk)">SDA</text>
+      <circle cx="120" cy="520" r="3" fill="var(--silk)"/>
+      <text x="128" y="524" text-anchor="start" font-size="10.5" fill="var(--silk)">SCL</text>
+      <text x="210" y="580" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">A0–A2 pads: leave as shipped</text>
+      <text x="210" y="594" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">(address 0x27)</text>
+      <text x="210" y="620" text-anchor="middle" font-size="10.5" fill="var(--silk)">PA0–PA7 ↓</text>
+      <line x1="210" y1="662" x2="210" y2="712" stroke="var(--wire-signal)" stroke-width="7" stroke-linecap="round"/>
+      <text x="226" y="690" text-anchor="start" font-size="9.5" fill="var(--silk-dim)">8 wires</text>
+      <rect x="120" y="712" width="180" height="78" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="210.0" y="732" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">8 × PUSH BUTTONS</text>
+      <text x="210" y="748" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">one leg → PA0…PA7 (1 to 8)</text>
+      <text x="210" y="764" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">other leg → GND</text>
+      <text x="210" y="780" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">pull-ups are on the expander</text>
+      <text x="500" y="34" text-anchor="middle" font-size="9.5" fill="var(--wire-signal)">SCL: on to the expander, over the top of the board</text>
+      <text x="500" y="66" text-anchor="start" font-size="9" fill="var(--silk)"></text>
+      <text x="400" y="50" text-anchor="middle" font-size="9.5" fill="var(--wire-signal)">SDA</text>
+      <rect x="1260" y="90" width="160" height="120" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="1340.0" y="110" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">SSD1306 OLED</text>
+      <text x="1340.0" y="124" text-anchor="middle" font-size="9" fill="var(--silk-dim)">0.91″ · 128×32 · 0x3C</text>
+      <circle cx="1260" cy="150" r="3" fill="var(--silk)"/>
+      <text x="1268" y="154" text-anchor="start" font-size="10.5" fill="var(--silk)">SCL</text>
+      <circle cx="1260" cy="170" r="3" fill="var(--silk)"/>
+      <text x="1268" y="174" text-anchor="start" font-size="10.5" fill="var(--silk)">SDA</text>
+      <circle cx="1420" cy="140" r="3" fill="var(--silk)"/>
+      <text x="1412" y="144" text-anchor="end" font-size="10.5" fill="var(--silk)">VCC</text>
+      <line x1="1420" y1="140" x2="1436" y2="140" stroke="var(--wire-power)" stroke-width="2.5"/>
+      <rect x="1436" y="131" width="46" height="18" rx="9" fill="none" stroke="var(--wire-power)" stroke-width="1.6"/>
+      <text x="1459" y="144" text-anchor="middle" font-size="10.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+      <circle cx="1420" cy="160" r="3" fill="var(--silk)"/>
+      <text x="1412" y="164" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      <line x1="1420" y1="160" x2="1436" y2="160" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="1436" y="151" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="1459" y="164" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <rect x="1260" y="230" width="160" height="130" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="1340.0" y="250" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">BH1750 LIGHT</text>
+      <text x="1340.0" y="264" text-anchor="middle" font-size="9" fill="var(--silk-dim)">GY-302 board · 0x23</text>
+      <circle cx="1260" cy="286" r="3" fill="var(--silk)"/>
+      <text x="1268" y="290" text-anchor="start" font-size="10.5" fill="var(--silk)">SCL</text>
+      <circle cx="1260" cy="306" r="3" fill="var(--silk)"/>
+      <text x="1268" y="310" text-anchor="start" font-size="10.5" fill="var(--silk)">SDA</text>
+      <circle cx="1420" cy="286" r="3" fill="var(--silk)"/>
+      <text x="1412" y="290" text-anchor="end" font-size="10.5" fill="var(--silk)">VCC</text>
+      <line x1="1420" y1="286" x2="1436" y2="286" stroke="var(--wire-power)" stroke-width="2.5"/>
+      <rect x="1436" y="277" width="46" height="18" rx="9" fill="none" stroke="var(--wire-power)" stroke-width="1.6"/>
+      <text x="1459" y="290" text-anchor="middle" font-size="10.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+      <circle cx="1420" cy="306" r="3" fill="var(--silk)"/>
+      <text x="1412" y="310" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      <line x1="1420" y1="306" x2="1436" y2="306" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="1436" y="297" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="1459" y="310" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <text x="1340" y="344" text-anchor="middle" font-size="9" fill="var(--silk-dim)">ADDR: leave floating (0x23)</text>
+      <text x="1190" y="112" text-anchor="middle" font-size="10" fill="var(--wire-signal)" font-weight="600">shared I2C bus</text>
+      <text x="1190" y="124" text-anchor="middle" font-size="8.5" fill="var(--silk-dim)">SDA + SCL (with the expander at left)</text>
+      <rect x="930" y="410" width="160" height="120" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="1010.0" y="430" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">DHT11 · HW-507</text>
+      <text x="1010.0" y="444" text-anchor="middle" font-size="9" fill="var(--silk-dim)">temp + humidity</text>
+      <circle cx="930" cy="460" r="3" fill="var(--silk)"/>
+      <text x="938" y="464" text-anchor="start" font-size="10.5" fill="var(--silk)">DAT</text>
+      <circle cx="1090" cy="490" r="3" fill="var(--silk)"/>
+      <text x="1082" y="494" text-anchor="end" font-size="10.5" fill="var(--silk)">VCC</text>
+      <line x1="1090" y1="490" x2="1106" y2="490" stroke="var(--wire-power)" stroke-width="2.5"/>
+      <rect x="1106" y="481" width="46" height="18" rx="9" fill="none" stroke="var(--wire-power)" stroke-width="1.6"/>
+      <text x="1129" y="494" text-anchor="middle" font-size="10.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+      <circle cx="1090" cy="510" r="3" fill="var(--silk)"/>
+      <text x="1082" y="514" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      <line x1="1090" y1="510" x2="1106" y2="510" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+      <rect x="1106" y="501" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="1129" y="514" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <text x="1010" y="546" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">HW-507 has its own data pull-up</text>
+      <text x="1010" y="560" text-anchor="middle" font-size="9.5" fill="var(--wire-warn)" font-weight="600">⚠ power from 3V3, not 5V</text>
+      <path d="M 300 208 L 600 208" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 300 244 L 600 244" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 300 372 L 450 372 L 450 352 L 600 352" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 300 470 L 500 470 L 500 424 L 600 424" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 1100 136 L 1100 40 L 66 40 L 66 520 L 120 520" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 1080 244 L 1080 54 L 84 54 L 84 500 L 120 500" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 860 136 L 1075 136 Q 1080 127 1085 136 L 1200 136 L 1200 286" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 860 244 L 1180 244" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 1180 170 L 1180 306" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 1200 150 L 1260 150" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 1180 170 L 1195 170 Q 1200 161 1205 170 L 1260 170" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 1200 286 L 1260 286" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 1180 306 L 1260 306" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <path d="M 860 460 L 930 460" fill="none" stroke="var(--wire-signal)" stroke-width="2" stroke-linejoin="round"/>
+      <circle cx="1100" cy="136" r="3.4" fill="var(--wire-signal)"/>
+      <circle cx="1080" cy="244" r="3.4" fill="var(--wire-signal)"/>
+      <circle cx="1200" cy="136" r="3.4" fill="var(--wire-signal)"/>
+      <circle cx="1180" cy="244" r="3.4" fill="var(--wire-signal)"/>
+      <circle cx="1200" cy="150" r="3.4" fill="var(--wire-signal)"/>
+      <circle cx="1180" cy="170" r="3.4" fill="var(--wire-signal)"/>
+      <circle cx="1200" cy="286" r="3.4" fill="var(--wire-signal)"/>
+      <circle cx="1180" cy="306" r="3.4" fill="var(--wire-signal)"/>
+    </svg>
+  </div>
+  <figcaption>
+    The ESP32&rsquo;s pins in real physical row order, so where a wire has to cross the board it does.
+    <strong>3V3</strong> only breaks out on the right and the expander&rsquo;s I2C wires come from the
+    right-hand D21/D22, so SDA and SCL run over the top of the board to reach it. Power isn&rsquo;t drawn
+    as wires: every <strong>3V3</strong> tag is the same rail, joined to the one 3V3 pin, and every
+    <strong>GND</strong> tag is the same ground. Pin order on each breakout is shown by function, not
+    silkscreen position, so wire by the printed labels.
+  </figcaption>
+</figure>
+
+<div class="legend">
+  <div class="legend-item"><span class="legend-swatch" style="background:#d9a35f"></span>3V3 rail (every 3V3 tag is one net)</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#7b8a82"></span>ground (every GND tag is one net)</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#45c2b3"></span>signal</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:transparent;border:1.5px dashed #45c2b3;height:10px"></span>joined to a pin elsewhere</div>
+  <div class="legend-item"><span class="legend-swatch" style="background:#e2666a"></span>easy to get wrong — read the flag</div>
+</div>
+
+<h2>Reference table</h2>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Component</th><th>Pin</th><th>GPIO</th><th>ESP32 silkscreen</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+      <tr class="group-start"><td>I2C bus</td><td class="mono">SDA</td><td class="mono gpio">21</td><td class="mono">D21</td><td class="note">shared by the OLED, BH1750 and MCP23017; the ESP32 default</td></tr>
+      <tr><td></td><td class="mono">SCL</td><td class="mono gpio">22</td><td class="mono">D22</td><td class="note">the ESP32 default; 400 kHz</td></tr>
+      <tr class="group-start"><td>SSD1306 OLED</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x3C</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr class="group-start"><td>BH1750 (GY-302)</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x23 (ADDR low or floating)</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail; mount it facing the room, not the screen</td></tr>
+      <tr class="group-start"><td>MCP23017</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x27 (leave A0–A2 as shipped)</td></tr>
+      <tr><td></td><td class="mono">INTA</td><td class="mono gpio">27</td><td class="mono">D27</td><td class="note">open-drain, active-low: the ESP32’s own pull-up sets the idle level</td></tr>
+      <tr><td></td><td class="mono">PA0–PA7</td><td class="mono">—</td><td class="mono">—</td><td class="note">buttons 1–8 (printed PA0–PA7, the datasheet’s GPA0–GPA7); the other leg of each to GND (internal pull-ups, no resistors). On the board’s header PA7 is at the top, PA0 at the bottom</td></tr>
+      <tr><td></td><td class="mono">PB0</td><td class="mono">—</td><td class="mono">—</td><td class="note">joystick SW (the datasheet’s GPB0); first pin of the other header</td></tr>
+      <tr><td></td><td class="mono">INTB</td><td class="mono">—</td><td class="mono">—</td><td class="note">unused: both ports are mirrored onto INTA</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail (also on both headers)</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail (also on both headers)</td></tr>
+      <tr class="group-start"><td>DHT11 (HW-507)</td><td class="mono">DAT / S</td><td class="mono gpio">4</td><td class="mono">D4</td><td class="note">the board carries its own pull-up</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the board accepts 3.3–5V, but the data line swings to its supply</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr class="group-start"><td>Joystick (KY-023)</td><td class="mono">VRx</td><td class="mono gpio">34</td><td class="mono">D34</td><td class="note">ADC1, input-only, no internal pull: floats if unplugged</td></tr>
+      <tr><td></td><td class="mono">VRy</td><td class="mono gpio">35</td><td class="mono">D35</td><td class="note">ADC1, input-only, no internal pull: floats if unplugged</td></tr>
+      <tr><td></td><td class="mono">SW</td><td class="mono">—</td><td class="mono">—</td><td class="note">to the MCP23017’s PB0, not to the ESP32</td></tr>
+      <tr><td></td><td class="mono">+5V</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the pin is printed 5V; the axes output a fraction of the supply, so 5V would reach an ESP32 pin</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr class="group-start"><td>Piezo (passive)</td><td class="mono">+</td><td class="mono gpio">25</td><td class="mono">D25</td><td class="note">LEDC PWM: pitch by frequency, volume by duty cycle</td></tr>
+      <tr><td></td><td class="mono">−</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>MCP23017 bus connector</h2>
+<p class="note" style="margin-top:14px;max-width:72ch">
+  The Waveshare board repeats the same six signals on its 6-pin locking connector and on a row of
+  through-holes along one edge, in this order: <span class="mono">VCC, GND, SDA, SCL, INTA, INTB</span>.
+  The stock cable is red, black, blue, yellow, orange, green in that order. Solder pads A0, A1 and A2
+  set the address; leave all three as shipped for 0x27 (confirmed on a real board: the scan found it at 0x27). The diagram groups pins by function, so wire by
+  the printed labels, not by the drawing&rsquo;s order.
+</p>
+
+<h2>Pins left alone</h2>
+<p class="note" style="margin-top:14px;max-width:72ch">
+  Avoid GPIO0, 2, 12 and 15 (they set how the chip boots), 1 and 3 (the USB serial) and 6–11 (the flash).
+  Free for later: 13, 14, 16–19, 23, 26, 32 and 33. The joystick has to stay on 34/35: analog reads need
+  ADC1 (GPIO32–39) because ADC2 stops working while Wi-Fi is on.
+</p>
+
+<footer>
+  <strong>Wiring order:</strong> power first. Join every 3V3 pin to the ESP32&rsquo;s 3V3 and every
+  ground to GND, and check both with a multimeter before anything else is connected. Then add the I2C
+  parts one at a time (OLED, BH1750, MCP23017) and look for
+  <code>[i2c] found: 0x23 0x27 0x3C</code> on the serial monitor, then the buttons, joystick, DHT11 and
+  piezo. Put the BH1750 where it sees the room, not the screen.
+</footer>

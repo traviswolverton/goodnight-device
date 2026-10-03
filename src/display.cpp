@@ -31,11 +31,14 @@ constexpr uint8_t kPrechargeDim = 0x11;
 constexpr uint8_t kVcomhFull = 0x40;
 constexpr uint8_t kVcomhDim = 0x00;
 
-// The panel can't be read back, and a glitch or a brief power dip on a
-// marginal bus resets it to "display off, charge pump off, memory blank"
-// without the firmware ever knowing. So the setup is re-sent this often.
+// The panel can't be read back, and a brief power dip or a bus fault can
+// reset it to "display off, memory blank" without the firmware knowing. A
+// re-init fixes that but blinks the panel, so it's only done when the panel
+// has stopped answering for a check and then answered again. The check
+// itself (an address ping) is invisible.
 constexpr unsigned long kRefreshIntervalMs = 10UL * 1000UL;
 unsigned long lastRefreshMs_ = 0;
+bool needReinit_ = false;
 
 bool probePanel() {
   Wire.beginTransmission(kI2cAddrOled);
@@ -98,12 +101,17 @@ void displayRefresh() {
     applyLevel();
     return;
   }
-  // A glitch on the bus can leave the controller with garbage settings,
-  // not only reset, so re-send the whole init sequence. Its memory (the
-  // image) survives this, and the panel is back on within a millisecond.
-  u8g2_.initDisplay();
-  applyLevel();
-  displaySend();  // the frame buffer still holds what should be showing
+  if (!probePanel()) {
+    needReinit_ = true;
+    return;
+  }
+  if (needReinit_) {
+    needReinit_ = false;
+    Serial.println("[display] panel answered again after missing; re-initialising it");
+    u8g2_.initDisplay();
+    applyLevel();
+    displaySend();  // the frame buffer still holds what should be showing
+  }
 }
 
 bool displayPresent() {

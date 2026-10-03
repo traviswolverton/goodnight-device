@@ -5,10 +5,11 @@
 #include "input.h"
 #include "provisioning.h"
 
-// What the OLED shows. For now this is a bench-bring-up view -- readings,
-// connection state, and the last control touched -- so every part of the
-// hardware can be checked on the desk. The real bedside layout (a clock
-// and the room readings) comes later.
+// What the OLED shows: one big line, because a 128x32 panel is too small
+// to read three. The first page is the clock; joystick left/right steps
+// through temperature, humidity and light (and a fault page when hardware
+// is missing), and it returns to the clock a few seconds after the last
+// move. A button or stick press shows briefly in place of the page.
 
 struct ScreenModel {
   float temperatureC;
@@ -17,6 +18,10 @@ struct ScreenModel {
   bool wifi;
   bool mqtt;
   const char* hardwareNote;  // e.g. "no BH1750", or nullptr when all found
+  bool timeValid;            // false until NTP has set the clock
+  uint8_t hour12;            // 1-12
+  uint8_t minute;
+  bool pm;
   // While setup mode is on (view.active), it takes over the whole screen:
   // the phone-facing name, the passkey to type, and how it's going.
   ProvisioningView setup;

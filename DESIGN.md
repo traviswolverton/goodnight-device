@@ -127,7 +127,8 @@ that mostly measures the screen.
 | `dimmer.*` | Lux → Off / Dim / Full, and wake-on-touch |
 | `input.*` | Buttons, joystick press and axes → debounced events |
 | `sensors.*` | BH1750 (smoothed) and DHT11 readings |
-| `screen.*` | What's drawn — currently the bench bring-up view |
+| `screen.*` | What's drawn: one big line, the clock first, stick left/right for other pages |
+| `local_time.*` | Central time from NTP (`CST6CDT`), 12-hour, for the clock page |
 | `settings_store.*` | Dimmer and buzzer settings in NVS, surviving reboots |
 | `sound.*` | The piezo: named tunes, non-blocking, quieter in the dark |
 | `ota.*` | ArduinoOTA, hostname `bedside-dashboard-esp32` |
@@ -305,9 +306,14 @@ arrive as events on `bedside/button` and `bedside/stick`.
 2. `pio run -t upload` over USB (first flash must be USB — see the
    partition note in `platformio.ini`), then `pio device monitor`.
 3. The serial log's `[i2c] found:` line should list `0x23 0x27 0x3C`.
-4. The screen's top line shows temperature, humidity and lux, with `W`
-   and `M` at the right once WiFi and MQTT are up. The bottom line names
-   any missing hardware, and shows each button or stick movement for 3s.
+4. The screen is one big line (24 px, `helvB24`; the panel is too small for
+   three). It starts on the clock, `--:--` until NTP has set the time, then
+   Central time with a small AM/PM. Push the stick right for temperature
+   (°F), humidity and light, left to go back; it returns to the clock after
+   8s. `W` and `M` at the top right show WiFi and MQTT up. A `!` at the top
+   left means hardware is missing, with a last page naming it. A button or
+   stick press shows for 1.5s (`BTN 3`, `HOLD 3`, `UP`, `PRESS`). In setup
+   mode the big line is the passkey, alternating with a small status view.
 5. Cover the light sensor: the screen dims, then turns off. Press a button:
    it comes back at Dim, and that press isn't published.
 

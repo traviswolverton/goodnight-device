@@ -18,6 +18,7 @@
 #include "dimmer.h"
 #include "display.h"
 #include "input.h"
+#include "local_time.h"
 #include "ota.h"
 #include "pins.h"
 #include "provisioning.h"
@@ -374,6 +375,7 @@ void setup() {
 
   WiFi.mode(WIFI_STA);
   wifiConfigBegin();
+  localTimeBegin();
   deviceConfigBegin();
   mqttClient.setServer(deviceBroker().host, deviceBroker().port);
   mqttClient.setBufferSize(kMqttBufferSize);
@@ -427,6 +429,10 @@ void loop() {
   provisioningUpdate();
   displayRefresh();
 
+  uint8_t hour12 = 0;
+  uint8_t minute = 0;
+  bool pm = false;
+  bool timeValid = localTimeNow12h(hour12, minute, pm);
   ScreenModel model{
       sensorsTemperatureC(),
       sensorsHumidity(),
@@ -434,6 +440,10 @@ void loop() {
       WiFi.status() == WL_CONNECTED,
       mqttClient.connected(),
       hardwareNote[0] ? hardwareNote : nullptr,
+      timeValid,
+      hour12,
+      minute,
+      pm,
       provisioningView(),
   };
   screenUpdate(model);

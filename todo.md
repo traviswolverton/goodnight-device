@@ -22,6 +22,13 @@ so the part left is pairing and writing credentials from the iPhone.
 Known: holding the stick pressed at power-up can push it off centre, so the joystick may read
 "out of range, joystick disabled" for that boot only.
 
+## Screen
+The one-line screen (clock, temperature, humidity, light; stick left/right) is built and was
+flashed over the air. Open: a flicker about every 10 s was reported and not yet explained. Suspects:
+the brightness flipping between Full and Dim near the 20 lx threshold, or MQTT dropping and
+reconnecting (the `M` mark redraws). Needs the serial log (USB) or a broker login that can read
+`bedside/sensors` and `bedside/availability`.
+
 ## Diagnostics for the server page
 Firmware side is done (`src/diagnostics.cpp`, `bedside/diagnostics`, `bedside/stick`,
 `bedside/diagnostics/request`; contract in DESIGN.md "Diagnostics"). Left:

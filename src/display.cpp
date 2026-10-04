@@ -31,14 +31,13 @@ constexpr uint8_t kPrechargeDim = 0x11;
 constexpr uint8_t kVcomhFull = 0x40;
 constexpr uint8_t kVcomhDim = 0x00;
 
-// The panel can't be read back, and a brief power dip or a bus fault can
-// reset it to "display off, memory blank" without the firmware knowing. A
-// re-init fixes that but blinks the panel, so it's only done when the panel
-// has stopped answering for a check and then answered again. The check
-// itself (an address ping) is invisible.
+// A panel that wasn't answering at boot is retried this often. Once it's
+// running it is NOT probed: even an address-only I2C transaction to the
+// SSD1306 makes the image flicker (found by bisecting a flicker that came
+// every 10 s). The panel resetting itself after a bus or power fault was a
+// real problem once, but its cause was a bad ground, now fixed.
 constexpr unsigned long kRefreshIntervalMs = 10UL * 1000UL;
 unsigned long lastRefreshMs_ = 0;
-bool needReinit_ = false;
 
 bool probePanel() {
   Wire.beginTransmission(kI2cAddrOled);
@@ -84,34 +83,22 @@ bool displayBegin() {
 }
 
 void displayRefresh() {
+  if (present_) {
+    return;
+  }
   unsigned long now = millis();
   if (now - lastRefreshMs_ < kRefreshIntervalMs) {
     return;
   }
   lastRefreshMs_ = now;
-  if (!present_) {
-    // Missing at boot: the panel may just have answered late.
-    if (!probePanel()) {
-      return;
-    }
-    present_ = true;
-    Serial.println("[display] SSD1306 found late; starting it");
-    u8g2_.setBusClock(kI2cClockHz);
-    u8g2_.begin();
-    applyLevel();
-    return;
-  }
   if (!probePanel()) {
-    needReinit_ = true;
     return;
   }
-  if (needReinit_) {
-    needReinit_ = false;
-    Serial.println("[display] panel answered again after missing; re-initialising it");
-    u8g2_.initDisplay();
-    applyLevel();
-    displaySend();  // the frame buffer still holds what should be showing
-  }
+  present_ = true;
+  Serial.println("[display] SSD1306 found late; starting it");
+  u8g2_.setBusClock(kI2cClockHz);
+  u8g2_.begin();
+  applyLevel();
 }
 
 bool displayPresent() {

@@ -23,11 +23,9 @@ Known: holding the stick pressed at power-up can push it off centre, so the joys
 "out of range, joystick disabled" for that boot only.
 
 ## Screen
-The one-line screen (clock, temperature, humidity, light; stick left/right) is built and was
-flashed over the air. Open: a flicker about every 10 s was reported and not yet explained. Suspects:
-the brightness flipping between Full and Dim near the 20 lx threshold, or MQTT dropping and
-reconnecting (the `M` mark redraws). Needs the serial log (USB) or a broker login that can read
-`bedside/sensors` and `bedside/availability`.
+The one-line screen (clock, temperature, humidity, light; stick left/right) is built. A flicker
+every 10 s turned out to be the display's periodic panel ping (an address-only I2C transaction
+to the OLED); it is gone now that the panel is no longer probed while running.
 
 ## Diagnostics for the server page
 Firmware side is done (`src/diagnostics.cpp`, `bedside/diagnostics`, `bedside/stick`,

@@ -20,9 +20,8 @@ enum class DisplayLevel : uint8_t { Off, Dim, Full };
 bool displayBegin();
 bool displayPresent();
 
-// Call every loop(). Every few seconds it retries a panel that was missing
-// at boot, and re-sends the panel's setup and the current frame, so a
-// panel that reset itself on a glitchy bus comes back on its own.
+// Call every loop(). Retries a panel that was missing at boot, every few
+// seconds, and does nothing once the panel is running.
 void displayRefresh();
 
 U8G2& displayCanvas();

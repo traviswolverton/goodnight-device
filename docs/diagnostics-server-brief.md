@@ -20,7 +20,7 @@ All are under `bedside/*`. The device's MQTT login is `bedside-esp32`.
 
 ## `bedside/diagnostics` payload
 ```json
-{"firmware":"Oct  3 2026 14:55:13","uptime_s":7,"heap_free":146316,
+{"firmware":"c62c675","uptime_s":7,"heap_free":146316,
  "setup_mode":false,"wifi":{"rssi":-45,"ip":"192.0.2.30"},
  "hardware":{"oled":true,"light":true,"expander":true,"joystick":true,"climate":true},
  "stick":{"x":1910,"y":1902,"direction":"none","pressed":false},
@@ -32,8 +32,8 @@ All are under `bedside/*`. The device's MQTT login is `bedside-esp32`.
 - `stick.x` and `y` are raw 12-bit readings, 0 to 4095, centred near 1900. They're `null` when
   no joystick is present. `direction` is `none`, `up`, `down`, `left` or `right`.
 - `buttons_down` lists the buttons held right now, after debounce.
-- `uptime_s` and `firmware` (the build date and time) show whether the device rebooted or runs
-  old firmware.
+- `uptime_s` and `firmware` show whether the device rebooted or runs old firmware. `firmware` is
+  the git commit it was built from, with `-dirty` added if built with uncommitted changes.
 - `setup_mode` is true while the device is in Wi-Fi setup mode.
 
 ## Fast mode

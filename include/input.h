@@ -19,6 +19,10 @@ enum class InputKind : uint8_t {
   JoyLeft,
   JoyRight,
   JoyPress,
+  // A stick click that only woke a dark screen. Everything ignores it (no
+  // press, no sound, nothing published) except the easter egg, which counts
+  // it so five clicks always works, awake or not.
+  JoyWakeClick,
 };
 
 struct InputEvent {

@@ -290,7 +290,7 @@ both go out once a second for N seconds. Button presses and stick moves
 arrive as events on `bedside/button` and `bedside/stick`.
 
 ```json
-{"firmware":"Oct  3 2026 14:55:13","uptime_s":7,"heap_free":146316,
+{"firmware":"c62c675","uptime_s":7,"heap_free":146316,
  "setup_mode":false,"wifi":{"rssi":-45,"ip":"192.0.2.30"},
  "hardware":{"oled":true,"light":true,"expander":true,"joystick":true,
              "climate":true},
@@ -303,7 +303,8 @@ arrive as events on `bedside/button` and `bedside/stick`.
 - `stick.x`/`y` are raw 12-bit readings (centre about 1900); `null` when no
   joystick. `direction` is `none`, `up`, `down`, `left` or `right`.
 - `buttons_down` lists the buttons held right now (debounced), 1–8.
-- `firmware` is the build date and time.
+- `firmware` is the git commit the build came from, with `-dirty` added when it was built with
+  uncommitted changes (`scripts/git_version.py` writes it at build time).
 
 ## Bench bring-up
 

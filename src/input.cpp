@@ -64,8 +64,8 @@ void onSwitchDown(uint8_t index, Switch& s, unsigned long now) {
   s.downSinceMs = now;
   s.longFired = false;
   s.swallowed = wakeSwallows();
-  if (!s.swallowed && index == kJoyPressIndex) {
-    push(InputKind::JoyPress);
+  if (index == kJoyPressIndex) {
+    push(s.swallowed ? InputKind::JoyWakeClick : InputKind::JoyPress);
   }
 }
 

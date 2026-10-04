@@ -297,7 +297,7 @@ void publishStick(const char* name) {
 void noteEasterEgg(const InputEvent& event) {
   static uint8_t clicks = 0;
   static unsigned long lastClickMs = 0;
-  if (event.kind != InputKind::JoyPress) {
+  if (event.kind != InputKind::JoyPress && event.kind != InputKind::JoyWakeClick) {
     clicks = 0;
     return;
   }
@@ -313,6 +313,10 @@ void noteEasterEgg(const InputEvent& event) {
 void handleInput() {
   InputEvent event;
   while (inputNextEvent(event)) {
+    if (event.kind == InputKind::JoyWakeClick) {
+      noteEasterEgg(event);  // only the easter egg looks at a wake click
+      continue;
+    }
     screenNoteInput(event);
     noteEasterEgg(event);
     switch (event.kind) {

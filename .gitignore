@@ -8,3 +8,6 @@
 
 # Real credentials — copy include/secrets.h.example to include/secrets.h
 include/secrets.h
+
+# Written by scripts/git_version.py on every build
+include/version_generated.h

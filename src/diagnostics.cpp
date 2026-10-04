@@ -6,6 +6,9 @@
 #include <math.h>
 
 #include "display.h"
+#if __has_include("version_generated.h")
+#include "version_generated.h"
+#endif
 #include "input.h"
 #include "provisioning.h"
 #include "sensors.h"
@@ -71,7 +74,11 @@ void diagnosticsPublishSoon() {
 
 size_t diagnosticsBuild(char* out, size_t size) {
   JsonDocument doc;
-  doc["firmware"] = __DATE__ " " __TIME__;
+#ifdef FIRMWARE_VERSION
+  doc["firmware"] = FIRMWARE_VERSION;
+#else
+  doc["firmware"] = "unknown";
+#endif
   doc["uptime_s"] = millis() / 1000;
   doc["heap_free"] = ESP.getFreeHeap();
   doc["setup_mode"] = provisioningActive();

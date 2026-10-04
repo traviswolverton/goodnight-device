@@ -13,7 +13,7 @@ All are under `bedside/*`. The device's MQTT login is `bedside-esp32`.
 | `bedside/diagnostics` | device → server | yes | JSON state, below |
 | `bedside/diagnostics/request` | server → device | no | `{"fast_seconds": N}` |
 | `bedside/sensors` | device → server | yes | `{"temperature_c":21.5,"humidity":44,"lux":3.5,"screen":"full"}`; a field is `null` when that sensor has no reading |
-| `bedside/button` | device → server | no | `{"button":3,"press":"short"}` or `"long"`, buttons 1 to 8 |
+| `bedside/button` | device → server | no | `{"button":3,"press":"short"}` or `"long"`, buttons 1 to 7. Button 8 is reserved for the device and is never published, though it still appears in `buttons_down` while held |
 | `bedside/stick` | device → server | no | `{"stick":"up"}`: `up`, `down`, `left`, `right` (repeats while held) or `press` |
 | `bedside/sound` | server → device | no | `{"sound":"armed","urgent":false}`; plays a tune on the buzzer |
 | `bedside/availability` | device → server | yes | `online` or `offline` (the connection's last will) |

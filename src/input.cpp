@@ -38,6 +38,7 @@ constexpr uint8_t kNumSwitches = kNumButtons + 1;  // + joystick press
 constexpr uint8_t kJoyPressIndex = kNumButtons;
 constexpr unsigned long kDebounceMs = 25;
 constexpr unsigned long kLongPressMs = 600;
+constexpr unsigned long kVeryLongPressMs = 10000;
 // Belt and braces: the interrupt line tells us when to read, but a slow
 // fallback read means a missed edge can never leave a button stuck.
 constexpr unsigned long kFallbackPollMs = 200;
@@ -51,6 +52,7 @@ struct Switch {
   unsigned long rawChangedMs = 0;
   unsigned long downSinceMs = 0;
   bool longFired = false;
+  bool veryLongFired = false;
   bool swallowed = false;
 };
 Switch switches_[kNumSwitches];
@@ -63,6 +65,7 @@ uint8_t expanderPin(uint8_t index) {
 void onSwitchDown(uint8_t index, Switch& s, unsigned long now) {
   s.downSinceMs = now;
   s.longFired = false;
+  s.veryLongFired = false;
   s.swallowed = wakeSwallows();
   if (index == kJoyPressIndex) {
     push(s.swallowed ? InputKind::JoyWakeClick : InputKind::JoyPress);
@@ -118,6 +121,11 @@ void updateSwitches(unsigned long now) {
         now - s.downSinceMs >= kLongPressMs) {
       s.longFired = true;
       push(InputKind::ButtonLong, i + 1);
+    }
+    if (s.down && i != kJoyPressIndex && !s.swallowed && !s.veryLongFired &&
+        now - s.downSinceMs >= kVeryLongPressMs) {
+      s.veryLongFired = true;
+      push(InputKind::ButtonVeryLong, i + 1);
     }
   }
 }

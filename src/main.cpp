@@ -53,6 +53,12 @@ constexpr unsigned long kSensorPublishMs = 30000;
 // (BLE provisioning), for moving the device to another network.
 constexpr unsigned long kSetupHoldMs = 3000;
 
+// Button 8 belongs to the device. It's never published, so nothing on the
+// server can be bound to it, and holding it for 10 s turns the on-screen
+// echo of button and stick presses on or off (off at every boot).
+constexpr uint8_t kLocalButton = 8;
+bool inputEchoOn = false;
+
 // Easter egg: this many stick clicks in a row, each within kEggGapMs of
 // the last, play the Mario theme. Any other input in between starts over.
 constexpr uint8_t kEggClicks = 5;
@@ -315,6 +321,21 @@ void handleInput() {
   while (inputNextEvent(event)) {
     if (event.kind == InputKind::JoyWakeClick) {
       noteEasterEgg(event);  // only the easter egg looks at a wake click
+      continue;
+    }
+    if (event.kind == InputKind::ButtonVeryLong) {
+      if (event.button == kLocalButton) {
+        inputEchoOn = !inputEchoOn;
+        screenSetInputEcho(inputEchoOn);
+        screenFlash(inputEchoOn ? "KEYS ON" : "KEYS OFF");
+        soundPlay(inputEchoOn ? Sound::Armed : Sound::Cancel, false);
+        Serial.printf("[input] echo %s\n", inputEchoOn ? "on" : "off");
+      }
+      continue;  // a 10 s hold is never published
+    }
+    if (event.button == kLocalButton &&
+        (event.kind == InputKind::ButtonShort || event.kind == InputKind::ButtonLong)) {
+      noteEasterEgg(event);  // reserved: no tick, no echo, nothing published
       continue;
     }
     screenNoteInput(event);

@@ -184,14 +184,22 @@ thresholds before WiFi is up.
 
 ## Controls
 
-- **Buttons 1–8:** 25ms debounce. A press released before 600ms is
+- **Buttons 1–7:** 25ms debounce. A press released before 600ms is
   `short`; held to 600ms fires `long` once (and nothing on release) and
   plays a tiny tick, so you know you can let go. Published as raw presses —
   what each does is configured on the server.
+- **Button 8 is the device's own:** it is never published (so nothing on
+  the server can be bound to it), plays no tick, and shows nothing. Holding
+  it for 10 s toggles the on-screen echo of button and stick presses
+  (`BTN 3`, `HOLD 3`, `UP`, `PRESS`), with a short beep and `KEYS ON` /
+  `KEYS OFF` on the screen. The echo is off at every boot, so a production
+  unit shows only the clock and its pages. In a dark room wake the screen
+  first: a touch that wakes it doesn't count towards a hold.
 - **Joystick:** centre calibrated at boot (so don't hold it while
   powering on). Enters a direction past ~40% deflection, leaves below
   ~25%. Holding repeats after 450ms, then every 150ms. Its press is a
-  plain event. The stick is for on-device navigation and isn't published.
+  plain event. The stick is for on-device navigation; its moves and press
+  go out only as `bedside/stick` events, for diagnostics.
   If it reads rotated once mounted, flip `kSwapAxes` / `kInvertX` /
   `kInvertY` in `input.cpp`.
 - **Easter egg:** five stick clicks in a row (each within 2 s of the last,

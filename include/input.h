@@ -23,6 +23,8 @@ enum class InputKind : uint8_t {
   // press, no sound, nothing published) except the easter egg, which counts
   // it so five clicks always works, awake or not.
   JoyWakeClick,
+  // A button held for 10 seconds (fires once, while still held).
+  ButtonVeryLong,
 };
 
 struct InputEvent {

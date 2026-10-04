@@ -29,6 +29,7 @@ Page page_ = Page::Time;
 unsigned long pageChangedMs_ = 0;
 int pendingStep_ = 0;  // +1 / -1 from the stick, applied in screenUpdate()
 
+bool echo_ = false;
 char inputText_[kLineLen] = "";
 unsigned long inputShownAtMs_ = 0;
 
@@ -81,7 +82,20 @@ void formatLux(char* out, size_t size, float lux) {
 
 }  // namespace
 
+void screenSetInputEcho(bool on) {
+  echo_ = on;
+}
+
+void screenFlash(const char* text) {
+  snprintf(inputText_, kLineLen, "%s", text);
+  inputShownAtMs_ = millis();
+}
+
 void screenNoteInput(const InputEvent& event) {
+  // Left/right always page; everything else only shows when the echo is on.
+  if (!echo_ && event.kind != InputKind::JoyLeft && event.kind != InputKind::JoyRight) {
+    return;
+  }
   switch (event.kind) {
     case InputKind::ButtonShort:
       snprintf(inputText_, kLineLen, "BTN %u", event.button);

@@ -27,7 +27,16 @@ struct ScreenModel {
   ProvisioningView setup;
 };
 
-// The last control event, shown for a few seconds.
+// Whether button and stick presses show on the screen (`BTN 3`, `UP`...).
+// Off by default; the stick's left/right still change the page either way.
+void screenSetInputEcho(bool on);
+
+// Shows a short message in place of the page for a moment (keep it to
+// about 8 characters: the font is big).
+void screenFlash(const char* text);
+
+// Tells the screen about a control event: stick left/right change the
+// page, and with the echo on the rest are shown briefly.
 void screenNoteInput(const InputEvent& event);
 
 // Redraws only when what's on screen would actually change.

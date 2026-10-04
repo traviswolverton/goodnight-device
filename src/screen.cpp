@@ -204,8 +204,13 @@ void screenUpdate(const ScreenModel& m) {
   DisplayLevel level = displayLevel();
 
   char key[96];
+  // Problem marks only: nothing shows while everything is fine. WiFi down
+  // implies MQTT down, so the M is only for "WiFi up but no broker".
+  bool wifiDown = marks && !m.wifi;
+  bool mqttDown = marks && m.wifi && !m.mqtt;
+  bool faultMark = marks && hasFault;
   snprintf(key, sizeof(key), "%s|%s|%s|%s|%s|%d%d%d|%u%u", big, ampm, small[0], small[1], small[2],
-           marks && m.wifi, marks && m.mqtt, marks && hasFault, offX, offY);
+           wifiDown, mqttDown, faultMark, offX, offY);
   // Re-send after the panel comes back on too: while it was off, frames
   // weren't sent, so its memory still holds whatever was there before.
   bool changed = strcmp(key, lastKey_) != 0 || (level != lastLevel_ && level != DisplayLevel::Off);
@@ -238,14 +243,22 @@ void screenUpdate(const ScreenModel& m) {
       g.drawStr(offX, kSmallBaselines[i] + offY, small[i]);
     }
   }
-  if (marks) {
-    g.setFont(kSmallFont);
-    // Connection marks, top right: W = WiFi, M = MQTT, blank when down.
-    g.drawStr(offX + kDisplayWidth - 1 - 12, kSmallBaselines[0] + offY, m.wifi ? "W" : " ");
-    g.drawStr(offX + kDisplayWidth - 1 - 6, kSmallBaselines[0] + offY, m.mqtt ? "M" : " ");
-    if (hasFault) {
-      g.drawStr(offX, kSmallBaselines[0] + offY, "!");
-    }
+  // A problem is a white box with a dark letter in a top corner.
+  g.setFont(kSmallFont);
+  auto problemMark = [&](int x, const char* letter) {
+    g.setDrawColor(1);
+    g.drawBox(x, offY, 7, 9);
+    g.setDrawColor(0);
+    g.drawStr(x + 1, kSmallBaselines[0] + offY, letter);
+    g.setDrawColor(1);
+  };
+  if (wifiDown) {
+    problemMark(kDisplayWidth - 9 + offX, "W");
+  } else if (mqttDown) {
+    problemMark(kDisplayWidth - 9 + offX, "M");
+  }
+  if (faultMark) {
+    problemMark(offX, "!");
   }
   displaySend();
 }

@@ -9,7 +9,10 @@
 // to read three. The first page is the clock; joystick left/right steps
 // through temperature, humidity and light (and a fault page when hardware
 // is missing), and it returns to the clock a few seconds after the last
-// move. A button or stick press shows briefly in place of the page.
+// move. Problems show as small inverted marks in the top corners (W = no
+// WiFi, M = no broker, ! = missing hardware); with nothing wrong the
+// corners are empty. With the input echo on (button 8 held 10 s), a button
+// or stick press also shows briefly in place of the page.
 
 struct ScreenModel {
   float temperatureC;

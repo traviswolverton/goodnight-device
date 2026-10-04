@@ -324,10 +324,13 @@ arrive as events on `bedside/button` and `bedside/stick`.
    three). It starts on the clock, `--:--` until NTP has set the time, then
    Central time with a small AM/PM. Push the stick right for temperature
    (°F), humidity and light, left to go back; it returns to the clock after
-   8s. `W` and `M` at the top right show WiFi and MQTT up. A `!` at the top
-   left means hardware is missing, with a last page naming it. A button or
-   stick press shows for 1.5s (`BTN 3`, `HOLD 3`, `UP`, `PRESS`). In setup
-   mode the big line is the passkey, alternating with a small status view.
+   8s. The corners are empty while everything is fine; a problem shows as a
+   small inverted box (white square, dark letter): `W` top right when
+   there's no WiFi, `M` top right when WiFi is up but the broker isn't
+   connected, `!` top left when hardware is missing (with a last page
+   naming it). With the input echo on (Controls, button 8), a press shows
+   for 1.5s (`BTN 3`, `HOLD 3`, `UP`, `PRESS`). In setup mode the big line
+   is the passkey, alternating with a small status view.
 5. Cover the light sensor: the screen dims, then turns off. Press a button:
    it comes back at Dim, and that press isn't published.
 

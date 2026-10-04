@@ -9,9 +9,9 @@ namespace {
 // Sunday in March to the first Sunday in November.
 constexpr char kTimezone[] = "CST6CDT,M3.2.0,M11.1.0";
 
-// Anything before this year means the clock was never set (it starts at
-// 1970).
-constexpr int kFirstValidYear = 2024;
+// Seconds since 1970 for 2024-01-01. Anything earlier means the clock was
+// never set (it starts at 1970).
+constexpr time_t kFirstValidEpoch = 1704067200;
 
 }  // namespace
 
@@ -20,10 +20,15 @@ void localTimeBegin() {
 }
 
 bool localTimeNow12h(uint8_t& hour12, uint8_t& minute, bool& pm) {
-  struct tm t;
-  if (!getLocalTime(&t, 0) || t.tm_year + 1900 < kFirstValidYear) {
+  // Not getLocalTime(&t, 0): with a zero timeout it checks only once, and
+  // if the millisecond counter ticks over first it reports "not set" even
+  // when it is, which made the clock flip to "--:--" at random.
+  time_t now = time(nullptr);
+  if (now < kFirstValidEpoch) {
     return false;
   }
+  struct tm t;
+  localtime_r(&now, &t);
   hour12 = t.tm_hour % 12 == 0 ? 12 : t.tm_hour % 12;
   minute = t.tm_min;
   pm = t.tm_hour >= 12;

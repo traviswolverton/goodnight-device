@@ -30,6 +30,21 @@ constexpr Note kSuccess[] = {{1319, 90}, {0, 30}, {1760, 90}, {0, 30}, {2637, 18
 constexpr Note kFailure[] = {{440, 260}, {0, 60}, {330, 260}, {0, 60}, {220, 500}};
 constexpr Note kCancel[] = {{880, 40}};
 
+// Easter egg: the opening of the Super Mario Bros. overworld theme. One
+// "slot" is a sixteenth, 105 ms: a note sounds for 80 ms and leaves 25 ms
+// of air so repeated notes stay separate; a rest is whole slots.
+constexpr uint16_t kC5 = 523, kD5 = 587, kE5 = 659, kF5 = 698, kG5 = 784, kA5 = 880;
+constexpr uint16_t kE4 = 330, kG4 = 392, kA4 = 440, kBb4 = 466, kB4 = 494;
+constexpr Note kMario[] = {
+    {kE5, 80}, {0, 25}, {kE5, 80}, {0, 130}, {kE5, 80}, {0, 130}, {kC5, 80}, {0, 25},
+    {kE5, 80}, {0, 130}, {kG5, 80}, {0, 340}, {kG4, 80}, {0, 340},
+    {kC5, 80}, {0, 340}, {kG4, 80}, {0, 340}, {kE4, 80}, {0, 340},
+    {kA4, 80}, {0, 130}, {kB4, 80}, {0, 130}, {kBb4, 80}, {0, 25}, {kA4, 80}, {0, 130},
+    {kG4, 70}, {0, 25}, {kE5, 70}, {0, 25}, {kG5, 70}, {0, 25}, {kA5, 80}, {0, 130},
+    {kF5, 80}, {0, 25}, {kG5, 80}, {0, 130}, {kE5, 80}, {0, 130},
+    {kC5, 80}, {0, 25}, {kD5, 80}, {0, 25}, {kB4, 80}, {0, 25},
+};
+
 struct Tune {
   const Note* notes;
   uint8_t count;
@@ -48,6 +63,7 @@ Tune tuneFor(Sound sound) {
     case Sound::Success: return tune(kSuccess);
     case Sound::Failure: return tune(kFailure);
     case Sound::Cancel: return tune(kCancel);
+    case Sound::Mario: return tune(kMario);
   }
   return tune(kTick);
 }

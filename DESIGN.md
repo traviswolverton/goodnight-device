@@ -194,6 +194,11 @@ thresholds before WiFi is up.
   plain event. The stick is for on-device navigation and isn't published.
   If it reads rotated once mounted, flip `kSwapAxes` / `kInvertX` /
   `kInvertY` in `input.cpp`.
+- **Easter egg:** five stick clicks in a row (each within 2 s of the last,
+  nothing else touched in between) play the Super Mario Bros. theme on the
+  buzzer. Device-only: it isn't a `bedside/sound` name, and it follows the
+  usual volume (quiet when the room is dark). Tune in `sound.cpp`, trigger
+  in `main.cpp` (`noteEasterEgg`).
 
 ## MQTT
 

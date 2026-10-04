@@ -53,6 +53,11 @@ constexpr unsigned long kSensorPublishMs = 30000;
 // (BLE provisioning), for moving the device to another network.
 constexpr unsigned long kSetupHoldMs = 3000;
 
+// Easter egg: this many stick clicks in a row, each within kEggGapMs of
+// the last, play the Mario theme. Any other input in between starts over.
+constexpr uint8_t kEggClicks = 5;
+constexpr unsigned long kEggGapMs = 2000;
+
 WiFiClient wifiClient;
 PubSubClient mqttClient(wifiClient);
 
@@ -289,10 +294,27 @@ void publishStick(const char* name) {
   mqttClient.publish(kTopicStick, reinterpret_cast<const uint8_t*>(buffer), length, false);
 }
 
+void noteEasterEgg(const InputEvent& event) {
+  static uint8_t clicks = 0;
+  static unsigned long lastClickMs = 0;
+  if (event.kind != InputKind::JoyPress) {
+    clicks = 0;
+    return;
+  }
+  unsigned long now = millis();
+  clicks = (clicks > 0 && now - lastClickMs <= kEggGapMs) ? clicks + 1 : 1;
+  lastClickMs = now;
+  if (clicks >= kEggClicks) {
+    clicks = 0;
+    soundPlay(Sound::Mario, false);
+  }
+}
+
 void handleInput() {
   InputEvent event;
   while (inputNextEvent(event)) {
     screenNoteInput(event);
+    noteEasterEgg(event);
     switch (event.kind) {
       case InputKind::ButtonShort:
       case InputKind::ButtonLong:

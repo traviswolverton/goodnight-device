@@ -7,6 +7,8 @@
 .vscode/ipch/
 
 # Real credentials — copy include/secrets.h.example to include/secrets.h
+# Previous copy kept by scripts/gen_secrets.py when it replaces secrets.h
+include/secrets.h.old
 include/secrets.h
 
 # Written by scripts/git_version.py on every build

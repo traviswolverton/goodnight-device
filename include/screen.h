@@ -3,7 +3,6 @@
 #include <stdint.h>
 
 #include "input.h"
-#include "provisioning.h"
 
 // What the OLED shows: one big line, because a 128x32 panel is too small
 // to read three. The first page is the clock; joystick left/right steps
@@ -25,9 +24,6 @@ struct ScreenModel {
   uint8_t hour12;            // 1-12
   uint8_t minute;
   bool pm;
-  // While setup mode is on (view.active), it takes over the whole screen:
-  // the phone-facing name, the passkey to type, and how it's going.
-  ProvisioningView setup;
 };
 
 // Whether button and stick presses show on the screen (`BTN 3`, `UP`...).

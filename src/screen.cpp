@@ -11,7 +11,7 @@ namespace {
 // length. Chosen by eye from a few candidates on the real panel.
 const uint8_t* const kBigFont = u8g2_font_helvB24_tf;
 // 6x10: 21 characters by 3 lines; for the small corner marks and the few
-// screens that need a lot of words (setup details, the fault list).
+// screens that need a lot of words (the fault list).
 const uint8_t* const kSmallFont = u8g2_font_6x10_tf;
 constexpr uint8_t kSmallBaselines[3] = {8, 18, 28};
 constexpr size_t kLineLen = 22;
@@ -20,8 +20,6 @@ constexpr unsigned long kInputShownMs = 1500;
 constexpr unsigned long kPageReturnMs = 8000;
 // A held stick repeats; this keeps that from spinning through the pages.
 constexpr unsigned long kPageStepMinMs = 300;
-// In setup mode the big passkey and the small details take turns.
-constexpr unsigned long kSetupAltMs = 3000;
 
 enum class Page : uint8_t { Time, Temperature, Humidity, Light, Fault };
 
@@ -154,19 +152,8 @@ void screenUpdate(const ScreenModel& m) {
   char big[24] = "";        // the big line (empty when a small layout is used)
   char ampm[3] = "";        // small AM/PM beside a time
   char small[3][kLineLen] = {"", "", ""};  // small layout, when big is empty
-  bool marks = true;        // the W / M corner marks and the fault "!"
 
-  if (m.setup.active) {
-    marks = false;
-    if ((now / kSetupAltMs) % 2 == 0) {
-      snprintf(big, sizeof(big), "%06u", (unsigned)m.setup.passkey);
-    } else {
-      snprintf(small[0], kLineLen, "Setup: %s", m.setup.name);
-      snprintf(small[1], kLineLen, "Left %u:%02u", m.setup.secondsLeft / 60,
-               m.setup.secondsLeft % 60);
-      snprintf(small[2], kLineLen, "%s", m.setup.status);
-    }
-  } else if (showInput) {
+  if (showInput) {
     snprintf(big, sizeof(big), "%s", inputText_);
   } else {
     switch (page_) {
@@ -206,9 +193,9 @@ void screenUpdate(const ScreenModel& m) {
   char key[96];
   // Problem marks only: nothing shows while everything is fine. WiFi down
   // implies MQTT down, so the M is only for "WiFi up but no broker".
-  bool wifiDown = marks && !m.wifi;
-  bool mqttDown = marks && m.wifi && !m.mqtt;
-  bool faultMark = marks && hasFault;
+  bool wifiDown = !m.wifi;
+  bool mqttDown = m.wifi && !m.mqtt;
+  bool faultMark = hasFault;
   snprintf(key, sizeof(key), "%s|%s|%s|%s|%s|%d%d%d|%u%u", big, ampm, small[0], small[1], small[2],
            wifiDown, mqttDown, faultMark, offX, offY);
   // Re-send after the panel comes back on too: while it was off, frames

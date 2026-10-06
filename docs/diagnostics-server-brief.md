@@ -21,7 +21,7 @@ All are under `bedside/*`. The device's MQTT login is `bedside-esp32`.
 ## `bedside/diagnostics` payload
 ```json
 {"firmware":"c62c675","uptime_s":7,"heap_free":146316,
- "setup_mode":false,"wifi":{"rssi":-45,"ip":"192.0.2.30"},
+ "wifi":{"rssi":-45,"ip":"192.0.2.30"},
  "hardware":{"oled":true,"light":true,"expander":true,"joystick":true,"climate":true},
  "stick":{"x":1910,"y":1902,"direction":"none","pressed":false},
  "buttons_down":[]}
@@ -34,7 +34,7 @@ All are under `bedside/*`. The device's MQTT login is `bedside-esp32`.
 - `buttons_down` lists the buttons held right now, after debounce.
 - `uptime_s` and `firmware` show whether the device rebooted or runs old firmware. `firmware` is
   the git commit it was built from, with `-dirty` added if built with uncommitted changes.
-- `setup_mode` is true while the device is in Wi-Fi setup mode.
+- `setup_mode` is no longer sent (the phone WiFi setup was removed); treat it as always false.
 
 ## Fast mode
 The device normally publishes diagnostics every 30 s. To make the page live, publish

@@ -10,7 +10,6 @@
 #include "version_generated.h"
 #endif
 #include "input.h"
-#include "provisioning.h"
 #include "sensors.h"
 
 namespace {
@@ -81,7 +80,6 @@ size_t diagnosticsBuild(char* out, size_t size) {
 #endif
   doc["uptime_s"] = millis() / 1000;
   doc["heap_free"] = ESP.getFreeHeap();
-  doc["setup_mode"] = provisioningActive();
 
   JsonObject wifi = doc["wifi"].to<JsonObject>();
   wifi["rssi"] = WiFi.RSSI();

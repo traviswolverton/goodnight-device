@@ -134,8 +134,6 @@ that mostly measures the screen.
 | `ota.*` | ArduinoOTA, hostname `bedside-dashboard-esp32` |
 | `device_config.*` | Which broker to use, fetched from the server (below) |
 | `http_get.*` | The small HTTP client that fetch uses (from the desk unit) |
-| `wifi_config.*` | Which WiFi network to join: NVS, else `secrets.h`; new ones are a trial |
-| `provisioning.*` | Setting the WiFi network from a phone over BLE (below) |
 | `diagnostics.*` | The device's self-report for a server diagnostics page (below) |
 
 Every module is non-blocking and polled from `loop()`, as on the desk
@@ -259,35 +257,12 @@ plain-http LAN address) and `DEVICE_TOKEN` (made on that page, sent as
   `secrets.h`. The compiled-in values only matter until the server first
   gives a working answer.
 
-## WiFi provisioning
-The WiFi network is set from a phone over Bluetooth LE, so moving the
-device to another network needs no reflash and no password in a file.
-Code: `provisioning.*` (NimBLE) and `wifi_config.*` (storage).
-
-- **Where the network comes from, in order:** saved in NVS (`wificfg`),
-  else `WIFI_SSID`/`WIFI_PASSWORD` from `secrets.h` (both optional now),
-  else none. A saved network wins over `secrets.h`.
-- **Trial, then keep:** credentials from the phone are only a trial. They
-  are saved after a connection succeeds; after 20s without one the
-  previous network comes back. A wrong password changes nothing.
-- **Setup mode** starts when there is no network at all, or when the
-  joystick centre is held pressed for 3s at power-up. The OLED then shows
-  `Setup: Bedside-XXXX`, a 6-digit passkey and a countdown. It ends when a
-  trial succeeds, or after 5 minutes without phone activity (with no
-  network at all it starts over instead).
-- **Security:** BLE is up only in setup mode. The phone has to pair using
-  the passkey shown on the OLED (MITM + Secure Connections, no bonding);
-  the characteristics only accept encrypted, authenticated writes.
-- **Phone side:** service `6e5b0001-2f5c-4c0e-9b7d-5a8f0c3e1d00`;
-  characteristics `…0002` network name (write), `…0003` password (write),
-  `…0004` apply (write any byte), `…0005` status (read, notify:
-  `connecting`, `connected <ip>`, `failed: wrong password` / `network not
-  found` / `could not connect`). nRF Connect on iOS works for this.
-- **Cost:** about 283 KB of flash. The BLE stack is shut down when setup
-  mode ends and its memory returned.
-
-Status: written and flashed; setup mode starting has been seen, but a
-phone has not yet completed a provisioning run (see `todo.md`).
+## WiFi
+The network to join is `WIFI_SSID` / `WIFI_PASSWORD` from `secrets.h`
+(`scripts/gen_secrets.py` writes them from OpenBao). Both are required; the
+build fails without them. Moving the device to another network is a reflash.
+A phone-based BLE setup was built and then dropped, so nothing on the device
+reads a saved network any more.
 
 ## Diagnostics
 For a server diagnostics page. The device publishes `bedside/diagnostics`
@@ -299,7 +274,7 @@ arrive as events on `bedside/button` and `bedside/stick`.
 
 ```json
 {"firmware":"c62c675","uptime_s":7,"heap_free":146316,
- "setup_mode":false,"wifi":{"rssi":-45,"ip":"192.0.2.30"},
+ "wifi":{"rssi":-45,"ip":"192.0.2.30"},
  "hardware":{"oled":true,"light":true,"expander":true,"joystick":true,
              "climate":true},
  "stick":{"x":1910,"y":1902,"direction":"none","pressed":false},
@@ -329,8 +304,7 @@ arrive as events on `bedside/button` and `bedside/stick`.
    there's no WiFi, `M` top right when WiFi is up but the broker isn't
    connected, `!` top left when hardware is missing (with a last page
    naming it). With the input echo on (Controls, button 8), a press shows
-   for 1.5s (`BTN 3`, `HOLD 3`, `UP`, `PRESS`). In setup mode the big line
-   is the passkey, alternating with a small status view.
+   for 1.5s (`BTN 3`, `HOLD 3`, `UP`, `PRESS`).
 5. Cover the light sensor: the screen dims, then turns off. Press a button:
    it comes back at Dim, and that press isn't published.
 

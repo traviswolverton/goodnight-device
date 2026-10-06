@@ -21,13 +21,15 @@
 #include "local_time.h"
 #include "ota.h"
 #include "pins.h"
-#include "provisioning.h"
 #include "screen.h"
 #include "secrets.h"
+
+#if !defined(WIFI_SSID) || !defined(WIFI_PASSWORD)
+#error "secrets.h must define WIFI_SSID and WIFI_PASSWORD (scripts/gen_secrets.py writes them from OpenBao)"
+#endif
 #include "sensors.h"
 #include "settings_store.h"
 #include "sound.h"
-#include "wifi_config.h"
 
 namespace {
 
@@ -48,10 +50,6 @@ constexpr size_t kMqttBufferSize = 4096;
 constexpr unsigned long kWifiRetryIntervalMs = 5000;
 constexpr unsigned long kMqttRetryIntervalMs = 5000;
 constexpr unsigned long kSensorPublishMs = 30000;
-
-// Holding the joystick pressed in while powering up starts WiFi setup mode
-// (BLE provisioning), for moving the device to another network.
-constexpr unsigned long kSetupHoldMs = 3000;
 
 // Button 8 belongs to the device. It's never published, so nothing on the
 // server can be bound to it, and holding it for 10 s turns the on-screen
@@ -163,7 +161,6 @@ bool wifiWasConnected = false;
 // and the handshake finishes in the background.
 void ensureWifi() {
   bool isConnected = (WiFi.status() == WL_CONNECTED);
-  provisioningOnTrialResult(wifiConfigUpdate(isConnected));
   if (isConnected != wifiWasConnected) {
     wifiWasConnected = isConnected;
     if (isConnected) {
@@ -173,7 +170,7 @@ void ensureWifi() {
       Serial.println("[wifi] disconnected");
     }
   }
-  if (isConnected || !wifiConfigHasCredentials()) {
+  if (isConnected) {
     return;
   }
   unsigned long now = millis();
@@ -183,7 +180,7 @@ void ensureWifi() {
   lastWifiAttemptMs = now;
   Serial.println("[wifi] (re)connecting...");
   WiFi.disconnect();
-  WiFi.begin(wifiCredentials().ssid, wifiCredentials().password);
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
 // PubSubClient's connect() blocks for the TCP handshake, so it's
@@ -368,20 +365,6 @@ void handleInput() {
   }
 }
 
-// True when the joystick is pressed at power-up and stays pressed for
-// kSetupHoldMs. Returns at once when it isn't pressed, so a normal boot
-// isn't delayed.
-bool setupButtonHeld() {
-  unsigned long start = millis();
-  while (inputJoystickPressDown()) {
-    if (millis() - start >= kSetupHoldMs) {
-      return true;
-    }
-    delay(20);
-  }
-  return false;
-}
-
 void scanI2c() {
   Serial.print("[i2c] found:");
   for (uint8_t addr = 1; addr < 127; addr++) {
@@ -421,7 +404,6 @@ void setup() {
   scanI2c();
 
   WiFi.mode(WIFI_STA);
-  wifiConfigBegin();
   localTimeBegin();
   deviceConfigBegin();
   mqttClient.setServer(deviceBroker().host, deviceBroker().port);
@@ -433,10 +415,6 @@ void setup() {
   dimmerBegin(settingsLoadDimmer(DimmerSettings{}));
   soundBegin(settingsLoadSound(SoundSettings{}));
   inputBegin(dimmerWake);
-
-  if (!wifiConfigHasCredentials() || setupButtonHeld()) {
-    provisioningStart();
-  }
 
   // One line naming whatever's missing, so a loose wire shows on the
   // screen itself during bring-up rather than only over serial.
@@ -473,7 +451,6 @@ void loop() {
   soundUpdate();
   maybePublishSensors();
   maybePublishDiagnostics();
-  provisioningUpdate();
   displayRefresh();
 
   uint8_t hour12 = 0;
@@ -491,7 +468,6 @@ void loop() {
       hour12,
       minute,
       pm,
-      provisioningView(),
   };
   screenUpdate(model);
 }

@@ -1,0 +1,88 @@
+# Bedside dashboard (ESP32)
+
+A bedside clock and control panel built on an ESP32. A small OLED shows the
+time and the room's temperature, humidity and light; eight buttons and a
+joystick send their presses out for home automation to act on; a light sensor
+dims the screen to match the room, down to off in the dark.
+
+The ESP32 is the dumb end of a pair: it shows what a server tells it and
+reports its sensors and raw button presses over MQTT. What each button *does*
+lives on the server (`bedside-dashboard-server`, a separate project), so
+changing a binding never needs a reflash. It was forked from
+[desk-dashboard-esp32](https://github.com/traviswolverton/desk-dashboard-esp32)
+and keeps its connectivity, OTA and settings code.
+
+## Hardware
+
+- ELEGOO ESP32-WROOM-32 (38-pin DEVKIT V1)
+- 0.91" SSD1306 OLED, 128×32, I2C
+- MCP23017 I/O expander (Waveshare board) carrying 8 push buttons
+- KY-023 joystick
+- BH1750 light sensor, DHT11 temperature/humidity sensor
+- Passive piezo buzzer
+
+Everything runs from the ESP32's 3.3V pin. Pins, wiring and the reasons for
+them are in [DESIGN.md](DESIGN.md); [docs/pinout.html](docs/pinout.html) is a
+wiring diagram you can open in a browser.
+
+## Build and flash
+
+Needs [PlatformIO](https://platformio.org/).
+
+```sh
+cp include/secrets.h.example include/secrets.h   # then fill it in
+pio run -t upload                                # the first flash must be over USB
+pio device monitor
+```
+
+Instead of filling `secrets.h` in by hand, it can be generated from an
+[OpenBao](https://openbao.org/) KV v2 store (`BAO_ADDR` and a `BAO_TOKEN`, for
+example from `bao login`, in the environment; `BAO_CACERT` or
+`BAO_SKIP_VERIFY=1` for a self-signed certificate):
+
+```sh
+scripts/gen_secrets.py --check    # fetch and compare define names with the current file, write nothing
+scripts/gen_secrets.py            # write include/secrets.h (the old one is kept as secrets.h.old)
+```
+
+It reads `bedside/secrets` (`ota_password`, `device_token`, `mqtt_password`, `wifi_ssid`, `wifi_password`)
+and `bedside/config` (`server_url`, `mqtt_host`, `mqtt_port`, optionally
+`mqtt_username`) under the `homelab/` mount (`BAO_MOUNT`, `BAO_PATH` to change
+that). It never prints a value. `wifi_ssid` and `wifi_password` in `bedside/secrets`
+are required: the device takes its WiFi network only from `secrets.h`.
+`scripts/gen_secrets.py --lint` checks `secrets.h.example` against what the
+script produces, with no network.
+
+After that, updates can go over the air:
+
+```sh
+OTA_PASSWORD="$(scripts/gen_secrets.py --ota-password)" pio run -t upload -e esp32dev-ota
+```
+
+(or `OTA_PASSWORD=<the value in secrets.h>` if `secrets.h` is hand-made).
+
+`secrets.h` is gitignored.
+
+## Documentation
+
+| | |
+|---|---|
+| [DESIGN.md](DESIGN.md) | Hardware, pin table, firmware layout, dimming, controls, MQTT topics |
+| [docs/pinout.html](docs/pinout.html) | Wiring diagram |
+| [docs/button-actions-spec.md](docs/button-actions-spec.md) | What each button should do, for the Home Assistant side |
+| [docs/diagnostics-server-brief.md](docs/diagnostics-server-brief.md) | The device's diagnostics feed, for a server page |
+| [todo.md](todo.md) | What's left |
+| [enclosure/](enclosure/) | Parametric OpenSCAD enclosure: tub, lid and threaded feet |
+
+## Enclosure
+
+`enclosure/bedside_enclosure.scad` builds the whole case from the measured
+sizes of the parts. Set `part` at the top of the file to `tub`, `lid`, `feet`
+or `test` and export an STL for each; `assembly` previews everything in place
+(add `show_parts = true` to see the boards inside). Values marked `MEASURE`
+in the file are guesses to check against your own parts before printing.
+
+## Status
+
+The firmware is built and running on the bench, and the enclosure is at the
+test-print stage; both are tracked in [todo.md](todo.md).

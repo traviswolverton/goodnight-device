@@ -36,9 +36,12 @@ pio device monitor
 ```
 
 Instead of filling `secrets.h` in by hand, it can be generated from an
-[OpenBao](https://openbao.org/) KV v2 store (`BAO_ADDR` and a `BAO_TOKEN`, for
-example from `bao login`, in the environment; `BAO_CACERT` or
-`BAO_SKIP_VERIFY=1` for a self-signed certificate):
+[OpenBao](https://openbao.org/) KV v2 store. Set `BAO_ADDR` and one way to
+authenticate: a `BAO_TOKEN` (for example from `bao login`), or an AppRole
+with `BAO_ROLE_ID` and `BAO_SECRET_ID` (each also as a `_FILE` path, so the
+secret-id needn't be in the environment; the token it earns is revoked when
+the run ends). `BAO_CACERT` or `BAO_SKIP_VERIFY=1` handle a self-signed
+certificate:
 
 ```sh
 scripts/gen_secrets.py --check    # fetch and compare define names with the current file, write nothing

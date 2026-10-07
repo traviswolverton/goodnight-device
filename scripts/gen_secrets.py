@@ -5,6 +5,8 @@ Run it before a build; it is deliberately not a PlatformIO pre: script, so
 a build never needs the network and never rewrites secrets.h on its own.
 
     BAO_ADDR=https://<openbao> BAO_TOKEN=<token> scripts/gen_secrets.py
+    BAO_ADDR=https://<openbao> BAO_ROLE_ID_FILE=<file> BAO_SECRET_ID_FILE=<file> \\
+        scripts/gen_secrets.py
 
 Never prints a value, only field and define NAMES. Neither the generated
 file nor any value is meant to be committed (include/secrets.h is
@@ -12,7 +14,14 @@ gitignored; this script refuses to write it if that stops being true).
 
 Environment:
   BAO_ADDR         OpenBao API address (required; not kept in this repo)
-  BAO_TOKEN        token; else the file `bao login` writes (~/.vault-token)
+  BAO_TOKEN        token; used first if set
+  BAO_ROLE_ID      AppRole login, used when there is no BAO_TOKEN. Each of
+  BAO_SECRET_ID    the pair also has a _FILE form (BAO_SECRET_ID_FILE=path)
+                   so the secret-id need not sit in the environment. The
+                   token it gets is revoked when the run ends.
+  BAO_APPROLE_MOUNT  AppRole auth mount (default: approle)
+                   With none of these: the file `bao login` writes
+                   (~/.vault-token)
   BAO_CACERT       CA certificate to trust, for a self-signed server
   BAO_SKIP_VERIFY  1 = don't verify the server certificate (self-signed
                    and no CA file at hand; the token still goes over TLS)
@@ -102,20 +111,6 @@ def lint_example():
 
 # ---- OpenBao ---------------------------------------------------------------
 
-def bao_token():
-    tok = os.environ.get("BAO_TOKEN", "").strip()
-    if tok:
-        return tok
-    try:
-        with open(os.path.expanduser("~/.vault-token")) as f:
-            tok = f.read().strip()
-    except OSError:
-        tok = ""
-    if not tok:
-        raise Fail("no token: set BAO_TOKEN (e.g. from `bao login`)")
-    return tok
-
-
 def ssl_context():
     cafile = os.environ.get("BAO_CACERT")
     if os.environ.get("BAO_SKIP_VERIFY") == "1":
@@ -126,39 +121,113 @@ def ssl_context():
     return ssl.create_default_context(cafile=cafile) if cafile else None
 
 
-def read_entry(addr, token, mount, name):
-    url = "%s/v1/%s/data/%s" % (addr.rstrip("/"), mount, name)
-    req = urllib.request.Request(url, headers={"X-Vault-Token": token})
-    where = "%s/%s" % (mount, name)
+def bao_call(addr, path, what, token=None, payload=None, hints=None):
+    """One API call -> parsed JSON body. `what` names it in errors; request
+    payloads and response bodies are never echoed, only the server's own
+    error messages."""
+    url = "%s/v1/%s" % (addr.rstrip("/"), path)
+    headers = {}
+    data = None
+    if token:
+        headers["X-Vault-Token"] = token
+    if payload is not None:
+        headers["Content-Type"] = "application/json"
+        data = json.dumps(payload).encode()
+    req = urllib.request.Request(url, data=data, headers=headers)
+    tls_hint = ("For a self-signed server set BAO_CACERT=<ca file> "
+                "(or BAO_SKIP_VERIFY=1)")
     try:
         with urllib.request.urlopen(req, timeout=10, context=ssl_context()) as r:
-            body = json.load(r)
+            raw = r.read()
+            return json.loads(raw) if raw else {}
     except urllib.error.HTTPError as e:
         msgs = ""
         try:
             msgs = "; ".join(json.load(e).get("errors") or [])
         except Exception:
             pass
-        hint = {
-            403: " (token lacks read on it: is the bedside-build-read policy "
-                 "applied and attached to this token?)",
-            404: " (entry does not exist, or the mount/path is wrong)",
-        }.get(e.code, "")
-        raise Fail("reading %s: HTTP %d%s%s"
-                   % (where, e.code, hint, (" - " + msgs) if msgs else ""))
+        hint = (hints or {}).get(e.code, "")
+        raise Fail("%s: HTTP %d%s%s"
+                   % (what, e.code, hint, (" - " + msgs) if msgs else ""))
     except ssl.SSLError as e:
-        raise Fail("TLS error reading %s: %s. For a self-signed server set "
-                   "BAO_CACERT=<ca file> (or BAO_SKIP_VERIFY=1)"
-                   % (where, e.reason or e))
+        raise Fail("TLS error %s: %s. %s" % (what, e.reason or e, tls_hint))
     except urllib.error.URLError as e:
-        reason = e.reason
-        if isinstance(reason, ssl.SSLError):
-            raise Fail("TLS error reading %s: %s. For a self-signed server "
-                       "set BAO_CACERT=<ca file> (or BAO_SKIP_VERIFY=1)"
-                       % (where, reason.reason or reason))
-        raise Fail("cannot reach OpenBao for %s: %s" % (where, reason))
+        if isinstance(e.reason, ssl.SSLError):
+            raise Fail("TLS error %s: %s. %s"
+                       % (what, e.reason.reason or e.reason, tls_hint))
+        raise Fail("cannot reach OpenBao (%s): %s" % (what, e.reason))
     except (ValueError, OSError) as e:
-        raise Fail("reading %s: unusable response (%s)" % (where, type(e).__name__))
+        raise Fail("%s: unusable response (%s)" % (what, type(e).__name__))
+
+
+def env_or_file(name):
+    """NAME from the environment, else the contents of the file NAME_FILE
+    names (so a secret-id needn't sit in the environment). '' if neither."""
+    value = os.environ.get(name, "").strip()
+    if value:
+        return value
+    path = os.environ.get(name + "_FILE")
+    if not path:
+        return ""
+    try:
+        with open(path) as f:
+            return f.read().strip()
+    except OSError as e:
+        raise Fail("cannot read %s_FILE (%s)" % (name, e.strerror))
+
+
+def bao_login(addr):
+    """-> (token, revoke_when_done). Order: BAO_TOKEN; an AppRole login if
+    BAO_ROLE_ID / BAO_SECRET_ID (or their _FILE forms) are set; else the file
+    `bao login` writes."""
+    tok = os.environ.get("BAO_TOKEN", "").strip()
+    if tok:
+        return tok, False
+
+    role_id = env_or_file("BAO_ROLE_ID")
+    secret_id = env_or_file("BAO_SECRET_ID")
+    if role_id or secret_id:
+        if not (role_id and secret_id):
+            raise Fail("AppRole login needs both BAO_ROLE_ID and BAO_SECRET_ID "
+                       "(or BAO_ROLE_ID_FILE / BAO_SECRET_ID_FILE); only one is set")
+        mount = os.environ.get("BAO_APPROLE_MOUNT", "approle")
+        body = bao_call(
+            addr, "auth/%s/login" % mount, "AppRole login",
+            payload={"role_id": role_id, "secret_id": secret_id},
+            hints={400: " (role-id or secret-id rejected: wrong, expired or "
+                        "used up its uses; check BAO_APPROLE_MOUNT too)"})
+        tok = (body.get("auth") or {}).get("client_token")
+        if not isinstance(tok, str) or not tok:
+            raise Fail("AppRole login: response has no token")
+        return tok, True  # a token we made: revoke it when finished
+
+    try:
+        with open(os.path.expanduser("~/.vault-token")) as f:
+            tok = f.read().strip()
+    except OSError:
+        tok = ""
+    if not tok:
+        raise Fail("no credentials: set BAO_TOKEN (e.g. from `bao login`), or "
+                   "BAO_ROLE_ID and BAO_SECRET_ID for an AppRole")
+    return tok, False
+
+
+def revoke_token(addr, token):
+    """Best effort: the AppRole token was made for this run only."""
+    try:
+        bao_call(addr, "auth/token/revoke-self", "revoking the login token",
+                 token=token, payload={})
+    except Fail:
+        pass
+
+
+def read_entry(addr, token, mount, name):
+    where = "%s/%s" % (mount, name)
+    body = bao_call(
+        addr, "%s/data/%s" % (mount, name), "reading " + where, token=token,
+        hints={403: " (token lacks read on it: is the bedside-build-read "
+                    "policy applied and attached to this token or role?)",
+               404: " (entry does not exist, or the mount/path is wrong)"})
     data = (body.get("data") or {}).get("data")
     if not isinstance(data, dict):
         raise Fail("%s: response has no KV v2 data (is the mount KV v2?)" % where)
@@ -306,42 +375,46 @@ def main():
     addr = os.environ.get("BAO_ADDR", "").strip()
     if not addr:
         raise Fail("BAO_ADDR is not set")
-    token = bao_token()
-    mount = os.environ.get("BAO_MOUNT", "homelab")
-    prefix = os.environ.get("BAO_PATH", "bedside")
+    token, revoke = bao_login(addr)
+    try:
+        mount = os.environ.get("BAO_MOUNT", "homelab")
+        prefix = os.environ.get("BAO_PATH", "bedside")
 
-    if args.ota_password:
-        if sys.stdout.isatty():
-            raise Fail("--ota-password prints a secret; use it inside $(...), "
-                       "not on a terminal")
-        data = read_entry(addr, token, mount, prefix + "/secrets")
-        value = data.get("ota_password")
-        if not isinstance(value, str) or not value:
-            raise Fail("missing field in OpenBao: secrets.ota_password")
-        sys.stdout.write(value)
-        return
+        if args.ota_password:
+            if sys.stdout.isatty():
+                raise Fail("--ota-password prints a secret; use it inside $(...), "
+                           "not on a terminal")
+            data = read_entry(addr, token, mount, prefix + "/secrets")
+            value = data.get("ota_password")
+            if not isinstance(value, str) or not value:
+                raise Fail("missing field in OpenBao: secrets.ota_password")
+            sys.stdout.write(value)
+            return
 
-    if not args.check:
-        check_not_committable(args.output)
+        if not args.check:
+            check_not_committable(args.output)
 
-    entries = {}
-    for entry in ("secrets", "config"):
-        entries[entry] = read_entry(addr, token, mount, "%s/%s" % (prefix, entry))
-        say("%s/%s fields: %s" % (prefix, entry, ", ".join(sorted(entries[entry])) or "-"))
+        entries = {}
+        for entry in ("secrets", "config"):
+            entries[entry] = read_entry(addr, token, mount, "%s/%s" % (prefix, entry))
+            say("%s/%s fields: %s" % (prefix, entry, ", ".join(sorted(entries[entry])) or "-"))
 
-    say("mapping:")
-    defines = build(entries, say)
-    lost = compare(args.output, set(defines), say)
+        say("mapping:")
+        defines = build(entries, say)
+        lost = compare(args.output, set(defines), say)
 
-    if args.check:
-        say("--check: nothing written")
-        return
-    if lost and not args.force:
-        raise Fail("not replacing %s: it defines names this script does not "
-                   "produce (above). Review them, or re-run with --force"
-                   % os.path.basename(args.output))
-    write_secret_file(args.output, file_text(defines))
-    say("wrote %s (%d defines, mode 600)" % (os.path.relpath(args.output, PROJECT_DIR), len(defines)))
+        if args.check:
+            say("--check: nothing written")
+            return
+        if lost and not args.force:
+            raise Fail("not replacing %s: it defines names this script does not "
+                       "produce (above). Review them, or re-run with --force"
+                       % os.path.basename(args.output))
+        write_secret_file(args.output, file_text(defines))
+        say("wrote %s (%d defines, mode 600)" % (os.path.relpath(args.output, PROJECT_DIR), len(defines)))
+    finally:
+        if revoke:
+            revoke_token(addr, token)
 
 
 if __name__ == "__main__":

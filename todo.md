@@ -28,6 +28,11 @@ Firmware side is done (`src/diagnostics.cpp`, `bedside/diagnostics`, `bedside/st
 - Verify buttons 3, 4, 5 and 8 and the joystick directions in the log (the stick now logs
   `[input] stick <direction>`); 1, 2, 6 and 7 were seen registering.
 - Check the DHT11 shows temperature and humidity on the OLED.
+- Wire the AM312 PIR (`OUT` to GPIO18 / `D18`, `VCC` to 3V3, `GND`) and check it: wave a hand in
+  front of it 10 s after boot and watch the log for `[sensors] motion`, then `[sensors] still`.
+  Also confirm `"motion"` shows up in `bedside/sensors`.
+- Decide what the PIR is for on the server (night light, occupancy). Nothing on the device uses
+  it yet: it doesn't wake the screen.
 - Optional: BH1750 `ADDR` to GND to force 0x23 (works left open now).
 - Optional: sound sensor (HW-485) planned for GPIO32 (`AO`, ADC1); not wired or in the pinout.
 - Optional: lower-risk I2C bus hardening (4.7 kΩ pull-ups) if dropouts ever return; the cause

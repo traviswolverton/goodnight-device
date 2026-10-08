@@ -32,6 +32,16 @@ constexpr unsigned long kDhtIntervalMs = 10000;
 
 constexpr unsigned long kStaleAfterMs = 60000;
 
+// The PIR's output is ignored for this long after boot: these modules can
+// give a false "motion" while they settle after power-up. Then a change has
+// to hold for kPirDebounceMs before it counts, so noise on the wire isn't
+// reported as movement.
+constexpr unsigned long kPirSettleMs = 10000;
+constexpr unsigned long kPirDebounceMs = 50;
+bool motion_ = false;
+bool motionRaw_ = false;
+unsigned long motionRawSinceMs_ = 0;
+
 void updateLight(unsigned long now) {
   if (!lightPresent_ || now - lastLuxMs_ < kLuxIntervalMs) {
     return;
@@ -76,6 +86,22 @@ void updateClimate(unsigned long now) {
   }
 }
 
+void updateMotion(unsigned long now) {
+  if (now < kPirSettleMs) {
+    return;
+  }
+  bool raw = digitalRead(kPinPir) == HIGH;
+  if (raw != motionRaw_) {
+    motionRaw_ = raw;
+    motionRawSinceMs_ = now;
+    return;
+  }
+  if (raw != motion_ && now - motionRawSinceMs_ >= kPirDebounceMs) {
+    motion_ = raw;
+    Serial.println(motion_ ? "[sensors] motion" : "[sensors] still");
+  }
+}
+
 }  // namespace
 
 void sensorsBegin() {
@@ -85,6 +111,9 @@ void sensorsBegin() {
   if (!lightPresent_) {
     Serial.println("[sensors] no BH1750 at 0x23 -- screen stays at full brightness");
   }
+  // The AM312 drives its output both ways; the pull-down only matters when
+  // it isn't connected, so that reads as "no motion" instead of floating.
+  pinMode(kPinPir, INPUT_PULLDOWN);
   dht_.begin();
   // First DHT read right away instead of 10s after boot.
   lastDhtMs_ = millis() - kDhtIntervalMs;
@@ -94,6 +123,7 @@ void sensorsUpdate() {
   unsigned long now = millis();
   updateLight(now);
   updateClimate(now);
+  updateMotion(now);
 }
 
 float sensorsLux() {
@@ -110,4 +140,8 @@ float sensorsHumidity() {
 
 bool sensorsLightPresent() {
   return lightPresent_;
+}
+
+bool sensorsMotion() {
+  return motion_;
 }

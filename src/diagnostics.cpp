@@ -93,6 +93,10 @@ size_t diagnosticsBuild(char* out, size_t size) {
   hw["joystick"] = inputJoystickPresent();
   hw["climate"] = !isnan(sensorsTemperatureC());
 
+  // The PIR is one wire, so there's nothing to detect: it has no entry in
+  // hardware. This is what it's reporting right now.
+  doc["motion"] = sensorsMotion();
+
   JsonObject stick = doc["stick"].to<JsonObject>();
   int x = 0;
   int y = 0;

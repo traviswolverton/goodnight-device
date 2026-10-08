@@ -26,6 +26,10 @@ lives on the server.
 - **Light:** BH1750 on a GY-302 board (I2C, 0x23 with ADDR low/floating).
 - **Temperature/humidity:** DHT11 on an HW-507 board (single-wire, own GPIO;
   the board carries the data pull-up).
+- **Motion:** AM312 mini PIR (one output pin, high while it sees movement).
+  It holds its output high for about 2 s after movement and then ignores
+  movement for about 2 s, so the signal is already stretched; the dome
+  pokes out through the case's front wall.
 - **Buzzer:** a passive piezo, driven directly from a GPIO by LEDC PWM —
   distinct pitches, volume by duty cycle. (Passive, not active: an active
   buzzer only has its one built-in tone, so sounds could differ only by
@@ -36,7 +40,9 @@ lives on the server.
 literally labelled `5V`, and the HW-507 accepts 3.3–5V. Don't: the joystick
 outputs a fraction of its supply, so at 5V it would put up to 5V into an
 ESP32 pin rated for 3.3V; the DHT11's data line likewise swings to its
-supply.
+supply. The AM312 takes 2.7–12V, which invites the same mistake; power it
+from 3V3 too and don't test what its output does at a higher supply on an
+ESP32 pin.
 
 ## Pin assignments
 
@@ -46,6 +52,7 @@ supply.
 | I2C bus | SCL | 22 | `D22` |
 | MCP23017 | `INTA` | 27 | `D27` |
 | DHT11 | data (`S`/`DAT`) | 4 | `D4` |
+| AM312 PIR | `OUT` | 18 | `D18` |
 | Joystick | `VRx` | 34 | `D34` |
 | Joystick | `VRy` | 35 | `D35` |
 | Piezo buzzer | `+` | 25 | `D25` (its `−` to `GND`) |
@@ -76,7 +83,10 @@ Why these pins:
 - Still avoid: GPIO0/2/12/15 (boot straps), 1/3 (serial), 6–11 (flash).
 - **25 for the buzzer:** a plain output with no boot-strap role (it's
   also DAC1, unused here).
-- Free for later: 13, 14, 16–19, 23, 26, 32, 33.
+- **18 for the PIR:** a plain input with no boot-strap role. The firmware
+  turns on its internal pull-down, so with the sensor unplugged the pin
+  reads "no motion" instead of floating.
+- Free for later: 13, 14, 16, 17, 19, 23, 26, 32, 33.
 
 ```mermaid
 graph LR
@@ -85,6 +95,7 @@ graph LR
     D22["D22 (SCL)"]
     D27["D27"]
     D4["D4"]
+    D18["D18"]
     D34["D34"]
     D35["D35"]
     V3["3V3"]
@@ -100,6 +111,7 @@ graph LR
     JXY["Stick VRx / VRy"]
   end
   DHT["DHT11 (HW-507)"]
+  PIR["AM312 PIR"]
   D21 --- I2C
   D22 --- I2C
   MCP -- "INTA" --- D27
@@ -108,6 +120,7 @@ graph LR
   JXY -- "VRx" --- D34
   JXY -- "VRy" --- D35
   DHT -- "data" --- D4
+  PIR -- "out" --- D18
   V3 -. "3.3V to every module" .- I2C
 ```
 
@@ -126,7 +139,7 @@ that mostly measures the screen.
 | `display.*` | The SSD1306: U8g2 full-frame buffer, levels, burn-in drift |
 | `dimmer.*` | Lux → Off / Dim / Full, and wake-on-touch |
 | `input.*` | Buttons, joystick press and axes → debounced events |
-| `sensors.*` | BH1750 (smoothed) and DHT11 readings |
+| `sensors.*` | BH1750 (smoothed), DHT11 and PIR readings |
 | `screen.*` | What's drawn: one big line, the clock first, stick left/right for other pages |
 | `local_time.*` | Central time from NTP (`CST6CDT`), 12-hour, for the clock page |
 | `settings_store.*` | Dimmer and buzzer settings in NVS, surviving reboots |
@@ -218,7 +231,7 @@ limits it to the topics below (bedside-dashboard-server's
 |---|---|---|---|
 | `bedside/config` | server → device | yes | `{"dimmer":{"bright_lux":20,"dark_lux":2,"dim_contrast":1,"wake_seconds":15},"sounds":{"enabled":true,"volume":80,"dark_volume":10}}` — any field optional |
 | `bedside/sound` | server → device | no | `{"sound":"armed","urgent":false}` — see "Sounds" |
-| `bedside/sensors` | device → server | yes | `{"temperature_c":21.5,"humidity":44,"lux":3.5,"screen":"off"}` — `null` for a sensor with no reading |
+| `bedside/sensors` | device → server | yes | `{"temperature_c":21.5,"humidity":44,"lux":3.5,"screen":"off","motion":false}` — `null` for a sensor with no reading; `motion` is never null |
 | `bedside/button` | device → server | no | `{"button":3,"press":"short"}` or `"long"` |
 | `bedside/stick` | device → server | no | `{"stick":"up"}`: `up`, `down`, `left`, `right` (repeats while held) or `press` |
 | `bedside/diagnostics` | device → server | yes | see "Diagnostics" |
@@ -226,8 +239,19 @@ limits it to the topics below (bedside-dashboard-server's
 | `bedside/availability` | device → server | yes | `online`, or `offline` (the connection's last will) |
 
 `bedside/sensors` goes out every 30s, on every (re)connect, and whenever
-the screen level changes. Presses aren't retained or queued while offline:
-replaying one later would trigger whatever it's bound to after the fact.
+the screen level changes or motion starts or stops. Presses aren't
+retained or queued while offline: replaying one later would trigger
+whatever it's bound to after the fact.
+
+`motion` is the PIR's output, as it is: true from the first movement until
+about 2 s after the last (the AM312 holds its own output that long), so it
+changes at most every few seconds. It's ignored for the first 10 s after
+boot while the sensor settles, and a change must hold for 50 ms to count.
+What "someone's in the room" means, and for how long, is the server's
+decision; the device sends no timeout. It rides in the retained sensors
+message, so it can be stale after the device drops off; check
+`bedside/availability` before trusting a retained `true`. Nothing on the
+device reacts to it: it doesn't wake the screen.
 
 Config values are clamped on arrival (`dark_lux` ≤ `bright_lux`, contrast
 0–255, wake 3–600s), so a bad server value can't produce a screen that
@@ -277,12 +301,15 @@ arrive as events on `bedside/button` and `bedside/stick`.
  "wifi":{"rssi":-45,"ip":"192.0.2.30"},
  "hardware":{"oled":true,"light":true,"expander":true,"joystick":true,
              "climate":true},
+ "motion":false,
  "stick":{"x":1910,"y":1902,"direction":"none","pressed":false},
  "buttons_down":[]}
 ```
 
 - `hardware` says what answered: a `false` is a wiring problem. `climate`
-  is false while the DHT11 has no reading.
+  is false while the DHT11 has no reading. The PIR has no entry: it's a
+  single wire, so a missing sensor can't be told from a quiet room.
+- `motion` is the PIR's output right now (see `bedside/sensors`).
 - `stick.x`/`y` are raw 12-bit readings (centre about 1900); `null` when no
   joystick. `direction` is `none`, `up`, `down`, `left` or `right`.
 - `buttons_down` lists the buttons held right now (debounced), 1–8.
@@ -307,6 +334,9 @@ arrive as events on `bedside/button` and `bedside/stick`.
    for 1.5s (`BTN 3`, `HOLD 3`, `UP`, `PRESS`).
 5. Cover the light sensor: the screen dims, then turns off. Press a button:
    it comes back at Dim, and that press isn't published.
+6. Wave a hand in front of the PIR (10 s after boot or later): the serial log
+   prints `[sensors] motion`, then `[sensors] still` a few seconds after you
+   stop, and `bedside/sensors` shows `"motion":true` then `false`.
 
 ## Sounds
 The server decides what a press did and says which sound to play on

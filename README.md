@@ -19,6 +19,7 @@ and keeps its connectivity, OTA and settings code.
 - MCP23017 I/O expander (Waveshare board) carrying 8 push buttons
 - KY-023 joystick
 - BH1750 light sensor, DHT11 temperature/humidity sensor
+- AM312 mini PIR motion sensor
 - Passive piezo buzzer
 
 Everything runs from the ESP32's 3.3V pin. Pins, wiring and the reasons for

@@ -25,6 +25,12 @@ constexpr uint8_t kPinExpanderInt = 27;
 // DHT11 (HW-507 board, which carries its own data-line pull-up).
 constexpr uint8_t kPinDht = 4;
 
+// AM312 mini PIR motion sensor: one output, 3.3V, high while it sees motion.
+// 18 is a plain input-capable GPIO with no boot-strap role. The firmware
+// turns on its internal pull-down, so a disconnected sensor reads as "no
+// motion". Power the module from 3.3V, like everything else.
+constexpr uint8_t kPinPir = 18;
+
 // KY-023 joystick axes. These have to be ADC1 pins (GPIO32-39): ADC2 is
 // unusable while WiFi is on. 34/35 are input-only, which is all an
 // analog read needs. Power the joystick from 3.3V, never its "5V" pin.

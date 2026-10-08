@@ -2,7 +2,7 @@
 //
 // Wires together connectivity (WiFi + MQTT + OTA), input (8 buttons and a
 // joystick through the MCP23017 and ADC), sensors (BH1750 light, DHT11
-// climate), and output (SSD1306 OLED, dimmed by room light; a piezo
+// climate, AM312 motion), and output (SSD1306 OLED, dimmed by room light; a piezo
 // buzzer). See
 // DESIGN.md for the design -- this file is just the glue.
 
@@ -74,6 +74,7 @@ bool mqttSucceeded = false;
 unsigned long lastSensorPublishMs = 0;
 bool sensorPublishDue = true;
 DisplayLevel lastPublishedLevel = DisplayLevel::Full;
+bool lastPublishedMotion = false;
 
 
 char hardwareNote[32] = "";
@@ -230,15 +231,16 @@ void setOrNull(JsonDocument& doc, const char* key, float value, int decimals) {
 }
 
 // bedside/sensors, retained: the latest readings plus what the screen is
-// doing. Published every kSensorPublishMs, on (re)connect, and whenever
-// the screen level changes.
+// doing, and whether the PIR sees motion. Published every kSensorPublishMs,
+// on (re)connect, and whenever the screen level or the motion state changes.
 void publishSensors() {
   JsonDocument doc;
   setOrNull(doc, "temperature_c", sensorsTemperatureC(), 1);
   setOrNull(doc, "humidity", sensorsHumidity(), 0);
   setOrNull(doc, "lux", sensorsLux(), 1);
   doc["screen"] = dimmerLevelName();
-  char buffer[128];
+  doc["motion"] = sensorsMotion();
+  char buffer[160];
   size_t length = serializeJson(doc, buffer, sizeof(buffer));
   mqttClient.publish(kTopicSensors, reinterpret_cast<const uint8_t*>(buffer), length, true);
 }
@@ -249,11 +251,14 @@ void maybePublishSensors() {
   }
   unsigned long now = millis();
   DisplayLevel level = dimmerLevel();
+  bool motion = sensorsMotion();
   unsigned long interval = diagnosticsFast() ? 1000 : kSensorPublishMs;
-  if (sensorPublishDue || level != lastPublishedLevel || now - lastSensorPublishMs >= interval) {
+  if (sensorPublishDue || level != lastPublishedLevel || motion != lastPublishedMotion ||
+      now - lastSensorPublishMs >= interval) {
     publishSensors();
     sensorPublishDue = false;
     lastPublishedLevel = level;
+    lastPublishedMotion = motion;
     lastSensorPublishMs = now;
   }
 }

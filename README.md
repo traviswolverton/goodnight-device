@@ -74,6 +74,7 @@ OTA_PASSWORD="$(scripts/gen_secrets.py --ota-password)" pio run -t upload -e esp
 | [docs/pinout.html](docs/pinout.html) | Wiring diagram |
 | [docs/button-actions-spec.md](docs/button-actions-spec.md) | What each button should do, for the Home Assistant side |
 | [docs/diagnostics-server-brief.md](docs/diagnostics-server-brief.md) | The device's diagnostics feed, for a server page |
+| [docs/secrets-rotation.md](docs/secrets-rotation.md) | What each secret is, which need a flash, and the order to rotate them in |
 | [todo.md](todo.md) | What's left |
 | [enclosure/](enclosure/) | Parametric OpenSCAD enclosure: tub, lid and threaded feet |
 

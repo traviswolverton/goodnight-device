@@ -90,3 +90,7 @@ in the file are guesses to check against your own parts before printing.
 
 The firmware is built and running on the bench, and the enclosure is at the
 test-print stage; both are tracked in [todo.md](todo.md).
+
+## License
+
+[MIT](LICENSE).

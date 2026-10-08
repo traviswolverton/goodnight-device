@@ -92,7 +92,7 @@ esp_t = 1.6;
 esp_standoff = 4.5;                 // the module and USB connector hang below it
 esp_plug_height = 20;               // female plugs on the pins
 esp_hole_span = [46, 24];           // stud centres: along the board, across it
-esp_stud_d = 2.0;                   // MEASURE the hole; the stud wants to be about 0.4 smaller
+esp_stud_d = 1.8;                   // MEASURE the hole; the stud wants to be well under it
 esp_post_d = 4;                     // what the board rests on, round each stud
 
 exp = [23.38, 38.25];               // Waveshare MCP23017 board, long edge front to back
@@ -101,7 +101,8 @@ exp_standoff = 3;
 exp_clearance = 35;                 // wires pointing up
 exp_hole = 2.5;
 exp_hole_edge = 1.5;                // hole edge to board edge, both ways
-exp_stud_d = 2.1;                   // a little under the hole, as for the ESP32
+exp_stud_d = 1.9;                   // a little under the 2.5 hole
+exp_cage_gap = 1.3;                 // between the board and its corner L's (the ESP32's is 0.3)
 
 buz_d = 11.72;
 buz_h = 8.5;
@@ -115,6 +116,16 @@ lux_win_d = 5;                      // the sensor itself is about 3 x 3
 
 usb_w = 14;
 usb_h = 10;
+
+/* [PIR sensor, AM312 mini] */
+// Front wall, bottom right. The dome pokes out through the hole and the board
+// sits in a pocket behind it. Sizes are from retailer listings: MEASURE yours.
+pir_pcb = [10, 8];                  // x, z
+pir_dome_d = 12;
+pir_hole_d = pir_dome_d + 0.5;
+pir_x = W - 22;
+pir_z = 14;
+pir_plug_depth = 20;                // from the front wall: board, pins and a Dupont plug
 
 /* [Derived] */
 inner_top = H - lid_t;              // tub rim and the lid's underside
@@ -140,7 +151,7 @@ esp_x0 = wall + 3;
 esp_y0 = bay_y0 + 1.5;
 esp_z = floor_t + esp_standoff;
 exp_x0 = esp_x0 + esp[0] + 7;
-exp_y1 = bay_y1 - 2;                // room for the cage behind the board
+exp_y1 = bay_y1 - exp_cage_gap - 1.2 - 0.5;   // room for the cage behind the board
 exp_y0 = exp_y1 - exp[1];
 buz_x = exp_x0 + exp[0] + 14;
 buz_cz = floor_t + 1.2 + buz_d / 2;
@@ -155,8 +166,9 @@ assert(H - floor_t >= btn_clearance, "buttons need more height");
 assert(inner_top - (floor_t + exp_standoff + exp_t) >= exp_clearance, "expander wires need more height");
 assert(inner_top - (esp_z + esp_t) >= esp_plug_height, "ESP32 plugs need more height");
 assert(pad_t + dupont_len + 1 <= display_strip, "display plug runs into the button zone");
-assert(esp_x0 + esp[0] < exp_x0, "ESP32 overlaps the expander");
-assert(exp_x0 + exp[0] < buz_x - buz_d / 2 - 1.6, "expander overlaps the buzzer");
+assert(esp_x0 + esp[0] + 1.5 < exp_x0 - exp_cage_gap - 1.2, "ESP32 cage overlaps the expander cage");
+assert(exp_x0 + exp[0] + exp_cage_gap + 1.2 < buz_x - buz_d / 2 - 1.6, "expander cage overlaps the buzzer");
+assert(norm(pir_pcb) > pir_hole_d, "PIR board would fall through its hole");
 assert(buz_x + buz_d / 2 + 1.6 < dht_x - dht[0] / 2 - 2, "buzzer overlaps the DHT11");
 assert(dht_x + dht[0] / 2 + 2 < W - wall - 14, "DHT11 overlaps the BH1750");
 assert(stick_x + stick_board[0] / 2 <= W - wall, "joystick board is past the right wall");
@@ -195,6 +207,7 @@ module tub() {
             }
             screw_bosses();
             display_frame();
+            pir_frame();
             esp_supports();
             expander_cage();
             buzzer_cradle();
@@ -249,6 +262,16 @@ module stud(x, y, post_d, stud_d, post_h, stud_h) {
 esp_holes = [for (sx = [-1, 1], sy = [-1, 1])
     [esp_x0 + esp[0] / 2 + sx * esp_hole_span[0] / 2, esp_y0 + esp[1] / 2 + sy * esp_hole_span[1] / 2]];
 
+// The PIR board's frame on the inside of the front wall, sloped underneath so
+// it prints without support.
+module pir_frame() {
+    fw = 16;
+    hull() {
+        span([pir_x - fw / 2, wall - 0.01, pir_z - fw / 2 - 3], [pir_x + fw / 2, wall, pir_z + fw / 2]);
+        span([pir_x - fw / 2, wall - 0.01, pir_z - fw / 2], [pir_x + fw / 2, wall + 3, pir_z + fw / 2]);
+    }
+}
+
 module esp_supports() {
     // An L around each corner to locate the board, and a stud through each
     // mounting hole. Hot glue holds it.
@@ -267,7 +290,7 @@ exp_holes = [[exp_x0 + exp_hole_edge + exp_hole / 2, exp_y1 - exp_hole_edge - ex
 module expander_cage() {
     // Same idea as the ESP32: an L at each corner, studs through the two holes
     // at the back end, and a pad under each front corner.
-    c = 0.3;
+    c = exp_cage_gap;
     top = floor_t + exp_standoff;
     for (sx = [-1, 1], sy = [-1, 1]) {
         bx = exp_x0 + (sx > 0 ? exp[0] : 0);
@@ -290,6 +313,11 @@ module tub_cutouts() {
         cube([disp_win[0], wall + 1.02, disp_win[1]]);
     span([disp_cx - disp_pcb[0] / 2 - 0.2, wall, disp_cz - disp_pcb[1] / 2 - 0.2],
          [disp_cx + disp_pcb[0] / 2 + 0.2, wall + pad_t + 0.5, disp_cz + disp_pcb[1] / 2 + 0.2]);
+
+    // PIR: the dome through the front wall, the board's pocket behind it.
+    translate([pir_x, -1, pir_z]) rotate([-90, 0, 0]) cylinder(d = pir_hole_d, h = wall + 1.02);
+    span([pir_x - pir_pcb[0] / 2 - 0.2, wall, pir_z - pir_pcb[1] / 2 - 0.2],
+         [pir_x + pir_pcb[0] / 2 + 0.2, wall + 3.5, pir_z + pir_pcb[1] / 2 + 0.2]);
 
     // USB cable through the left wall, level with the ESP32's connector.
     translate([-1, esp_y0 + esp[1] / 2 - usb_w / 2, floor_t])
@@ -433,6 +461,13 @@ module ghosts() {
         translate([stick_x - stick_body / 2, stick_y - stick_body / 2, bz + stick_board_t]) cube([stick_body, stick_body, stick_gap]);
         translate([stick_x + stick_offset[0], stick_y + stick_offset[1], bz + stick_board_t + stick_gap])
             cylinder(d = 8, h = stick_total - stick_gap);
+    }
+    color("gold", 0.5) {
+        // PIR: board, dome through the wall, and the pins and plug behind it.
+        translate([pir_x - pir_pcb[0] / 2, wall, pir_z - pir_pcb[1] / 2]) cube([pir_pcb[0], 1.2, pir_pcb[1]]);
+        translate([pir_x, -6, pir_z]) rotate([-90, 0, 0]) cylinder(d = pir_dome_d, h = 6 + wall);
+        translate([pir_x - pir_pcb[0] / 2, wall + 1.2, pir_z - pir_pcb[1] / 2])
+            cube([pir_pcb[0], pir_plug_depth - wall - 1.2, pir_pcb[1]]);
     }
     color("orange", 0.5) {
         translate([buz_x, bay_y1 - buz_h, buz_cz]) rotate([-90, 0, 0]) cylinder(d = buz_d, h = buz_h);

@@ -120,7 +120,7 @@ usb_h = 10;
 
 /* [Hub board: stripboard with JST-XH headers] */
 // Sits on the floor under the button grid, below the 40 mm button clearance.
-hub = [70, 35];                     // x, y: 12 strips for 4 rails, 6 signals and 2 spare, about 9 headers along them
+hub = [37, 40];                     // x, y: 14 strips (35.6 mm) by 15 holes (38.1 mm), cut by hand: see docs/pinout.html
 hub_t = 1.6;
 hub_standoff = 3;                   // solder tails under the board
 hub_header_h = 7;                   // JST-XH headers above the board: MEASURE

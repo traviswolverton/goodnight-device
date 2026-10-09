@@ -6,10 +6,31 @@ Position 1 at a device is the first label in the order given below. Where a wire
 
 ## Before you start
 
-- **Colours.** Use red for 3V3 and black for GND on every cable. Any other colours are fine as long as each signal keeps the same colour everywhere (suggested: SDA blue, SCL yellow, INTA orange, other signals white or green).
+- **Colours.** Follow the table below. The same signal is the same colour at both ends of every cable.
 - **Mark the hub plugs.** Solder the XH headers into the hub first. Then fit each plug on its header and put a dot on the end of the plug nearest strip **s0**. XH plugs only fit one way, so that dot tells you which end is "hub position 1" for every plug below, counting from the dot.
 - **Mark the device housings.** For each Dupont-style housing, put a dot on the end that goes on the module's position 1 pin (the first label in its order below).
 - **Tag every cable** with its name before you move on.
+
+## Wire colours
+
+Red is always 3V3 and black is always GND. No two wires in one plug share a colour. A colour can repeat on different cables when they never share a plug (white is the DHT11's data and the stick's press; yellow is SCL and the lid's button signals).
+
+| Signal | Pin | Colour | Where |
+|---|---|---|---|
+| 3V3 | | red | every cable |
+| GND | | black | every cable, and the button grounds |
+| SDA | D21 | blue | OLED, BH1750, expander |
+| SCL | D22 | yellow | OLED, BH1750, expander |
+| INTA | D27 | orange | expander |
+| DHT11 data | D4 | white | DHT11 |
+| PIR out | D18 | green | PIR |
+| Buzzer | D25 | brown | buzzer |
+| Stick VRx | D34 | purple | joystick |
+| Stick VRy | D35 | grey | joystick |
+| Stick press | PB0 | white | its own one-wire plug |
+| Buttons 1 to 8 | PA0 to PA7 | yellow | the lid harness you already have |
+
+The ESP32's ten wires are all different, so you can tell them apart in the two housings: red, black, white, green, blue, yellow on the 3V3 row, and orange, brown, grey, purple on the VIN row (in plug order).
 
 ## Cables to the hub
 
@@ -21,11 +42,11 @@ Device order: **S, +, −** (3 pins, 3-way housing)
 | Wire | Signal | Hub pos | Device pos | |
 |---|---|---|---|---|
 | red | 3V3 (s0) | 1 | 2 (+) | crosses |
-| signal | D4 (s1) | 2 | 1 (S) | crosses |
+| white | D4 (s1) | 2 | 1 (S) | crosses |
 | black | GND (s2) | 3 | 3 (−) | straight |
 
-- [ ] hub plug filled red, signal, black
-- [ ] device housing filled signal, red, black
+- [ ] hub plug filled red, white, black
+- [ ] device housing filled white, red, black
 
 ### OLED, hub port A, s9 to s12
 Device order: **GND, VCC, SCK, SDA** (4 pins, 4-way housing). SCK is the I2C clock, SCL.
@@ -34,11 +55,11 @@ Device order: **GND, VCC, SCK, SDA** (4 pins, 4-way housing). SCK is the I2C clo
 |---|---|---|---|---|
 | red | 3V3 (s9) | 1 | 2 (VCC) | crosses |
 | black | GND (s10) | 2 | 1 (GND) | crosses |
-| SDA | SDA (s11) | 3 | 4 (SDA) | crosses |
-| SCL | SCL (s12) | 4 | 3 (SCK) | crosses |
+| blue | SDA (s11) | 3 | 4 (SDA) | crosses |
+| yellow | SCL (s12) | 4 | 3 (SCK) | crosses |
 
-- [ ] hub plug filled red, black, SDA, SCL
-- [ ] device housing filled black, red, SCL, SDA
+- [ ] hub plug filled red, black, blue, yellow
+- [ ] device housing filled black, red, yellow, blue
 - ⚠ GND and VCC are swapped between the two ends. Straight-through would reverse the power.
 
 ### BH1750 (GY-302), hub port B, s9 to s12
@@ -48,11 +69,11 @@ Device order: **ADDR, SDA, SCL, GND, VCC** (5 pins). Leave ADDR unconnected: use
 |---|---|---|---|---|
 | red | 3V3 (s9) | 1 | 5 (VCC) | crosses |
 | black | GND (s10) | 2 | 4 (GND) | crosses |
-| SDA | SDA (s11) | 3 | 2 (SDA) | crosses |
-| SCL | SCL (s12) | 4 | 3 (SCL) | crosses |
+| blue | SDA (s11) | 3 | 2 (SDA) | crosses |
+| yellow | SCL (s12) | 4 | 3 (SCL) | crosses |
 
-- [ ] hub plug filled red, black, SDA, SCL
-- [ ] device housing (cavity 1 empty) filled empty, SDA, SCL, black, red
+- [ ] hub plug filled red, black, blue, yellow
+- [ ] device housing (cavity 1 empty) filled empty, blue, yellow, black, red
 - ⚠ The whole order is reversed between the two ends.
 
 ### Joystick (KY-023), hub port C, s6 to s9
@@ -61,16 +82,16 @@ Device order: **GND, 5V, VRx, VRy, SW** (5 pins). Use a 4-way housing on the fir
 | Wire | Signal | Hub pos | Device pos | |
 |---|---|---|---|---|
 | black | GND (s6) | 1 | 1 (GND) | straight |
-| signal | D34 (s7) | 2 | 3 (VRx) | crosses |
-| signal | D35 (s8) | 3 | 4 (VRy) | crosses |
+| purple | D34 (s7) | 2 | 3 (VRx) | crosses |
+| grey | D35 (s8) | 3 | 4 (VRy) | crosses |
 | red | 3V3 (s9) | 4 | 2 (5V pin) | crosses |
 
-- [ ] hub plug filled black, VRx, VRy, red
-- [ ] device housing filled black, red, VRx, VRy
+- [ ] hub plug filled black, purple, grey, red
+- [ ] device housing filled black, red, purple, grey
 - ⚠ The pin printed 5V gets **3V3**. Never 5V.
 
 ### Joystick press, one-wire plug
-- [ ] one-wire Dupont-style plug on the stick's **SW** pin (position 5); the other end goes to the expander's PB0.
+- [ ] one-wire Dupont-style plug on the stick's **SW** pin (position 5), white wire; the other end goes to the expander's PB0.
 
 ### PIR (AM312), hub port B, s2 to s4
 The module has no silkscreen on either side. Published pinouts agree that the **middle pin is OUT**, but they disagree about which end is VCC and which is GND, and some clones swap them. So find out on your own board before you crimp, and **don't connect it to the hub until you have**.
@@ -86,17 +107,17 @@ The module has no silkscreen on either side. Published pinouts agree that the **
 | Wire | Signal | Hub pos | Device pos if the order is VCC, OUT, GND | Device pos if the order is GND, OUT, VCC |
 |---|---|---|---|---|
 | black | GND (s2) | 1 | 3 | 1 |
-| signal | D18 (s3) | 2 | 2 | 2 |
+| green | D18 (s3) | 2 | 2 | 2 |
 | red | 3V3 (s4) | 3 | 1 | 3 |
 
 - [ ] test done, device order confirmed: VCC, OUT, GND  /  GND, OUT, VCC (circle one)
-- [ ] hub plug filled black, signal, red
+- [ ] hub plug filled black, green, red
 - [ ] device housing filled to match the column above
 
 ### Buzzer, hub port A, s5 to s6
 | Wire | Signal | Hub pos | Device |
 |---|---|---|---|
-| signal | D25 (s5) | 1 | + lead |
+| brown | D25 (s5) | 1 | + lead |
 | black | GND (s6) | 2 | − lead |
 
 - Device end is soldered to the two leads (no housing).
@@ -108,8 +129,8 @@ The stock cable's own order, so no crossing: **VCC (red), GND (black), SDA (blue
 |---|---|---|
 | red | 3V3 (s9) | 1, to VCC (feed 3V3, never 5V) |
 | black | GND (s10) | 2 |
-| SDA | SDA (s11) | 3 |
-| SCL | SCL (s12) | 4 |
+| blue | SDA (s11) | 3 |
+| yellow | SCL (s12) | 4 |
 | orange | D27 (s13) | 5, to INTA |
 
 - [ ] **Leave the green INTB wire out of the housing**: s14 is ground and sits next to it.
@@ -121,33 +142,33 @@ The board has 15 pins on each side. It sits flipped (pins up, USB-C at the left 
 ### 3V3-row housing, 15-way, six cavities filled
 This is the row with 3V3, GND, D15, D2, D4 ... D22, D23, counted from the USB-C end.
 
-| Position | Pin | To hub strip |
-|---|---|---|
-| 1 | 3V3 | s0 |
-| 2 | GND | s2 |
-| 5 | D4 | s1 |
-| 9 | D18 | s3 |
-| 11 | D21 (SDA) | s11 |
-| 14 | D22 (SCL) | s12 |
+| Position | Pin | Colour | To hub strip |
+|---|---|---|---|
+| 1 | 3V3 | red | s0 |
+| 2 | GND | black | s2 |
+| 5 | D4 | white | s1 |
+| 9 | D18 | green | s3 |
+| 11 | D21 (SDA) | blue | s11 |
+| 14 | D22 (SCL) | yellow | s12 |
 
 - [ ] six wires, in positions 1, 2, 5, 9, 11 and 14
 
 ### VIN-row housing, 12-way, four cavities filled
 This is the row with VIN, GND, D13, D12, D14, D27, D26, D25 ... EN, counted from the USB-C end.
 
-| Position | Pin | To hub strip |
-|---|---|---|
-| 6 | D27 | s13 |
-| 8 | D25 | s5 |
-| 11 | D35 | s8 |
-| 12 | D34 | s7 |
+| Position | Pin | Colour | To hub strip |
+|---|---|---|---|
+| 6 | D27 | orange | s13 |
+| 8 | D25 | brown | s5 |
+| 11 | D35 | grey | s8 |
+| 12 | D34 | purple | s7 |
 
 - [ ] four wires, in positions 6, 8, 11 and 12
 
 ## Buttons and the lid
 
 ### Button ground
-- [ ] 8-way housing on the 1×8 header along s14. Every wire is ground, so the order doesn't matter. The other ends go to each button's ground terminal.
+- [ ] 8-way housing on the 1×8 header along s14. Every wire is ground (black), so the order doesn't matter. The other ends go to each button's ground terminal.
 
 ### Button signals
 The expander's PA header has PA7 at the top, then PA6 down to PA0, then GND and VCC at the bottom. Count positions from the PA7 end, so button *n* goes to position 9 − *n*.
@@ -163,7 +184,7 @@ The expander's PA header has PA7 at the top, then PA6 down to PA0, then GND and 
 | 7 | PA6 | 2 |
 | 8 | PA7 | 1 |
 
-- [ ] 8-way housing on the PA header, positions 1 to 8. Don't fill position 9 or 10: those are the header's GND and VCC.
+- [ ] 8-way housing on the PA header, positions 1 to 8, yellow wires (the lid harness you already have). Don't fill position 9 or 10: those are the header's GND and VCC.
 - Option: the header's GND sits right beside PA0, so a 9-way housing could carry the buttons' ground too, in position 9, if you'd rather bring it straight from the lid than through the hub's s14 header.
 
 ### Stick press

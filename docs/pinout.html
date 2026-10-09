@@ -494,6 +494,280 @@
   the printed labels, not by the drawing&rsquo;s order.
 </p>
 
+<h2>Hub board</h2>
+<p class="note" style="margin-top:14px;max-width:72ch">
+  Every shared connection goes through one stripboard, so nothing is soldered pin to pin. The board has
+  14 copper strips, each one net, with no cuts. Each device gets a JST-XH header laid across the strips
+  it needs, so its cable plugs straight in. 3V3 and GND each appear on three strips, joined by a bare-wire
+  link on top, so every header stays within a few strips of the rails it needs. Wiring only: where the board
+  sits is in the enclosure.
+</p>
+
+<figure class="diagram-figure">
+  <div class="diagram-scroll">
+<svg class="wiring" viewBox="0 0 800 526" role="img" aria-label="Hub board strip map. Fourteen copper strips run left to right, each one net: 3V3, D4, GND, D18, 3V3, D25, GND, D34, D35, 3V3, GND, SDA, SCL, D27. JST-XH header ports sit across the strips they use: DHT11 on strips 0 to 2, PIR on 2 to 4, buzzer on 5 to 6, stick on 6 to 9, OLED and BH1750 on 9 to 12, expander on 9 to 13. Two bare-wire links join the three 3V3 strips and the three GND strips. Ten ESP32 wires are soldered to the strips on the right.">
+<text x="185" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">A</text>
+<text x="285" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">B</text>
+<text x="385" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">C</text>
+<text x="485" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">D</text>
+<text x="335" y="32" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">JST-XH header ports, 2 holes each</text>
+<text x="590" y="32" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">bare-wire links</text>
+<text x="570" y="48" text-anchor="middle" font-size="10.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+<text x="610" y="48" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+<text x="686" y="48" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">ESP32 wires</text>
+<text x="686" y="32" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">soldered to the strips</text>
+<rect x="124" y="88.5" width="556" height="7" rx="3.5" fill="var(--wire-power)" opacity="0.45"/>
+<text x="14" y="96" font-size="9.5" fill="var(--silk-dim)">s0</text>
+<text x="42" y="96" font-size="11.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+<rect x="124" y="116.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="124" font-size="9.5" fill="var(--silk-dim)">s1</text>
+<text x="42" y="124" font-size="11.5" fill="var(--wire-signal)" font-weight="600">D4</text>
+<rect x="124" y="144.5" width="556" height="7" rx="3.5" fill="var(--wire-gnd)" opacity="0.45"/>
+<text x="14" y="152" font-size="9.5" fill="var(--silk-dim)">s2</text>
+<text x="42" y="152" font-size="11.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+<rect x="124" y="172.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="180" font-size="9.5" fill="var(--silk-dim)">s3</text>
+<text x="42" y="180" font-size="11.5" fill="var(--wire-signal)" font-weight="600">D18</text>
+<rect x="124" y="200.5" width="556" height="7" rx="3.5" fill="var(--wire-power)" opacity="0.45"/>
+<text x="14" y="208" font-size="9.5" fill="var(--silk-dim)">s4</text>
+<text x="42" y="208" font-size="11.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+<rect x="124" y="228.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="236" font-size="9.5" fill="var(--silk-dim)">s5</text>
+<text x="42" y="236" font-size="11.5" fill="var(--wire-signal)" font-weight="600">D25</text>
+<rect x="124" y="256.5" width="556" height="7" rx="3.5" fill="var(--wire-gnd)" opacity="0.45"/>
+<text x="14" y="264" font-size="9.5" fill="var(--silk-dim)">s6</text>
+<text x="42" y="264" font-size="11.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+<rect x="124" y="284.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="292" font-size="9.5" fill="var(--silk-dim)">s7</text>
+<text x="42" y="292" font-size="11.5" fill="var(--wire-signal)" font-weight="600">D34</text>
+<rect x="124" y="312.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="320" font-size="9.5" fill="var(--silk-dim)">s8</text>
+<text x="42" y="320" font-size="11.5" fill="var(--wire-signal)" font-weight="600">D35</text>
+<rect x="124" y="340.5" width="556" height="7" rx="3.5" fill="var(--wire-power)" opacity="0.45"/>
+<text x="14" y="348" font-size="9.5" fill="var(--silk-dim)">s9</text>
+<text x="42" y="348" font-size="11.5" fill="var(--wire-power)" font-weight="600">3V3</text>
+<rect x="124" y="368.5" width="556" height="7" rx="3.5" fill="var(--wire-gnd)" opacity="0.45"/>
+<text x="14" y="376" font-size="9.5" fill="var(--silk-dim)">s10</text>
+<text x="42" y="376" font-size="11.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+<rect x="124" y="396.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="404" font-size="9.5" fill="var(--silk-dim)">s11</text>
+<text x="42" y="404" font-size="11.5" fill="var(--wire-signal)" font-weight="600">SDA</text>
+<rect x="124" y="424.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="432" font-size="9.5" fill="var(--silk-dim)">s12</text>
+<text x="42" y="432" font-size="11.5" fill="var(--wire-signal)" font-weight="600">SCL</text>
+<rect x="124" y="452.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
+<text x="14" y="460" font-size="9.5" fill="var(--silk-dim)">s13</text>
+<text x="42" y="460" font-size="11.5" fill="var(--wire-signal)" font-weight="600">D27 (INTA)</text>
+<rect x="149" y="79" width="72" height="82" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="171" y="124.0" font-size="10.5" fill="var(--silk)" font-weight="600">DHT11</text>
+<circle cx="159" cy="92" r="3.4" fill="var(--silk)"/>
+<circle cx="159" cy="120" r="3.4" fill="var(--silk)"/>
+<circle cx="159" cy="148" r="3.4" fill="var(--silk)"/>
+<rect x="149" y="219" width="72" height="54" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="171" y="250.0" font-size="10.5" fill="var(--silk)" font-weight="600">Buzzer</text>
+<circle cx="159" cy="232" r="3.4" fill="var(--silk)"/>
+<circle cx="159" cy="260" r="3.4" fill="var(--silk)"/>
+<rect x="149" y="331" width="72" height="110" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="171" y="390.0" font-size="10.5" fill="var(--silk)" font-weight="600">OLED</text>
+<circle cx="159" cy="344" r="3.4" fill="var(--silk)"/>
+<circle cx="159" cy="372" r="3.4" fill="var(--silk)"/>
+<circle cx="159" cy="400" r="3.4" fill="var(--silk)"/>
+<circle cx="159" cy="428" r="3.4" fill="var(--silk)"/>
+<rect x="249" y="135" width="72" height="82" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="271" y="180.0" font-size="10.5" fill="var(--silk)" font-weight="600">PIR</text>
+<circle cx="259" cy="148" r="3.4" fill="var(--silk)"/>
+<circle cx="259" cy="176" r="3.4" fill="var(--silk)"/>
+<circle cx="259" cy="204" r="3.4" fill="var(--silk)"/>
+<rect x="249" y="331" width="72" height="110" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="271" y="390.0" font-size="10.5" fill="var(--silk)" font-weight="600">BH1750</text>
+<circle cx="259" cy="344" r="3.4" fill="var(--silk)"/>
+<circle cx="259" cy="372" r="3.4" fill="var(--silk)"/>
+<circle cx="259" cy="400" r="3.4" fill="var(--silk)"/>
+<circle cx="259" cy="428" r="3.4" fill="var(--silk)"/>
+<rect x="349" y="247" width="72" height="110" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="371" y="306.0" font-size="10.5" fill="var(--silk)" font-weight="600">Stick</text>
+<circle cx="359" cy="260" r="3.4" fill="var(--silk)"/>
+<circle cx="359" cy="288" r="3.4" fill="var(--silk)"/>
+<circle cx="359" cy="316" r="3.4" fill="var(--silk)"/>
+<circle cx="359" cy="344" r="3.4" fill="var(--silk)"/>
+<rect x="449" y="331" width="72" height="138" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="471" y="404.0" font-size="10.5" fill="var(--silk)" font-weight="600">Expander</text>
+<circle cx="459" cy="344" r="3.4" fill="var(--silk)"/>
+<circle cx="459" cy="372" r="3.4" fill="var(--silk)"/>
+<circle cx="459" cy="400" r="3.4" fill="var(--silk)"/>
+<circle cx="459" cy="428" r="3.4" fill="var(--silk)"/>
+<circle cx="459" cy="456" r="3.4" fill="var(--silk)"/>
+<line x1="570" y1="92" x2="570" y2="344" stroke="var(--wire-power)" stroke-width="2.5"/>
+<circle cx="570" cy="92" r="4" fill="var(--wire-power)"/>
+<circle cx="570" cy="204" r="4" fill="var(--wire-power)"/>
+<circle cx="570" cy="344" r="4" fill="var(--wire-power)"/>
+<line x1="610" y1="148" x2="610" y2="372" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+<circle cx="610" cy="148" r="4" fill="var(--wire-gnd)"/>
+<circle cx="610" cy="260" r="4" fill="var(--wire-gnd)"/>
+<circle cx="610" cy="372" r="4" fill="var(--wire-gnd)"/>
+<circle cx="672" cy="92" r="4" fill="var(--wire-power)"/>
+<text x="684" y="96" font-size="10.5" fill="var(--wire-power)">3V3</text>
+<circle cx="672" cy="120" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="124" font-size="10.5" fill="var(--wire-signal)">D4</text>
+<circle cx="672" cy="148" r="4" fill="var(--wire-gnd)"/>
+<text x="684" y="152" font-size="10.5" fill="var(--wire-gnd)">GND</text>
+<circle cx="672" cy="176" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="180" font-size="10.5" fill="var(--wire-signal)">D18</text>
+<circle cx="672" cy="232" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="236" font-size="10.5" fill="var(--wire-signal)">D25</text>
+<circle cx="672" cy="288" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="292" font-size="10.5" fill="var(--wire-signal)">D34</text>
+<circle cx="672" cy="316" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="320" font-size="10.5" fill="var(--wire-signal)">D35</text>
+<circle cx="672" cy="400" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="404" font-size="10.5" fill="var(--wire-signal)">SDA · D21</text>
+<circle cx="672" cy="428" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="432" font-size="10.5" fill="var(--wire-signal)">SCL · D22</text>
+<circle cx="672" cy="456" r="4" fill="var(--wire-signal)"/>
+<text x="684" y="460" font-size="10.5" fill="var(--wire-signal)">INTA · D27</text>
+</svg>
+  </div>
+  <figcaption>
+    Strips run left to right; the board is about 40 × 40 mm (14 strips by about 15 holes), copper side down,
+    headers on top. In holes from the left edge: ports A at 2, B at 4, C at 6, D at 8, the 3V3 link at 10, the
+    GND link at 11, the ESP32 wires at 13. A bar is a header: its dots are the pins, and every pin of a header
+    lands on a strip it uses. Wherever two bars share strips they sit in different columns.
+    The 3V3 link is a bare wire soldered at s0, s4 and s9; the GND link at s2, s6 and s10.
+  </figcaption>
+</figure>
+
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>Cable</th><th>One end</th><th>Other end</th><th>Wires</th></tr>
+    </thead>
+    <tbody>
+      <tr><td>ESP32 right row</td><td class="note">female housing on D22, D21, D18, D4, GND, 3V3, only those cavities filled</td><td class="note">soldered to the hub: SCL s12, SDA s11, D18 s3, D4 s1, GND s2, 3V3 s0</td><td class="mono">6</td></tr>
+      <tr><td>ESP32 left row</td><td class="note">female housing on D34, D35, D25, D27</td><td class="note">soldered to the hub: D34 s7, D35 s8, D25 s5, D27 s13</td><td class="mono">4</td></tr>
+      <tr><td>Expander</td><td class="note">its stock 6-pin cable: VCC, GND, SDA, SCL, INTA, INTB</td><td class="note">port D, s9 to s13. INTB has no strip: leave the green wire out of the housing</td><td class="mono">5</td></tr>
+      <tr><td>OLED</td><td class="note">its 4-pin header</td><td class="note">port A, s9 to s12: 3V3, GND, SDA, SCL</td><td class="mono">4</td></tr>
+      <tr><td>BH1750</td><td class="note">its header (leave ADDR open)</td><td class="note">port B, s9 to s12</td><td class="mono">4</td></tr>
+      <tr><td>DHT11</td><td class="note">its 3-pin header</td><td class="note">port A, s0 to s2: 3V3, D4, GND</td><td class="mono">3</td></tr>
+      <tr><td>PIR</td><td class="note">its 3-pin header</td><td class="note">port B, s2 to s4: GND, D18, 3V3</td><td class="mono">3</td></tr>
+      <tr><td>Buzzer</td><td class="note">+ and −</td><td class="note">port A, s5 to s6: D25, GND</td><td class="mono">2</td></tr>
+      <tr><td>Joystick</td><td class="note">GND, VRx, VRy and its 5V pin, <strong>fed 3V3</strong></td><td class="note">port C, s6 to s9: GND, D34, D35, 3V3</td><td class="mono">4</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Buttons and the ground strip</h2>
+<p class="note" style="margin-top:14px;max-width:72ch">
+  The buttons don&rsquo;t go through the hub. Each has its own signal wire to the expander&rsquo;s PA header,
+  and all eight share one ground. That ground is a one-track piece of the same stripboard, nine holes long,
+  with the eight buttons&rsquo; ground wires soldered into it and one wire out to the expander&rsquo;s own GND pin
+  (any ground would do: they are all the same net). Nothing is stacked on a terminal and no pins are bridged.
+  The joystick&rsquo;s press switch is the one other wire to the expander, to PB0; its other side is the
+  stick&rsquo;s GND, which comes from the hub.
+</p>
+
+<figure class="diagram-figure">
+  <div class="diagram-scroll">
+<svg class="wiring" viewBox="0 0 800 450" role="img" aria-label="Button wiring. Each of the eight buttons has a signal wire to its own pin on the expander PA header, PA0 to PA7, and a ground wire to a single-track stripboard ground strip. One wire from the strip goes to the expander GND pin. The joystick press switch goes to expander PB0.">
+<text x="22" y="30" font-size="11" fill="var(--silk)" font-weight="600">Ground strip</text>
+<text x="22" y="44" font-size="9" fill="var(--silk-dim)">one track, 9 holes</text>
+<text x="560" y="30" font-size="11" fill="var(--silk)" font-weight="600">Expander · PA header</text>
+<text x="560" y="44" font-size="9" fill="var(--silk-dim)">on the board, PA7 is at the top: wire by the labels</text>
+<rect x="22" y="46" width="14" height="298" rx="4" fill="var(--wire-gnd)" opacity="0.45"/>
+<rect x="76" y="49" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="66" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 1</text>
+<circle cx="76" cy="62" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="62" x2="76" y2="62" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="62" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="62" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="62" x2="560" y2="62" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="62" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="66" font-size="10.5" fill="var(--silk)">PA0</text>
+<rect x="76" y="83" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="100" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 2</text>
+<circle cx="76" cy="96" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="96" x2="76" y2="96" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="96" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="96" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="96" x2="560" y2="96" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="96" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="100" font-size="10.5" fill="var(--silk)">PA1</text>
+<rect x="76" y="117" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="134" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 3</text>
+<circle cx="76" cy="130" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="130" x2="76" y2="130" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="130" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="130" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="130" x2="560" y2="130" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="130" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="134" font-size="10.5" fill="var(--silk)">PA2</text>
+<rect x="76" y="151" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="168" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 4</text>
+<circle cx="76" cy="164" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="164" x2="76" y2="164" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="164" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="164" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="164" x2="560" y2="164" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="164" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="168" font-size="10.5" fill="var(--silk)">PA3</text>
+<rect x="76" y="185" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="202" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 5</text>
+<circle cx="76" cy="198" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="198" x2="76" y2="198" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="198" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="198" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="198" x2="560" y2="198" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="198" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="202" font-size="10.5" fill="var(--silk)">PA4</text>
+<rect x="76" y="219" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="236" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 6</text>
+<circle cx="76" cy="232" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="232" x2="76" y2="232" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="232" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="232" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="232" x2="560" y2="232" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="232" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="236" font-size="10.5" fill="var(--silk)">PA5</text>
+<rect x="76" y="253" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="270" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 7</text>
+<circle cx="76" cy="266" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="266" x2="76" y2="266" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="266" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="266" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="266" x2="560" y2="266" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="266" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="270" font-size="10.5" fill="var(--silk)">PA6</text>
+<rect x="76" y="287" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="304" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 8</text>
+<circle cx="76" cy="300" r="3.4" fill="var(--silk)"/>
+<line x1="29" y1="300" x2="76" y2="300" stroke="var(--wire-gnd)" stroke-width="2"/>
+<circle cx="29" cy="300" r="3.6" fill="var(--wire-gnd)"/>
+<circle cx="168" cy="300" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="300" x2="560" y2="300" stroke="var(--wire-signal)" stroke-width="2"/>
+<circle cx="560" cy="300" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="304" font-size="10.5" fill="var(--silk)">PA7</text>
+<rect x="552" y="46" width="82" height="270" rx="5" fill="none" stroke="var(--pcb-edge)" stroke-width="2"/>
+<circle cx="29" cy="344" r="3.6" fill="var(--wire-gnd)"/>
+<line x1="29" y1="344" x2="560" y2="344" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+<rect x="552" y="328" width="130" height="32" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<circle cx="560" cy="344" r="3.4" fill="var(--wire-gnd)"/>
+<text x="574" y="348" font-size="10.5" fill="var(--silk)" font-weight="600">GND (its own pin)</text>
+<text x="300" y="336" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">one wire, to any ground</text>
+<rect x="76" y="385" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="402" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Stick SW</text>
+<circle cx="168" cy="398" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="398" x2="560" y2="398" stroke="var(--wire-signal)" stroke-width="2"/>
+<rect x="552" y="382" width="130" height="32" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<circle cx="560" cy="398" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="402" font-size="10.5" fill="var(--silk)" font-weight="600">PB0 (PB header)</text>
+<text x="122" y="428" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">its other side is the stick’s GND, from the hub</text>
+</svg>
+  </div>
+  <figcaption>
+    Buttons 1 to 8 go to PA0 to PA7, so the order matches the numbers the firmware publishes. The expander&rsquo;s
+    supply pin is printed VIN: feed it 3V3 from the hub (port D), never 5V.
+  </figcaption>
+</figure>
+
 <h2>Pins left alone</h2>
 <p class="note" style="margin-top:14px;max-width:72ch">
   Avoid GPIO0, 2, 12 and 15 (they set how the chip boots), 1 and 3 (the USB serial) and 6–11 (the flash).

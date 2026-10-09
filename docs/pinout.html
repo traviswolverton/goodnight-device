@@ -497,15 +497,16 @@
 <h2>Hub board</h2>
 <p class="note" style="margin-top:14px;max-width:72ch">
   Every shared connection goes through one stripboard, so nothing is soldered pin to pin. The board has
-  14 copper strips, each one net, with no cuts. Each device gets a JST-XH header laid across the strips
-  it needs, so its cable plugs straight in. 3V3 and GND each appear on three strips, joined by a bare-wire
-  link on top, so every header stays within a few strips of the rails it needs. Wiring only: where the board
-  sits is in the enclosure.
+  15 copper strips, each one net, with no cuts. Each device gets a JST-XH header laid across the strips
+  it needs, so its cable plugs straight in. 3V3 and GND each appear on several strips, joined by wire
+  links on top, so every header stays within a few strips of the rails it needs. The last strip, s14, is
+  ground for the eight buttons: a row of eight pins laid along it, tied together by the strip itself.
+  Wiring only: where the board sits is in the enclosure.
 </p>
 
 <figure class="diagram-figure">
   <div class="diagram-scroll">
-<svg class="wiring" viewBox="0 0 800 526" role="img" aria-label="Hub board strip map. Fourteen copper strips run left to right, each one net: 3V3, D4, GND, D18, 3V3, D25, GND, D34, D35, 3V3, GND, SDA, SCL, D27. JST-XH header ports sit across the strips they use: DHT11 on strips 0 to 2, PIR on 2 to 4, buzzer on 5 to 6, stick on 6 to 9, OLED and BH1750 on 9 to 12, expander on 9 to 13. Two bare-wire links join the three 3V3 strips and the three GND strips. Ten ESP32 wires are soldered to the strips on the right.">
+<svg class="wiring" viewBox="0 0 800 568" role="img" aria-label="Hub board strip map. Fifteen copper strips run left to right, each one net: 3V3, D4, GND, D18, 3V3, D25, GND, D34, D35, 3V3, GND, SDA, SCL, D27, and a ground strip for the buttons. JST-XH header ports sit across the strips they use: DHT11 on strips 0 to 2, PIR on 2 to 4, buzzer on 5 to 6, stick on 6 to 9, OLED and BH1750 on 9 to 12, expander on 9 to 13. A row of eight pins is laid along strip 14, the buttons' ground. Two wire links join the three 3V3 strips, and the GND strips including strip 14. Ten ESP32 wires are soldered to the strips on the right.">
 <text x="185" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">A</text>
 <text x="285" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">B</text>
 <text x="385" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">C</text>
@@ -558,6 +559,9 @@
 <rect x="124" y="452.5" width="556" height="7" rx="3.5" fill="var(--wire-signal)" opacity="0.45"/>
 <text x="14" y="460" font-size="9.5" fill="var(--silk-dim)">s13</text>
 <text x="42" y="460" font-size="11.5" fill="var(--wire-signal)" font-weight="600">D27 (INTA)</text>
+<rect x="124" y="480.5" width="556" height="7" rx="3.5" fill="var(--wire-gnd)" opacity="0.45"/>
+<text x="14" y="488" font-size="9.5" fill="var(--silk-dim)">s14</text>
+<text x="42" y="488" font-size="11.5" fill="var(--wire-gnd)" font-weight="600">GND (buttons)</text>
 <rect x="149" y="79" width="72" height="82" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
 <text x="171" y="124.0" font-size="10.5" fill="var(--silk)" font-weight="600">DHT11</text>
 <circle cx="159" cy="92" r="3.4" fill="var(--silk)"/>
@@ -597,14 +601,25 @@
 <circle cx="459" cy="400" r="3.4" fill="var(--silk)"/>
 <circle cx="459" cy="428" r="3.4" fill="var(--silk)"/>
 <circle cx="459" cy="456" r="3.4" fill="var(--silk)"/>
+<rect x="178" y="471" width="358" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<circle cx="196" cy="484" r="3.4" fill="var(--silk)"/>
+<circle cx="242" cy="484" r="3.4" fill="var(--silk)"/>
+<circle cx="288" cy="484" r="3.4" fill="var(--silk)"/>
+<circle cx="334" cy="484" r="3.4" fill="var(--silk)"/>
+<circle cx="380" cy="484" r="3.4" fill="var(--silk)"/>
+<circle cx="426" cy="484" r="3.4" fill="var(--silk)"/>
+<circle cx="472" cy="484" r="3.4" fill="var(--silk)"/>
+<circle cx="518" cy="484" r="3.4" fill="var(--silk)"/>
+<text x="178" y="518" font-size="10.5" fill="var(--silk)" font-weight="600">1×8 male header laid along s14: the lid&#8217;s ground plug goes here</text>
 <line x1="570" y1="92" x2="570" y2="344" stroke="var(--wire-power)" stroke-width="2.5"/>
 <circle cx="570" cy="92" r="4" fill="var(--wire-power)"/>
 <circle cx="570" cy="204" r="4" fill="var(--wire-power)"/>
 <circle cx="570" cy="344" r="4" fill="var(--wire-power)"/>
-<line x1="610" y1="148" x2="610" y2="372" stroke="var(--wire-gnd)" stroke-width="2.5"/>
+<line x1="610" y1="148" x2="610" y2="484" stroke="var(--wire-gnd)" stroke-width="2.5"/>
 <circle cx="610" cy="148" r="4" fill="var(--wire-gnd)"/>
 <circle cx="610" cy="260" r="4" fill="var(--wire-gnd)"/>
 <circle cx="610" cy="372" r="4" fill="var(--wire-gnd)"/>
+<circle cx="610" cy="484" r="4" fill="var(--wire-gnd)"/>
 <circle cx="672" cy="92" r="4" fill="var(--wire-power)"/>
 <text x="684" y="96" font-size="10.5" fill="var(--wire-power)">3V3</text>
 <circle cx="672" cy="120" r="4" fill="var(--wire-signal)"/>
@@ -628,21 +643,14 @@
 </svg>
   </div>
   <figcaption>
-    Strips run left to right; the board is about 40 × 40 mm (14 strips by about 15 holes), copper side down,
+    Strips run left to right; the board is about 40 × 40 mm (15 strips by about 15 holes), copper side down,
     headers on top. In holes from the left edge: ports A at 2, B at 4, C at 6, D at 8, the 3V3 link at 10, the
     GND link at 11, the ESP32 wires at 13. A bar is a header: its dots are the pins, and every pin of a header
     lands on a strip it uses. Wherever two bars share strips they sit in different columns.
-    The 3V3 link is a bare wire soldered at s0, s4 and s9; the GND link at s2, s6 and s10.
+    The 3V3 link is wire soldered at s0, s4 and s9; the GND link at s2, s6, s10 and s14. Build each link from
+    short pieces that share a hole on the middle strips.
   </figcaption>
 </figure>
-
-<p class="note" style="margin-top:14px;max-width:72ch">
-  Reading the table: the hub end is always a JST-XH plug onto a header soldered into the hub. The device end
-  depends on what the module has. <strong>A</strong> is a crimped Dupont-style housing on the module&rsquo;s
-  2.54 mm pins (easiest, but a friction fit). <strong>B</strong> is wires soldered straight to the pins or leads.
-  <strong>C</strong> is the stock pin header desoldered and an XH header soldered in its place, which gives a
-  latching connector at both ends.
-</p>
 
 <div class="table-wrap">
   <table>
@@ -652,38 +660,47 @@
     <tbody>
       <tr><td>ESP32, right row</td><td class="note">soldered to the strips: SCL s12, SDA s11, D18 s3, D4 s1, GND s2, 3V3 s0</td><td class="note">Dupont-style housing on D22, D21, D18, D4, GND, 3V3, only those cavities filled</td><td class="mono">6</td></tr>
       <tr><td>ESP32, left row</td><td class="note">soldered to the strips: D34 s7, D35 s8, D25 s5, D27 s13</td><td class="note">Dupont-style housing on D34, D35, D25, D27</td><td class="mono">4</td></tr>
-      <tr><td>Expander</td><td class="note">XH plug on port D, s9 to s13, if the stock cable&rsquo;s connector fits. Leave the green INTB wire out</td><td class="note">its own locking 6-pin connector (the stock cable)</td><td class="mono">5</td></tr>
+      <tr><td>Expander</td><td class="note">XH plug on port D, s9 to s13, if the stock cable&rsquo;s connector fits. Five pins only: s14 is ground, so leave the green INTB wire out</td><td class="note">its own locking 6-pin connector (the stock cable)</td><td class="mono">5</td></tr>
       <tr><td>OLED</td><td class="note">XH plug on port A, s9 to s12: 3V3, GND, SDA, SCL</td><td class="note">XH header swapped onto the module (C), or a Dupont-style housing on its pins (A)</td><td class="mono">4</td></tr>
       <tr><td>BH1750</td><td class="note">XH plug on port B, s9 to s12 (ADDR left open)</td><td class="note">as the OLED</td><td class="mono">4</td></tr>
       <tr><td>DHT11</td><td class="note">XH plug on port A, s0 to s2: 3V3, D4, GND</td><td class="note">as the OLED</td><td class="mono">3</td></tr>
       <tr><td>PIR</td><td class="note">XH plug on port B, s2 to s4: GND, D18, 3V3</td><td class="note">as the OLED</td><td class="mono">3</td></tr>
       <tr><td>Buzzer</td><td class="note">XH plug on port A, s5 to s6: D25, GND</td><td class="note">wires soldered to its two leads (B)</td><td class="mono">2</td></tr>
       <tr><td>Joystick</td><td class="note">XH plug on port C, s6 to s9: GND, D34, D35, 3V3</td><td class="note">as the OLED, on the stick&rsquo;s GND, VRx, VRy and 5V pins; the 5V pin is fed 3V3</td><td class="mono">4</td></tr>
-      <tr class="group-start"><td>Buttons 1 to 8</td><td class="note">not on the hub</td><td class="note">Dupont-style housing on PA0 to PA7 of the expander&rsquo;s PA header; the other ends soldered to each button&rsquo;s signal terminal</td><td class="mono">8</td></tr>
-      <tr><td>Button ground</td><td class="note">not on the hub: eight short wires into the ground strip, one wire out</td><td class="note">one-wire Dupont-style plug on the expander&rsquo;s GND pin</td><td class="mono">1</td></tr>
+      <tr class="group-start"><td>Button ground</td><td class="note">8-way Dupont-style housing on the 1×8 male header laid along s14</td><td class="note">the other ends soldered to each button&rsquo;s ground terminal</td><td class="mono">8</td></tr>
+      <tr><td>Buttons 1 to 8</td><td class="note">not on the hub</td><td class="note">Dupont-style housing on PA0 to PA7 of the expander&rsquo;s PA header; the other ends soldered to each button&rsquo;s signal terminal</td><td class="mono">8</td></tr>
       <tr><td>Stick press</td><td class="note">not on the hub</td><td class="note">one-wire Dupont-style plug on PB0; the other end soldered to the stick&rsquo;s SW pin</td><td class="mono">1</td></tr>
     </tbody>
   </table>
 </div>
-
-<h2>Buttons and the ground strip</h2>
 <p class="note" style="margin-top:14px;max-width:72ch">
-  The buttons don&rsquo;t go through the hub. Each has its own signal wire to the expander&rsquo;s PA header,
-  and all eight share one ground. That ground is a one-track piece of the same stripboard, nine holes long,
-  with the eight buttons&rsquo; ground wires soldered into it and one wire out to the expander&rsquo;s own GND pin
-  (any ground would do: they are all the same net). Nothing is stacked on a terminal and no pins are bridged.
+  Reading the table: the hub end is a JST-XH plug onto a header soldered into the hub, except the ESP32&rsquo;s
+  wires (soldered to the strips) and the button ground (a plain pin header along s14). The device end depends on
+  what the module has. <strong>A</strong> is a crimped Dupont-style housing on the module&rsquo;s 2.54 mm pins
+  (easiest, but a friction fit). <strong>B</strong> is wires soldered straight to the pins or leads.
+  <strong>C</strong> is the stock pin header desoldered and an XH header soldered in its place, which gives a
+  latching connector at both ends.
+</p>
+
+<h2>Buttons and their ground</h2>
+<p class="note" style="margin-top:14px;max-width:72ch">
+  The buttons&rsquo; signals don&rsquo;t go through the hub: each has its own wire to the expander&rsquo;s PA header.
+  Their shared ground does. Strip s14 on the hub is tied to GND by the GND link and has a 1×8 male header laid
+  along it; the eight pins are joined by the strip, so nothing is bridged with solder. The lid&rsquo;s eight
+  ground wires end in an 8-way housing that plugs onto that header, so the whole lid unplugs: that housing,
+  the signal housing on the PA header, the stick&rsquo;s plug on the hub, and the one-wire press plug.
   The joystick&rsquo;s press switch is the one other wire to the expander, to PB0; its other side is the
   stick&rsquo;s GND, which comes from the hub.
 </p>
 
 <figure class="diagram-figure">
   <div class="diagram-scroll">
-<svg class="wiring" viewBox="0 0 800 450" role="img" aria-label="Button wiring. Each of the eight buttons has a signal wire to its own pin on the expander PA header, PA0 to PA7, and a ground wire to a single-track stripboard ground strip. One wire from the strip goes to the expander GND pin. The joystick press switch goes to expander PB0.">
-<text x="22" y="30" font-size="11" fill="var(--silk)" font-weight="600">Ground strip</text>
-<text x="22" y="44" font-size="9" fill="var(--silk-dim)">one track, 9 holes</text>
+<svg class="wiring" viewBox="0 0 800 418" role="img" aria-label="Button wiring. Each of the eight buttons has a signal wire to its own pin on the expander PA header, PA0 to PA7, and a ground wire to its own pin on the hub board's eight-pin ground header along strip 14. The joystick press switch goes to expander PB0.">
+<text x="22" y="30" font-size="11" fill="var(--silk)" font-weight="600">Hub · s14 ground header</text>
+<text x="22" y="44" font-size="9" fill="var(--silk-dim)">8 pins on one strip, tied to GND</text>
 <text x="560" y="30" font-size="11" fill="var(--silk)" font-weight="600">Expander · PA header</text>
 <text x="560" y="44" font-size="9" fill="var(--silk-dim)">on the board, PA7 is at the top: wire by the labels</text>
-<rect x="22" y="46" width="14" height="298" rx="4" fill="var(--wire-gnd)" opacity="0.45"/>
+<rect x="22" y="46" width="14" height="270" rx="4" fill="var(--wire-gnd)" opacity="0.45"/>
 <rect x="76" y="49" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
 <text x="122" y="66" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Button 1</text>
 <circle cx="76" cy="62" r="3.4" fill="var(--silk)"/>
@@ -757,20 +774,14 @@
 <circle cx="560" cy="300" r="3.4" fill="var(--wire-signal)"/>
 <text x="574" y="304" font-size="10.5" fill="var(--silk)">PA7</text>
 <rect x="552" y="46" width="82" height="270" rx="5" fill="none" stroke="var(--pcb-edge)" stroke-width="2"/>
-<circle cx="29" cy="344" r="3.6" fill="var(--wire-gnd)"/>
-<line x1="29" y1="344" x2="560" y2="344" stroke="var(--wire-gnd)" stroke-width="2.5"/>
-<rect x="552" y="328" width="130" height="32" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<circle cx="560" cy="344" r="3.4" fill="var(--wire-gnd)"/>
-<text x="574" y="348" font-size="10.5" fill="var(--silk)" font-weight="600">GND (its own pin)</text>
-<text x="300" y="336" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">one wire, to any ground</text>
-<rect x="76" y="385" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="122" y="402" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Stick SW</text>
-<circle cx="168" cy="398" r="3.4" fill="var(--silk)"/>
-<line x1="168" y1="398" x2="560" y2="398" stroke="var(--wire-signal)" stroke-width="2"/>
-<rect x="552" y="382" width="130" height="32" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<circle cx="560" cy="398" r="3.4" fill="var(--wire-signal)"/>
-<text x="574" y="402" font-size="10.5" fill="var(--silk)" font-weight="600">PB0 (PB header)</text>
-<text x="122" y="428" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">its other side is the stick’s GND, from the hub</text>
+<rect x="76" y="345" width="92" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="122" y="362" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">Stick SW</text>
+<circle cx="168" cy="358" r="3.4" fill="var(--silk)"/>
+<line x1="168" y1="358" x2="560" y2="358" stroke="var(--wire-signal)" stroke-width="2"/>
+<rect x="552" y="342" width="130" height="32" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<circle cx="560" cy="358" r="3.4" fill="var(--wire-signal)"/>
+<text x="574" y="362" font-size="10.5" fill="var(--silk)" font-weight="600">PB0 (PB header)</text>
+<text x="122" y="388" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">its other side is the stick&#8217;s GND, from the hub</text>
 </svg>
   </div>
   <figcaption>

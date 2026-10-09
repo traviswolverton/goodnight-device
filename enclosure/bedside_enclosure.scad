@@ -116,7 +116,7 @@ lux_board = [14, 19];               // BH1750 board, on the right wall
 lux_win_d = 5;                      // the sensor itself is about 3 x 3
 
 usb_w = 14;
-usb_h = 10;
+usb_h = 5.5;                        // from the floor up; 4.5 mm off the first print's 10, which stood too tall
 
 /* [Hub board: stripboard with JST-XH headers] */
 // Sits on the floor under the button grid, below the 40 mm button clearance.

@@ -636,21 +636,32 @@
   </figcaption>
 </figure>
 
+<p class="note" style="margin-top:14px;max-width:72ch">
+  Reading the table: the hub end is always a JST-XH plug onto a header soldered into the hub. The device end
+  depends on what the module has. <strong>A</strong> is a crimped Dupont-style housing on the module&rsquo;s
+  2.54 mm pins (easiest, but a friction fit). <strong>B</strong> is wires soldered straight to the pins or leads.
+  <strong>C</strong> is the stock pin header desoldered and an XH header soldered in its place, which gives a
+  latching connector at both ends.
+</p>
+
 <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>Cable</th><th>One end</th><th>Other end</th><th>Wires</th></tr>
+      <tr><th>Cable</th><th>Hub end</th><th>Device end</th><th>Wires</th></tr>
     </thead>
     <tbody>
-      <tr><td>ESP32 right row</td><td class="note">female housing on D22, D21, D18, D4, GND, 3V3, only those cavities filled</td><td class="note">soldered to the hub: SCL s12, SDA s11, D18 s3, D4 s1, GND s2, 3V3 s0</td><td class="mono">6</td></tr>
-      <tr><td>ESP32 left row</td><td class="note">female housing on D34, D35, D25, D27</td><td class="note">soldered to the hub: D34 s7, D35 s8, D25 s5, D27 s13</td><td class="mono">4</td></tr>
-      <tr><td>Expander</td><td class="note">its stock 6-pin cable: VCC, GND, SDA, SCL, INTA, INTB</td><td class="note">port D, s9 to s13. INTB has no strip: leave the green wire out of the housing</td><td class="mono">5</td></tr>
-      <tr><td>OLED</td><td class="note">its 4-pin header</td><td class="note">port A, s9 to s12: 3V3, GND, SDA, SCL</td><td class="mono">4</td></tr>
-      <tr><td>BH1750</td><td class="note">its header (leave ADDR open)</td><td class="note">port B, s9 to s12</td><td class="mono">4</td></tr>
-      <tr><td>DHT11</td><td class="note">its 3-pin header</td><td class="note">port A, s0 to s2: 3V3, D4, GND</td><td class="mono">3</td></tr>
-      <tr><td>PIR</td><td class="note">its 3-pin header</td><td class="note">port B, s2 to s4: GND, D18, 3V3</td><td class="mono">3</td></tr>
-      <tr><td>Buzzer</td><td class="note">+ and −</td><td class="note">port A, s5 to s6: D25, GND</td><td class="mono">2</td></tr>
-      <tr><td>Joystick</td><td class="note">GND, VRx, VRy and its 5V pin, <strong>fed 3V3</strong></td><td class="note">port C, s6 to s9: GND, D34, D35, 3V3</td><td class="mono">4</td></tr>
+      <tr><td>ESP32, right row</td><td class="note">soldered to the strips: SCL s12, SDA s11, D18 s3, D4 s1, GND s2, 3V3 s0</td><td class="note">Dupont-style housing on D22, D21, D18, D4, GND, 3V3, only those cavities filled</td><td class="mono">6</td></tr>
+      <tr><td>ESP32, left row</td><td class="note">soldered to the strips: D34 s7, D35 s8, D25 s5, D27 s13</td><td class="note">Dupont-style housing on D34, D35, D25, D27</td><td class="mono">4</td></tr>
+      <tr><td>Expander</td><td class="note">XH plug on port D, s9 to s13, if the stock cable&rsquo;s connector fits. Leave the green INTB wire out</td><td class="note">its own locking 6-pin connector (the stock cable)</td><td class="mono">5</td></tr>
+      <tr><td>OLED</td><td class="note">XH plug on port A, s9 to s12: 3V3, GND, SDA, SCL</td><td class="note">XH header swapped onto the module (C), or a Dupont-style housing on its pins (A)</td><td class="mono">4</td></tr>
+      <tr><td>BH1750</td><td class="note">XH plug on port B, s9 to s12 (ADDR left open)</td><td class="note">as the OLED</td><td class="mono">4</td></tr>
+      <tr><td>DHT11</td><td class="note">XH plug on port A, s0 to s2: 3V3, D4, GND</td><td class="note">as the OLED</td><td class="mono">3</td></tr>
+      <tr><td>PIR</td><td class="note">XH plug on port B, s2 to s4: GND, D18, 3V3</td><td class="note">as the OLED</td><td class="mono">3</td></tr>
+      <tr><td>Buzzer</td><td class="note">XH plug on port A, s5 to s6: D25, GND</td><td class="note">wires soldered to its two leads (B)</td><td class="mono">2</td></tr>
+      <tr><td>Joystick</td><td class="note">XH plug on port C, s6 to s9: GND, D34, D35, 3V3</td><td class="note">as the OLED, on the stick&rsquo;s GND, VRx, VRy and 5V pins; the 5V pin is fed 3V3</td><td class="mono">4</td></tr>
+      <tr class="group-start"><td>Buttons 1 to 8</td><td class="note">not on the hub</td><td class="note">Dupont-style housing on PA0 to PA7 of the expander&rsquo;s PA header; the other ends soldered to each button&rsquo;s signal terminal</td><td class="mono">8</td></tr>
+      <tr><td>Button ground</td><td class="note">not on the hub: eight short wires into the ground strip, one wire out</td><td class="note">one-wire Dupont-style plug on the expander&rsquo;s GND pin</td><td class="mono">1</td></tr>
+      <tr><td>Stick press</td><td class="note">not on the hub</td><td class="note">one-wire Dupont-style plug on PB0; the other end soldered to the stick&rsquo;s SW pin</td><td class="mono">1</td></tr>
     </tbody>
   </table>
 </div>

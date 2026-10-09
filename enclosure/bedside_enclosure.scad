@@ -15,7 +15,7 @@
 //   part = "lid"        the lid, printed top face down
 //   part = "test"       the ESP32 and expander mounts, for a quick test print
 //   part = "fit"        the ESP32, expander and hub board cages on one floor, in place, for a test fit
-//   part = "hubtest"    the hub board's front-right corner: anchor post and front-wall gap
+//   part = "hubtest"    the hub board's back-left corner: anchor stud and a guard
 //   part = "foot"       one threaded foot, as printed (you need four)
 //   part = "feet"       four feet in a row
 //   part = "print"      tub and lid laid out together (too wide for most beds)
@@ -88,7 +88,7 @@ display_strip = 20;                 // depth in front of the button grid
 
 /* [Electronics bay] */
 bay_depth = 44;
-bay_gap = 13;   // 7 mm more than before, to give the whole hub board room in front of the bay
+bay_gap = 14;   // 8 mm more than the first layout, for the whole hub board and its four corner guards
 
 esp = [51.74, 29];                  // ELEGOO 30-pin (15 per side), flipped: pins up
 esp_t = 1.6;
@@ -105,7 +105,8 @@ exp_clearance = 35;                 // wires pointing up
 exp_hole = 2.5;
 exp_hole_edge = 1.5;                // hole edge to board edge, both ways
 exp_stud_d = 1.9;                   // a little under the 2.5 hole
-exp_cage_gap = 1.3;                 // between the board and its corner L's (the ESP32's is 0.3)
+exp_cage_gap = 0.3;                 // between the board and its corner L's: the same as the ESP32's, now the studs hold the board
+exp_hole_span = 19;                 // stud centres, measured on the board
 
 buz_d = 11.72;
 buz_h = 8.5;
@@ -126,11 +127,10 @@ hub = [100, 74];                    // x, y: the whole stripboard, uncut. The ci
 hub_t = 1.6;
 hub_standoff = 3;                   // solder tails under the board
 hub_header_h = 7;                   // JST-XH headers above the board: MEASURE
-hub_cage_gap = 1.5;                 // between the board and its back brackets
-hub_front_gap = 0.5;                // the board's front edge sits this far off the front wall
-hub_hole = [3, 5.25, 2.5];          // its one mounting hole, front right: edge to the short edge, edge to the long edge, diameter
+hub_gap = [0.5, 1.0];               // between the board and its corner guards, each side: along the long edge, along the short edge
+hub_hole = [3, 5.25, 2.5];          // its one mounting hole, back left: edge to the short edge, edge to the long edge, diameter
 hub_post_d = 6;
-hub_pilot_d = 2.1;                  // for an M2.5 self-tapping screw
+hub_stud_d = 1.9;                   // a little under its 2.5 mm mounting hole, as for the expander
 
 /* [PIR sensor, AM312 mini] */
 // Front wall, bottom right. The dome pokes out through the hole and the board
@@ -157,11 +157,11 @@ bay_y1 = D - wall;
 stick_x = margin_x + grid_w + stick_gap_x + stick_board[0] / 2;
 stick_y = (row_y(0) + row_y(btn_rows - 1)) / 2;
 
-hub_x0 = 28;                        // clear of the front feet (to x 21 and from x 139) and the PIR frame (from x 130)
-hub_y0 = wall + hub_front_gap;
+hub_x0 = 27;                        // clear of the front feet (to x 21 and from x 139) and the PIR frame (from x 130)
+hub_y0 = wall + 1.2 + hub_gap[1];   // the front guards sit between the wall and the board
 hub_z = floor_t + hub_standoff;     // underside of the board
-hub_hole_x = hub_x0 + hub[0] - hub_hole[0] - hub_hole[2] / 2;
-hub_hole_y = hub_y0 + hub_hole[1] + hub_hole[2] / 2;
+hub_hole_x = hub_x0 + hub_hole[0] + hub_hole[2] / 2;
+hub_hole_y = hub_y0 + hub[1] - hub_hole[1] - hub_hole[2] / 2;
 
 disp_cx = W / 2;
 disp_cz = (floor_t + inner_top) / 2;
@@ -185,8 +185,8 @@ assert(foot_h > dht_h - floor_t + 1, "feet are too short for the DHT11 body");
 assert(foot_stud <= floor_t + foot_boss_h, "foot stud is longer than its hole");
 assert(H - floor_t >= btn_clearance, "buttons need more height");
 assert(H - btn_clearance - (hub_z + hub_t + hub_header_h) >= 1.5, "hub board and its headers reach into the button clearance");
-assert(hub_x0 + hub[0] + 1 <= pir_x - 8, "hub board runs into the PIR frame");
-assert(hub_y0 + hub[1] + hub_cage_gap + 1.2 <= bay_y0, "hub board's back brackets run into the electronics bay");
+assert(hub_x0 + hub[0] + hub_gap[0] + 1.2 + 0.5 <= pir_x - 8, "hub board and its guards run into the PIR frame");
+assert(hub_y0 + hub[1] + hub_gap[1] + 1.2 <= bay_y0, "hub board's back guards run into the electronics bay");
 assert(foot_x_front + foot_boss_d / 2 + 1 <= hub_x0, "front foot boss is under the hub board");
 assert(inner_top - (floor_t + exp_standoff + exp_t) >= exp_clearance, "expander wires need more height");
 assert(inner_top - (esp_z + esp_t) >= esp_plug_height, "ESP32 plugs need more height");
@@ -286,18 +286,17 @@ module stud(x, y, post_d, stud_d, post_h, stud_h) {
 }
 
 module hub_cage() {
-    // The front wall is the stop at the front, and a bracket at each back
-    // corner locates the board. A pad under each corner lifts it so its solder
-    // tails clear the floor; the front-right corner takes a post at the
-    // board's mounting hole instead, for an M2.5 screw. Hot glue does the rest.
-    c = hub_cage_gap;
+    // A guard (an L) at each of the four corners locates the board, and a pad
+    // under each corner lifts it so its solder tails clear the floor. The back
+    // left corner, which has the board's mounting hole, takes a post with a
+    // stud through the hole instead of a pad. Hot glue does the rest.
     for (sx = [-1, 1], sy = [-1, 1]) {
         bx = hub_x0 + (sx > 0 ? hub[0] : 0);
         by = hub_y0 + (sy > 0 ? hub[1] : 0);
-        if (!(sx > 0 && sy < 0)) span([bx, by, floor_t - 0.01], [bx - sx * 5, by - sy * 5, hub_z]);
-        if (sy > 0) corner_l(bx + sx * c, by + sy * c, sx, sy, floor_t - 0.01, hub_z + hub_t + 2);
+        if (!(sx < 0 && sy > 0)) span([bx, by, floor_t - 0.01], [bx - sx * 5, by - sy * 5, hub_z]);
+        corner_l(bx + sx * hub_gap[0], by + sy * hub_gap[1], sx, sy, floor_t - 0.01, hub_z + hub_t + 2);
     }
-    translate([hub_hole_x, hub_hole_y, floor_t - 0.01]) cylinder(d = hub_post_d, h = hub_standoff + 0.01);
+    stud(hub_hole_x, hub_hole_y, hub_post_d, hub_stud_d, hub_standoff, hub_standoff + hub_t + 1);
 }
 
 esp_holes = [for (sx = [-1, 1], sy = [-1, 1])
@@ -325,8 +324,8 @@ module esp_supports() {
     for (p = esp_holes) stud(p[0], p[1], esp_post_d, esp_stud_d, esp_standoff, esp_standoff + esp_t + 1);
 }
 
-exp_holes = [[exp_x0 + exp_hole_edge + exp_hole / 2, exp_y1 - exp_hole_edge - exp_hole / 2],
-             [exp_x0 + exp[0] - exp_hole_edge - exp_hole / 2, exp_y1 - exp_hole_edge - exp_hole / 2]];
+exp_holes = [[exp_x0 + exp[0] / 2 - exp_hole_span / 2, exp_y1 - exp_hole_edge - exp_hole / 2],
+             [exp_x0 + exp[0] / 2 + exp_hole_span / 2, exp_y1 - exp_hole_edge - exp_hole / 2]];
 
 module expander_cage() {
     // Same idea as the ESP32: an L at each corner, studs through the two holes
@@ -339,7 +338,7 @@ module expander_cage() {
         corner_l(bx + sx * c, by + sy * c, sx, sy, floor_t - 0.01, top + exp_t + 2);
         if (sy < 0) span([bx, by, floor_t - 0.01], [bx - sx * 4, by + 4, top]);
     }
-    for (p = exp_holes) stud(p[0], p[1], 5, exp_stud_d, exp_standoff, exp_standoff + exp_t + 1);
+    for (p = exp_holes) stud(p[0], p[1], 4.2, exp_stud_d, exp_standoff, exp_standoff + exp_t + 1);
 }
 
 module buzzer_cradle() {
@@ -378,9 +377,6 @@ module tub_cutouts() {
         cylinder(d = buz_port_d, h = wall + 2);
 
     for (p = feet) translate([p[0], p[1], 0]) foot_thread_hole();
-
-    // The hub board's anchor post takes an M2.5 screw.
-    translate([hub_hole_x, hub_hole_y, hub_z - 4.5]) cylinder(d = hub_pilot_d, h = 5);
 
     // Pilot holes for the lid screws.
     for (c = boss_c) translate([c[0], c[1], inner_top - 14]) cylinder(d = m3_pilot, h = 15);
@@ -509,8 +505,11 @@ module ghosts() {
     }
     color("silver", 0.5) {
         // Hub board and its headers.
-        translate([hub_x0, hub_y0, hub_z]) cube([hub[0], hub[1], hub_t]);
-        translate([hub_x0, hub_y0, hub_z + hub_t]) cube([hub[0], hub[1], hub_header_h]);
+        difference() {
+            translate([hub_x0, hub_y0, hub_z]) cube([hub[0], hub[1], hub_t]);
+            translate([hub_hole_x, hub_hole_y, hub_z - 1]) cylinder(d = hub_hole[2] + 0.4, h = hub_t + 2);
+        }
+        translate([hub_x0, hub_y0, hub_z + hub_t + 1.2]) cube([hub[0], hub[1], hub_header_h - 1.2]);
     }
     color("gold", 0.5) {
         // PIR: board, dome through the wall, and the pins and plug behind it.
@@ -537,39 +536,42 @@ module test_piece() {
     }
 }
 
-// The hub board's front-right corner, to check the anchor hole and the gap to
-// the front wall before printing the whole tub: a patch of floor, a stub of the
-// front wall, and the anchor post with its screw hole.
+// How thick the floor is on the test pieces. The real one is floor_t; these
+// are only for fitting boards, so a single thin layer saves filament and time.
+// Everything above the floor keeps its true height above it.
+fit_floor_t = 0.3;
+
+// The hub board's back-left corner, to check the anchor stud and the corner
+// guard before printing the whole tub.
 module hub_test_piece() {
-    x1 = hub_x0 + hub[0];
-    difference() {
-        union() {
-            translate([x1 - 36, 0, 0]) cube([40, hub_y0 + 40, floor_t]);
-            translate([x1 - 36, 0, 0]) cube([40, wall, 14]);
-            translate([hub_hole_x, hub_hole_y, floor_t - 0.01]) cylinder(d = hub_post_d, h = hub_standoff + 0.01);
-        }
-        translate([hub_hole_x, hub_hole_y, hub_z - 4.5]) cylinder(d = hub_pilot_d, h = 5);
+    dz = floor_t - fit_floor_t;
+    x0 = hub_x0 - 6;
+    y1 = hub_y0 + hub[1] + 6;
+    translate([x0, y1 - 46, 0]) cube([46, 46, fit_floor_t]);
+    translate([0, 0, -dz]) intersection() {
+        hub_cage();
+        translate([x0, y1 - 46, -1]) cube([46, 46, 30]);
     }
 }
 
-// The three boards' cages on one patch of floor, in their true positions
-// relative to each other: the ESP32 and expander in the bay, and the whole hub
-// board in front of them. Stubs of the left wall (with the USB-C slot) and the
-// front wall (the hub board's stop) are included so you can dry-fit the real
-// boards together before printing the whole tub. No lid, no other features.
+// The three boards' cages on one thin floor, in their true positions relative
+// to each other: the ESP32 and expander in the bay, and the whole hub board in
+// front of them. Stubs of the left wall (with the USB-C slot) and the front wall
+// are included so you can dry-fit the real boards together before printing the
+// whole tub. No lid, no other features.
 module fit_test_piece() {
+    dz = floor_t - fit_floor_t;
     esp_yc = esp_y0 + esp[1] / 2;
-    difference() {
+    cube([W - 22, D - wall, fit_floor_t]);
+    translate([0, 0, -dz]) difference() {
         union() {
-            cube([W - 22, D - wall, floor_t]);
-            translate([0, esp_y0 - 8, 0]) cube([wall, esp[1] + 16, 14]);
-            translate([hub_x0 - 4, 0, 0]) cube([hub[0] + 8, wall, 14]);
+            translate([0, esp_y0 - 8, floor_t - 0.01]) cube([wall, esp[1] + 16, 14 - floor_t + 0.01]);
+            translate([hub_x0 - 4, 0, floor_t - 0.01]) cube([hub[0] + 8, wall, 14 - floor_t + 0.01]);
             esp_supports();
             expander_cage();
             hub_cage();
         }
         translate([-1, esp_yc - usb_w / 2, floor_t]) cube([wall + 2, usb_w, usb_h]);
-        translate([hub_hole_x, hub_hole_y, hub_z - 4.5]) cylinder(d = hub_pilot_d, h = 5);
     }
 }
 

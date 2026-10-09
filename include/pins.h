@@ -6,7 +6,7 @@
 // assignments" table is the source of truth for the wiring; keep the two
 // in step.
 //
-// Board: ELEGOO ESP32-WROOM-32 (38-pin DEVKIT V1), same as the desk unit.
+// Board: ELEGOO ESP32-WROOM-32 (30-pin DEVKIT V1), same as the desk unit.
 
 // Shared I2C bus: SSD1306 OLED (0x3C), BH1750 (0x23), MCP23017 (0x27).
 // The ESP32's default Wire pins, printed D21/D22 on the board.

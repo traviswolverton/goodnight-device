@@ -88,7 +88,7 @@ display_strip = 20;                 // depth in front of the button grid
 bay_depth = 44;
 bay_gap = 6;
 
-esp = [51.74, 29];                  // ELEGOO 38-pin, flipped: pins up
+esp = [51.74, 29];                  // ELEGOO 30-pin (15 per side), flipped: pins up
 esp_t = 1.6;
 esp_standoff = 4.5;                 // the module and USB connector hang below it
 esp_plug_height = 20;               // female plugs on the pins
@@ -468,7 +468,8 @@ module ghosts() {
         }
         for (y = [1.68, esp[1] - 1.68 - 2.54])
             translate([esp_x0 + 1.74, esp_y0 + y, esp_z + esp_t + 1.2]) cube([48.26, 2.54, esp_plug_height - 1.2]);
-        translate([esp_x0 + esp[0] - 18, esp_y0 + 1.75, esp_z - 3.1]) cube([18, 25.5, 3.1]);
+        // The WROOM-32 module: 25.5 mm along the board, 18 mm across, centred, at the antenna end.
+        translate([esp_x0 + esp[0] - 25.5, esp_y0 + (esp[1] - 18) / 2, esp_z - 3.1]) cube([25.5, 18, 3.1]);
         translate([esp_x0 - 1, esp_y0 + esp[1] / 2 - 3.75, esp_z - 2.8]) cube([7, 7.5, 2.8]);
     }
     color("steelblue", 0.45) {

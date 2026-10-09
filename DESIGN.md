@@ -14,7 +14,7 @@ button presses. What a button *does*, and every threshold worth tuning,
 lives on the server.
 
 ## Hardware
-- **MCU:** ELEGOO ESP32-WROOM-32 (38-pin DEVKIT V1), same board as the desk unit.
+- **MCU:** ELEGOO ESP32-WROOM-32 (30-pin DEVKIT V1), same board as the desk unit.
 - **Display:** 0.91" SSD1306 OLED, 128×32, monochrome, I2C (0x3C). Not
   AMOLED, despite the listings — a small passive OLED. Draws nothing on
   black pixels, can be powered off by command, and has a contrast register.

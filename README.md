@@ -14,7 +14,7 @@ and keeps its connectivity, OTA and settings code.
 
 ## Hardware
 
-- ELEGOO ESP32-WROOM-32 (38-pin DEVKIT V1)
+- ELEGOO ESP32-WROOM-32 (30-pin DEVKIT V1)
 - 0.91" SSD1306 OLED, 128×32, I2C
 - MCP23017 I/O expander (Waveshare board) carrying 8 push buttons
 - KY-023 joystick
@@ -75,6 +75,7 @@ OTA_PASSWORD="$(scripts/gen_secrets.py --ota-password)" pio run -t upload -e esp
 | [docs/pinout.html](docs/pinout.html) | Wiring diagram |
 | [docs/button-actions-spec.md](docs/button-actions-spec.md) | What each button should do, for the Home Assistant side |
 | [docs/diagnostics-server-brief.md](docs/diagnostics-server-brief.md) | The device's diagnostics feed, for a server page |
+| [docs/crimping-checklist.md](docs/crimping-checklist.md) | Which wire goes where in every cable, with a test routine for before first power-up |
 | [docs/secrets-rotation.md](docs/secrets-rotation.md) | What each secret is, which need a flash, and the order to rotate them in |
 | [todo.md](todo.md) | What's left |
 | [enclosure/](enclosure/) | Parametric OpenSCAD enclosure: tub, lid and threaded feet |

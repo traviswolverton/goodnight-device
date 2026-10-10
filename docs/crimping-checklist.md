@@ -54,11 +54,11 @@ Device order: **GND, VCC, SCK, SDA** (4 pins, 4-way housing). SCK is the I2C clo
 | Wire | Signal | Hub pos | Device pos | |
 |---|---|---|---|---|
 | red | 3V3 (s9) | 1 | 2 (VCC) | crosses |
-| black | GND (s10) | 2 | 1 (GND) | crosses |
-| blue | SDA (s11) | 3 | 4 (SDA) | crosses |
+| blue | SDA (s10) | 2 | 4 (SDA) | crosses |
+| black | GND (s11) | 3 | 1 (GND) | crosses |
 | yellow | SCL (s12) | 4 | 3 (SCK) | crosses |
 
-- [ ] hub plug filled red, black, blue, yellow
+- [ ] hub plug filled red, blue, black, yellow
 - [ ] device housing filled black, red, yellow, blue
 - ⚠ GND and VCC are swapped between the two ends. Straight-through would reverse the power.
 
@@ -68,11 +68,11 @@ Device order: **ADDR, SDA, SCL, GND, VCC** (5 pins). Leave ADDR unconnected: use
 | Wire | Signal | Hub pos | Device pos | |
 |---|---|---|---|---|
 | red | 3V3 (s9) | 1 | 5 (VCC) | crosses |
-| black | GND (s10) | 2 | 4 (GND) | crosses |
-| blue | SDA (s11) | 3 | 2 (SDA) | crosses |
+| blue | SDA (s10) | 2 | 2 (SDA) | same number, but check |
+| black | GND (s11) | 3 | 4 (GND) | crosses |
 | yellow | SCL (s12) | 4 | 3 (SCL) | crosses |
 
-- [ ] hub plug filled red, black, blue, yellow
+- [ ] hub plug filled red, blue, black, yellow
 - [ ] device housing (cavity 1 empty) filled empty, blue, yellow, black, red
 - ⚠ The whole order is reversed between the two ends.
 
@@ -123,13 +123,13 @@ The module has no silkscreen on either side. Published pinouts agree that the **
 - Device end is soldered to the two leads (no housing).
 
 ### Expander, hub port D, s9 to s13
-The stock cable's own order, so no crossing: **VCC (red), GND (black), SDA (blue), SCL (yellow), INTA (orange)**.
+The stock cable's order is VCC (red), GND (black), SDA (blue), SCL (yellow), INTA (orange), but the hub plug's order is now 3V3, SDA, GND, SCL, INTA, because no two rail strips may be neighbours. **Swap the black and blue wires in the hub-end plug.**
 
 | Wire | Signal | Hub pos |
 |---|---|---|
 | red | 3V3 (s9) | 1, to VCC (feed 3V3, never 5V) |
-| black | GND (s10) | 2 |
-| blue | SDA (s11) | 3 |
+| blue | SDA (s10) | 2 |
+| black | GND (s11) | 3 |
 | yellow | SCL (s12) | 4 |
 | orange | D27 (s13) | 5, to INTA |
 
@@ -148,7 +148,7 @@ This is the row with 3V3, GND, D15, D2, D4 ... D22, D23, counted from the USB-C 
 | 2 | GND | black | s2 |
 | 5 | D4 | white | s1 |
 | 9 | D18 | green | s3 |
-| 11 | D21 (SDA) | blue | s11 |
+| 11 | D21 (SDA) | blue | s10 |
 | 14 | D22 (SCL) | yellow | s12 |
 
 - [ ] six wires, in positions 1, 2, 5, 9, 11 and 14
@@ -193,7 +193,7 @@ The expander's PA header has PA7 at the top, then PA6 down to PA0, then GND and 
 ## Before first power-up
 
 Use a multimeter in continuity mode, with the cables unplugged from the devices.
-- [ ] No beep between strips s0, s4, s9 (3V3) and strips s2, s6, s10, s14 (GND). A beep means a short.
+- [ ] No beep between strips s0, s4, s9 (3V3) and strips s2, s6, s11, s14 (GND), and none between any two neighbouring strips. A beep means a short or a solder bridge.
 - [ ] For each cable: a beep from its hub header pin to the matching pin on the device end, and no beep between any two pins of the same cable. The crossing ones (OLED, BH1750, DHT11, joystick) are the ones to test carefully.
 - [ ] The ESP32 housings: each wire beeps from its strip hole to the right ESP32 pin.
 - [ ] Only then plug the devices in, and watch the serial log's `[i2c] found:` line for `0x23 0x27 0x3C`.

@@ -107,6 +107,7 @@ exp_hole_edge = 1.5;                // hole edge to board edge, both ways
 exp_stud_d = 1.9;                   // a little under the 2.5 hole
 exp_cage_gap = 0.3;                 // between the board and its corner L's: the same as the ESP32's, now the studs hold the board
 exp_hole_span = 19;                 // stud centres, measured on the board
+exp_front_arm = 4;                  // front guards' arms along the front edge (the others are 6)
 
 buz_d = 11.72;
 buz_h = 8.5;
@@ -216,8 +217,10 @@ module span(a, b) {
 
 // An L of wall around a board's corner, outside it. (cx, cy) is the corner,
 // (sx, sy) points away from the board.
-module corner_l(cx, cy, sx, sy, z0, z1, leg = 6, t = 1.2) {
-    span([cx + sx * t, cy, z0], [cx - sx * leg, cy + sy * t, z1]);
+// legx is the length of the arm that runs along the board's end edge (the
+// other arm, along its side, is leg).
+module corner_l(cx, cy, sx, sy, z0, z1, leg = 6, t = 1.2, legx = 6) {
+    span([cx + sx * t, cy, z0], [cx - sx * legx, cy + sy * t, z1]);
     span([cx, cy, z0], [cx + sx * t, cy - sy * leg, z1]);
 }
 
@@ -335,7 +338,10 @@ module expander_cage() {
     for (sx = [-1, 1], sy = [-1, 1]) {
         bx = exp_x0 + (sx > 0 ? exp[0] : 0);
         by = exp_y0 + (sy > 0 ? exp[1] : 0);
-        corner_l(bx + sx * c, by + sy * c, sx, sy, floor_t - 0.01, top + exp_t + 2);
+        // The front guards' arms along the front edge are 2 mm shorter, to clear
+        // the connector that overhangs that edge.
+        corner_l(bx + sx * c, by + sy * c, sx, sy, floor_t - 0.01, top + exp_t + 2,
+                 legx = sy < 0 ? exp_front_arm : 6);
         if (sy < 0) span([bx, by, floor_t - 0.01], [bx - sx * 4, by + 4, top]);
     }
     for (p = exp_holes) stud(p[0], p[1], 4.2, exp_stud_d, exp_standoff, exp_standoff + exp_t + 1);

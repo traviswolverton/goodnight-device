@@ -12,7 +12,7 @@
 //   part = "assembly"   tub and lid in place (turn on show_parts to see the
 //                       boards and the clearance they need)
 //   part = "tub"        the base, printed feet down
-//   part = "lid"        the lid, printed top face down
+//   part = "lid"        the lid, printed right side up (nothing hangs below it)
 //   part = "test"       the ESP32 and expander mounts, for a quick test print
 //   part = "fit"        the ESP32, expander and hub board cages on one floor, in place, for a test fit
 //   part = "hubtest"    the hub board's back-left corner: anchor stud and a guard
@@ -63,19 +63,54 @@ m3_head = 6.4;    // countersink diameter
 btn_cols = 4;
 btn_rows = 2;
 btn_housing_d = 19;                 // sits flush; the button threads in from below
-btn_hole_d = btn_housing_d + 0.4;
-btn_pitch = 26;
+btn_hole_d = 15.5;                  // the button's threaded barrel; the 19 mm housing sits under the lid and sets the spacing
+btn_pitch = 26;                     // between columns
 btn_clearance = 40;                 // from the top surface down: body, posts, wire bends
 margin_x = 10;
 
-/* [Joystick, KY-023] */
+/* [Icon labels] */
+// A shallow pocket in front of each button (below it, looking down on the lid
+// with the display at the bottom) for a sticker or a printed icon. The rows are
+// spaced to leave room for the second row's labels between the two rows.
+label_w = 14;
+label_h = 8;
+label_margin = 2.5;                 // from the button's housing to the pocket, and the pocket to the next button
+label_depth = 0.4;                  // two layers; the lid prints right side up, so this is a plain recess
+label_r = 1;
+row_pitch = btn_housing_d + label_h + 2 * label_margin;
+
+/* [Gridfinity bins on the lid] */
+// A raised baseplate behind the buttons, in whole 42 mm cells, so Gridfinity
+// bins drop straight in. The profile is the community spec's (gridfinity.xyz):
+// from the top, a 2.15 mm 45 degree lead-in, 1.8 mm straight, then a 0.7 mm 45
+// degree chamfer, 4.65 mm in all. The pockets go down to the lid's top face.
+// Every wall leans outward going up, so it prints without support. gf_rows = 2
+// needs a deeper box.
+gf_cell = 42;
+gf_cols = 3;
+gf_rows = 1;
+gf_corner_r = 4;
+gf_step = [2.15, 1.8, 0.7];         // lead-in, straight, chamfer: depth and inset
+gf_rim = 2;                         // flat border round the outer cells
+
+/* [Joystick, KY-023 / HW-504] */
+// The board is screwed to the underside of the lid, components up, with its
+// body poking through a cutout; four M3 screws from above, nuts on the board's
+// underside. u runs along the board's long edge, positive toward the pin row;
+// v runs along the pin row. Offsets are from the shaft. The u offsets are read
+// off a photo and scaled to the 26.2 mm hole spacing: MEASURE them.
 stick_board = [27, 33.6];           // x, y
-stick_body = 25.5;
+stick_board_u = [-19, 14.6];        // back edge, pin edge
+stick_board_t = 1.6;
 stick_gap = 10;                     // board top up to the stick's underside
 stick_total = 30;                   // board top to the top of the stick
-stick_board_t = 1.6;
-stick_hole_d = 14;                  // MEASURE: shaft plus its swing at the lid
-stick_offset = [0, 0];              // MEASURE: shaft centre from the board centre
+stick_pin_dir = 1;                  // which way the pin row faces: 1 toward the back of the box, -1 toward the front
+stick_cut = [27, 22];               // cutout for the body: x (along the pin row), y (along the board)
+stick_cut_u = -1.8;                 // its centre from the shaft
+stick_screw_d = 3.5;                // the board's holes, and the lid's
+stick_hole_span = [20, 26.2];       // hole centres: along the pin row, along the board
+stick_hole_u = 10.7;                // the pin-side holes from the shaft
+stick_web = 0.8;                    // lid kept round each hole where the cutout would reach it
 stick_gap_x = 15;                   // between the button grid and the board
 
 /* [Display, SSD1306 0.91in] */
@@ -88,7 +123,7 @@ display_strip = 20;                 // depth in front of the button grid
 
 /* [Electronics bay] */
 bay_depth = 44;
-bay_gap = 14;   // 8 mm more than the first layout, for the whole hub board and its four corner guards
+bay_gap = 8;    // behind the button grid; the box is as deep as when this was 14 and the rows were 6 mm closer, to hold the whole hub board and its four corner guards
 
 esp = [51.74, 29];                  // ELEGOO 30-pin (15 per side), flipped: pins up
 esp_t = 1.6;
@@ -146,17 +181,33 @@ pir_plug_depth = 20;                // from the front wall: board, pins and a Du
 /* [Derived] */
 inner_top = H - lid_t;              // tub rim and the lid's underside
 grid_w = (btn_cols - 1) * btn_pitch + btn_housing_d;
-grid_d = (btn_rows - 1) * btn_pitch + btn_housing_d;
+grid_d = (btn_rows - 1) * row_pitch + btn_housing_d;
 D = wall + display_strip + grid_d + bay_gap + bay_depth + wall;
 
 function col_x(c) = margin_x + btn_housing_d / 2 + c * btn_pitch;
-function row_y(r) = wall + display_strip + btn_housing_d / 2 + r * btn_pitch;
+function row_y(r) = wall + display_strip + btn_housing_d / 2 + r * row_pitch;
+// Centre of a button's label pocket, in front of it.
+function label_y(r) = row_y(r) - btn_housing_d / 2 - label_margin - label_h / 2;
 
 bay_y0 = wall + display_strip + grid_d + bay_gap;
 bay_y1 = D - wall;
 
 stick_x = margin_x + grid_w + stick_gap_x + stick_board[0] / 2;
 stick_y = (row_y(0) + row_y(btn_rows - 1)) / 2;
+
+// The Gridfinity area, centred in the lid's width and in the band behind the buttons.
+btn_back = row_y(btn_rows - 1) + btn_hole_d / 2;
+gf_w = gf_cols * gf_cell;
+gf_d = gf_rows * gf_cell;
+gf_x0 = (W - gf_w) / 2;
+gf_y0 = (btn_back + D - gf_d) / 2;
+gf_depth = gf_step[0] + gf_step[1] + gf_step[2];
+gf_top = H + gf_depth;
+
+// A point in the board's frame, in the model's: u along the board, v along the pin row.
+function stick_pt(u, v) = [stick_x + v, stick_y + stick_pin_dir * u];
+stick_holes = [for (v = [-1, 1], u = [stick_hole_u, stick_hole_u - stick_hole_span[1]])
+                  stick_pt(u, v * stick_hole_span[0] / 2)];
 
 hub_x0 = 27;                        // clear of the front feet (to x 21 and from x 139) and the PIR frame (from x 130)
 hub_y0 = wall + 1.2 + hub_gap[1];   // the front guards sit between the wall and the board
@@ -198,6 +249,21 @@ assert(norm(pir_pcb) > pir_hole_d, "PIR board would fall through its hole");
 assert(buz_x + buz_d / 2 + 1.6 < dht_x - dht[0] / 2 - 2, "buzzer overlaps the DHT11");
 assert(dht_x + dht[0] / 2 + 2 < W - wall - 14, "DHT11 overlaps the BH1750");
 assert(stick_x + stick_board[0] / 2 <= W - wall, "joystick board is past the right wall");
+assert(stick_hole_u + stick_screw_d / 2 < stick_board_u[1] && stick_hole_u - stick_hole_span[1] - stick_screw_d / 2 > stick_board_u[0]
+       && stick_hole_span[0] / 2 + stick_screw_d / 2 < stick_board[0] / 2, "the joystick's screw holes are off its board");
+assert(stick_y + min(stick_pin_dir * stick_board_u[0], stick_pin_dir * stick_board_u[1]) >= wall
+       && stick_y + max(stick_pin_dir * stick_board_u[0], stick_pin_dir * stick_board_u[1]) <= D - wall, "joystick board is past the front or back wall");
+assert(stick_web >= 0.4, "the lid between a joystick hole and its cutout would be too thin");
+assert(stick_x - stick_cut[0] / 2 > col_x(btn_cols - 1) + btn_housing_d / 2, "joystick cutout runs into the buttons");
+assert(len([for (p = stick_holes) if (norm(p - [stick_x, stick_y]) < 5) 1]) == 0, "a joystick screw is on the shaft");
+assert(label_margin >= 1.5, "label pockets are too close to the button holes");
+assert(label_y(0) - label_h / 2 >= wall, "the first row's labels hang over the front edge");
+assert(len([for (c = [0:btn_cols - 1], r = [0:btn_rows - 1], b = boss_c)
+            if (abs(col_x(c) - b[0]) < label_w / 2 + m3_head / 2 + 0.5 && abs(label_y(r) - b[1]) < label_h / 2 + m3_head / 2 + 0.5) 1]) == 0,
+       "a label pocket runs into a lid screw");
+assert(gf_y0 - btn_back >= 4, "Gridfinity area is too close to the buttons");
+assert(len([for (b = boss_c) if (b[0] + m3_head / 2 + 1 > gf_x0 - gf_rim && b[0] - m3_head / 2 - 1 < gf_x0 + gf_w + gf_rim && b[1] + m3_head / 2 + 1 > gf_y0 - gf_rim && b[1] - m3_head / 2 - 1 < gf_y0 + gf_d + gf_rim) 1]) == 0,
+       "a lid screw is under the Gridfinity area");
 
 // ---------------------------------------------------------------- helpers
 
@@ -450,12 +516,15 @@ module lid() {
     difference() {
         union() {
             translate([0, 0, inner_top]) linear_extrude(lid_t) rrect2d(W, D, corner_r);
-            stick_cradle();
+            gf_plate();
         }
         for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
             translate([col_x(c), row_y(r), inner_top - 1]) cylinder(d = btn_hole_d, h = lid_t + 2);
-        translate([stick_x + stick_offset[0], stick_y + stick_offset[1], inner_top - 1])
-            cylinder(d = stick_hole_d, h = lid_t + 2);
+        for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
+            translate([col_x(c) - label_w / 2, label_y(r) - label_h / 2, H - label_depth])
+                linear_extrude(label_depth + 1) rrect2d(label_w, label_h, label_r);
+        translate([0, 0, inner_top - 1]) linear_extrude(lid_t + 2) stick_cutout2d();
+        for (p = stick_holes) translate([p[0], p[1], inner_top - 1]) cylinder(d = stick_screw_d, h = lid_t + 2);
         for (c = boss_c) {
             translate([c[0], c[1], inner_top - 1]) cylinder(d = m3_clear, h = lid_t + 2);
             translate([c[0], c[1], H - 1.5]) cylinder(h = 1.51, d1 = m3_clear, d2 = m3_head);
@@ -463,16 +532,46 @@ module lid() {
     }
 }
 
-// Four L's hanging from the underside that locate the joystick board. It
-// faces the lid with its stick body 10 mm tall, so the cradle reaches down to
-// the board's lower face. Hot glue holds it.
-module stick_cradle() {
-    z0 = inner_top - (stick_gap + stick_board_t + 1);
-    c = 0.3;
-    for (sx = [-1, 1], sy = [-1, 1]) {
-        bx = stick_x + sx * stick_board[0] / 2;
-        by = stick_y + sy * stick_board[1] / 2;
-        corner_l(bx + sx * c, by + sy * c, sx, sy, z0, inner_top + 0.01, leg = 8, t = 1.6);
+// The joystick's body goes through this; a ring of lid is kept round each screw
+// hole where the two would otherwise run together.
+module stick_cutout2d() {
+    c = stick_pt(stick_cut_u, 0);
+    difference() {
+        translate([c[0] - stick_cut[0] / 2, c[1] - stick_cut[1] / 2]) square(stick_cut);
+        for (p = stick_holes) translate(p) circle(d = stick_screw_d + 2 * stick_web);
+    }
+}
+
+// One baseplate cell's outline, inset from the 42 mm square (negative: outset).
+module gf_cell2d(inset) {
+    translate([inset, inset]) rrect2d(gf_cell - 2 * inset, gf_cell - 2 * inset, max(0.01, gf_corner_r - inset));
+}
+
+// A slab of the cell's outline at depth z below the baseplate's top face.
+module gf_slab(inset, z) {
+    translate([0, 0, gf_top - z]) linear_extrude(0.001) gf_cell2d(inset);
+}
+
+// The pocket for one cell, as the solid to cut: the lead-in carried 1 mm above
+// the top face so the cut is clean. grow shrinks (negative) or swells it.
+module gf_pocket_cell(grow = 0) {
+    d1 = gf_step[0];
+    d2 = d1 + gf_step[1];
+    d3 = d2 + gf_step[2];
+    hull() { gf_slab(-1 - grow, -1); gf_slab(d1 - grow, d1); }
+    hull() { gf_slab(d1 - grow, d1); gf_slab(d1 - grow, d2); }
+    hull() { gf_slab(d1 - grow, d2); gf_slab(d1 + gf_step[2] - grow, d3); }
+}
+
+// The raised baseplate: a block on the lid's top face with a pocket per cell,
+// cut down to the lid.
+module gf_plate() {
+    m = gf_rim;
+    difference() {
+        translate([gf_x0 - m, gf_y0 - m, H - 0.01])
+            linear_extrude(gf_depth + 0.01) rrect2d(gf_w + 2 * m, gf_d + 2 * m, gf_corner_r + m);
+        for (i = [0:gf_cols - 1], j = [0:gf_rows - 1])
+            translate([gf_x0 + i * gf_cell, gf_y0 + j * gf_cell, 0]) gf_pocket_cell();
     }
 }
 
@@ -502,12 +601,27 @@ module ghosts() {
     color("teal", 0.25)
         for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
             translate([col_x(c), row_y(r), H - btn_clearance]) cylinder(d = btn_housing_d, h = btn_clearance - lid_t);
+    color("khaki", 0.5)
+        // Bins: the foot, 0.25 mm in from the pocket all round, and 15 mm of body above the baseplate.
+        for (i = [0:gf_cols - 1], j = [0:gf_rows - 1]) translate([gf_x0 + i * gf_cell, gf_y0 + j * gf_cell, 0]) {
+            intersection() {
+                gf_pocket_cell(-0.25);
+                translate([-5, -5, H]) cube([gf_cell + 10, gf_cell + 10, gf_depth]);
+            }
+            translate([0.25, 0.25, gf_top]) cube([gf_cell - 0.5, gf_cell - 0.5, 15]);
+        }
     color("purple", 0.45) {
-        bz = inner_top - stick_gap - stick_board_t;
-        translate([stick_x - stick_board[0] / 2, stick_y - stick_board[1] / 2, bz]) cube([stick_board[0], stick_board[1], stick_board_t]);
-        translate([stick_x - stick_body / 2, stick_y - stick_body / 2, bz + stick_board_t]) cube([stick_body, stick_body, stick_gap]);
-        translate([stick_x + stick_offset[0], stick_y + stick_offset[1], bz + stick_board_t + stick_gap])
-            cylinder(d = 8, h = stick_total - stick_gap);
+        // Joystick: the board against the lid's underside, its body through the cutout, then the shaft.
+        bz = inner_top - stick_board_t;
+        c = stick_pt(stick_cut_u, 0);
+        b0 = stick_pt(stick_board_u[0], 0)[1];
+        b1 = stick_pt(stick_board_u[1], 0)[1];
+        difference() {
+            translate([stick_x - stick_board[0] / 2, min(b0, b1), bz]) cube([stick_board[0], abs(b1 - b0), stick_board_t]);
+            for (p = stick_holes) translate([p[0], p[1], bz - 1]) cylinder(d = stick_screw_d, h = stick_board_t + 2);
+        }
+        translate([c[0] - (stick_cut[0] - 1) / 2, c[1] - (stick_cut[1] - 1) / 2, inner_top]) cube([stick_cut[0] - 1, stick_cut[1] - 1, stick_gap]);
+        translate([stick_x, stick_y, inner_top + stick_gap]) cylinder(d = 8, h = stick_total - stick_gap - stick_board_t);
     }
     color("silver", 0.5) {
         // Hub board and its headers.
@@ -586,7 +700,7 @@ module fit_test_piece() {
 if (part == "tub") {
     tub();
 } else if (part == "lid") {
-    translate([0, D, H]) rotate([180, 0, 0]) lid();
+    translate([0, 0, -inner_top]) lid();
 } else if (part == "test") {
     test_piece();
 } else if (part == "fit") {
@@ -599,7 +713,7 @@ if (part == "tub") {
     for (i = [0:3]) translate([i * (foot_d + 4), 0, 0]) foot();
 } else if (part == "print") {
     tub();
-    translate([W + 10, D, H]) rotate([180, 0, 0]) lid();
+    translate([W + 10, 0, -inner_top]) lid();
 } else if (part == "assembly") {
     tub();
     lid();

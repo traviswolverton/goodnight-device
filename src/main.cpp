@@ -399,6 +399,34 @@ void ensureBrokerConfig() {
   }
 }
 
+#ifdef BENCH_OLED_TEST
+// Bench build only: draw a test pattern straight to the panel at full
+// brightness, ignoring the dimmer and the clock screen. The block blinks twice
+// a second, so a live panel can be told from a frozen one.
+void benchOledTest() {
+  static unsigned long lastMs = 0;
+  static bool on = false;
+  unsigned long now = millis();
+  if (now - lastMs < 500) {
+    return;
+  }
+  lastMs = now;
+  on = !on;
+  displaySetLevel(DisplayLevel::Full);
+  U8G2& g = displayCanvas();
+  displayStartFrame();
+  g.drawFrame(0, 0, kDisplayWidth, kDisplayHeight);
+  if (on) {
+    g.drawBox(4, 4, 10, 24);
+  }
+  g.setFont(u8g2_font_6x10_tf);
+  g.drawStr(20, 13, "OLED TEST");
+  g.drawStr(20, 26, "dimmer ignored");
+  displaySend();
+  Serial.printf("[bench] frame %s present=%d\n", on ? "A" : "B", displayPresent() ? 1 : 0);
+}
+#endif
+
 }  // namespace
 
 void setup() {
@@ -452,7 +480,18 @@ void loop() {
   sensorsUpdate();
   inputUpdate();
   handleInput();
+#ifndef BENCH_OLED_TEST
   dimmerUpdate(sensorsLux());
+#endif
+  {
+    // Bring-up aid: what the dimmer is going on, every 5 s.
+    static unsigned long lastDimLogMs = 0;
+    if (millis() - lastDimLogMs >= 5000) {
+      lastDimLogMs = millis();
+      Serial.printf("[dim] lux=%.2f screen=%s motion=%d\n", sensorsLux(), dimmerLevelName(),
+                    sensorsMotion() ? 1 : 0);
+    }
+  }
   soundUpdate();
   maybePublishSensors();
   maybePublishDiagnostics();
@@ -474,5 +513,9 @@ void loop() {
       minute,
       pm,
   };
+#ifdef BENCH_OLED_TEST
+  benchOledTest();
+#else
   screenUpdate(model);
+#endif
 }

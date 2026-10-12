@@ -19,11 +19,12 @@
 //   part = "foot"       one threaded foot, as printed (you need four)
 //   part = "feet"       four feet in a row
 //   part = "sticktest"  just the lid around the joystick cutout, for a test print of the board's fit
+//   part = "risers"     four spacers for the joystick's screws
 //   part = "blank"      one round label blank, face down (magnet pocket up)
 //   part = "blanks"     eight blanks, one for each button
 //   part = "print"      tub and lid laid out together (too wide for most beds)
 
-part = "assembly"; // [assembly, tub, lid, sticktest, test, fit, hubtest, foot, feet, blank, blanks, print]
+part = "assembly"; // [assembly, tub, lid, sticktest, risers, test, fit, hubtest, foot, feet, blank, blanks, print]
 show_parts = false;
 $fn = 64;
 
@@ -122,7 +123,9 @@ stick_screw_d = 3.5;                // the board's holes, and the lid's
 stick_hole_back = 2;                // back holes' centres in from the back edge: the holes all but touch it (MEASURE)
 stick_hole_span_u = 27;               // along the board, centre to centre (25.5 on the sketch; the test print wanted 1.5 more)
 stick_hole_span_w = 19;             // across the board, centre to centre
-stick_web = 0.6;                    // lid kept round each hole where the cutout would reach it
+stick_clear_r = 13.5;               // the opening round the shaft, for the cap's rim to dip into: as far out as the cutout is across, where the stick moves freely
+stick_riser_h = 5.5;                // a spacer on each screw, between the lid and the board, so the board sits this far below the lid; printed separately
+stick_riser_d = 6.5;                // and a ring of lid this wide is kept round each screw hole for it to sit against
 stick_gap_x = 15;                   // between the button grid and the board
 
 /* [Display, SSD1306 0.91in] */
@@ -275,7 +278,8 @@ assert(stick_hole_back - stick_screw_d / 2 < stick_body_back, "a back screw hole
 assert(stick_y + min(stick_pin_dir * stick_u0, stick_pin_dir * stick_u1) >= wall
        && stick_y + max(stick_pin_dir * stick_u0, stick_pin_dir * stick_u1) <= D - wall, "joystick board is past the front or back wall");
 assert(stick_cut[0] >= stick_body[0] + 0.6 && stick_cut[1] >= stick_body[1] + 0.6, "the cutout is too tight round the joystick's body");
-assert(stick_web >= 0.4, "the lid between a joystick hole and its cutout would be too thin");
+assert(stick_riser_d >= stick_screw_d + 2, "a joystick spacer would have no wall");
+assert(stick_x - stick_clear_r > col_x(btn_cols - 1) + btn_housing_d / 2, "the joystick opening runs into the buttons");
 assert(stick_x - stick_cut[0] / 2 > col_x(btn_cols - 1) + btn_housing_d / 2, "joystick cutout runs into the buttons");
 assert(label_y(0) - blank_d / 2 >= wall, "the first row's blanks hang over the front edge");
 assert(len([for (c = [0:btn_cols - 1], r = [0:btn_rows - 1], b = boss_c)
@@ -555,12 +559,24 @@ module lid() {
     }
 }
 
-// The joystick's body goes through this; a ring of lid is kept round each screw
-// hole where the two would otherwise run together.
+// The joystick's body goes through this, and its cap's rim dips into it when
+// the stick is tilted: a rectangle for the body, widened by a circle round the
+// shaft. A full ring of lid is kept round each screw hole for its spacer.
 module stick_cutout2d() {
     difference() {
-        translate([stick_x - stick_cut[0] / 2, stick_y - stick_cut[1] / 2]) square(stick_cut);
-        for (p = stick_holes) translate(p) circle(d = stick_screw_d + 2 * stick_web);
+        union() {
+            translate([stick_x - stick_cut[0] / 2, stick_y - stick_cut[1] / 2]) square(stick_cut);
+            translate(stick_pt(stick_shaft_u, 0)) circle(r = stick_clear_r);
+        }
+        for (p = stick_holes) translate(p) circle(d = stick_riser_d);
+    }
+}
+
+// One spacer for a joystick screw, as printed.
+module stick_riser() {
+    difference() {
+        cylinder(d = stick_riser_d, h = stick_riser_h);
+        translate([0, 0, -1]) cylinder(d = stick_screw_d, h = stick_riser_h + 2);
     }
 }
 
@@ -649,7 +665,7 @@ module ghosts() {
         }
     color("purple", 0.45) {
         // Joystick: the board against the lid's underside, its body through the cutout, then the shaft.
-        bz = inner_top - stick_board_t;
+        bz = inner_top - stick_riser_h - stick_board_t;
         y0 = stick_pt(stick_u0, 0)[1];
         y1 = stick_pt(stick_u1, 0)[1];
         bx = stick_pt(0, stick_wc)[0];
@@ -657,8 +673,9 @@ module ghosts() {
             translate([bx - stick_board[0] / 2, min(y0, y1), bz]) cube([stick_board[0], abs(y1 - y0), stick_board_t]);
             for (p = stick_holes) translate([p[0], p[1], bz - 1]) cylinder(d = stick_screw_d, h = stick_board_t + 2);
         }
-        translate([stick_x - stick_body[0] / 2, stick_y - stick_body[1] / 2, inner_top - 0.01]) cube([stick_body[0], stick_body[1], stick_gap + stick_board_t]);
-        translate([stick_pt(stick_shaft_u, 0)[0], stick_pt(stick_shaft_u, 0)[1], inner_top + stick_gap]) cylinder(d = 8, h = stick_total - stick_gap - stick_board_t);
+        translate([stick_x - stick_body[0] / 2, stick_y - stick_body[1] / 2, bz + stick_board_t]) cube([stick_body[0], stick_body[1], stick_gap]);
+        translate([stick_pt(stick_shaft_u, 0)[0], stick_pt(stick_shaft_u, 0)[1], bz + stick_board_t + stick_gap]) cylinder(d = 8, h = stick_total - stick_gap);
+        for (p = stick_holes) translate([p[0], p[1], inner_top - stick_riser_h]) difference() { cylinder(d = stick_riser_d, h = stick_riser_h); translate([0, 0, -1]) cylinder(d = stick_screw_d, h = stick_riser_h + 2); }
     }
     color("silver", 0.5) {
         // Hub board and its headers.
@@ -755,6 +772,8 @@ if (part == "tub") {
     hub_test_piece();
 } else if (part == "sticktest") {
     translate([0, 0, -inner_top]) stick_test_piece();
+} else if (part == "risers") {
+    for (i = [0:3]) translate([i * (stick_riser_d + 3), 0, 0]) stick_riser();
 } else if (part == "blank") {
     label_blank();
 } else if (part == "blanks") {

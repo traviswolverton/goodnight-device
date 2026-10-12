@@ -43,6 +43,6 @@ constexpr uint8_t kNumButtons = 8;
 constexpr uint8_t kExpanderFirstButtonPin = 0;  // buttons 1-8 on GPA0-GPA7
 constexpr uint8_t kExpanderJoystickPressPin = 8;  // joystick SW on GPB0
 
-// Passive piezo buzzer (sound.h), driven by LEDC PWM: + to this pin, - to
-// GND. 25 is a plain output-capable GPIO with no boot-strap role.
+// Passive buzzer module (sound.h), driven by LEDC PWM: I/O to this pin, VCC
+// to 3V3, GND to GND. 25 is a plain output-capable GPIO with no boot-strap role.
 constexpr uint8_t kPinBuzzer = 25;

@@ -20,7 +20,7 @@ and keeps its connectivity, OTA and settings code.
 - KY-023 joystick
 - BH1750 light sensor, DHT11 temperature/humidity sensor
 - AM312 mini PIR motion sensor
-- Passive piezo buzzer
+- Passive buzzer module (I/O, VCC, GND)
 
 Everything runs from the ESP32's 3.3V pin. Pins, wiring and the reasons for
 them are in [DESIGN.md](DESIGN.md); [docs/pinout.html](docs/pinout.html) is a

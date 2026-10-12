@@ -173,7 +173,7 @@
 
 <figure class="diagram-figure">
   <div class="diagram-scroll">
-    <svg class="wiring" viewBox="0 0 1500 830" role="img" aria-label="Wiring diagram: ESP32 DEVKIT V1 in the centre with its used pins drawn in real physical row order. On the left: a KY-023 joystick (axes to GPIO34 and 35), a passive piezo (GPIO25) and an MCP23017 I/O expander (interrupt to GPIO27) with the eight buttons and the joystick switch on it; the I2C bus reaches the expander over the top of the board. On the right: the shared I2C bus (SDA GPIO21, SCL GPIO22) to the SSD1306 OLED and BH1750 light sensor, a DHT11 on GPIO4 and an AM312 PIR on GPIO18. Power and ground are shown as 3V3 and GND tags: every 3V3 tag joins the single 3V3 pin and every GND tag joins a GND pin.">
+    <svg class="wiring" viewBox="0 0 1500 830" role="img" aria-label="Wiring diagram: ESP32 DEVKIT V1 in the centre with its used pins drawn in real physical row order. On the left: a KY-023 joystick (axes to GPIO34 and 35), a passive buzzer module (GPIO25, with 3V3 and GND) and an MCP23017 I/O expander (interrupt to GPIO27) with the eight buttons and the joystick switch on it; the I2C bus reaches the expander over the top of the board. On the right: the shared I2C bus (SDA GPIO21, SCL GPIO22) to the SSD1306 OLED and BH1750 light sensor, a DHT11 on GPIO4 and an AM312 PIR on GPIO18. Power and ground are shown as 3V3 and GND tags: every 3V3 tag joins the single 3V3 pin and every GND tag joins a GND pin.">
       <rect x="640" y="70" width="180" height="560" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
       <rect x="672" y="86" width="116" height="70" rx="3" fill="#2b2f2c" opacity="0.55"/>
       <text x="730" y="126" text-anchor="middle" font-size="11" fill="var(--silk)">WROOM-32</text>
@@ -202,7 +202,7 @@
       <line x1="600" y1="352" x2="640" y2="352" stroke="var(--c-brown)" stroke-width="2.5"/>
       <circle cx="600" cy="352" r="3.2" fill="var(--c-brown)"/>
       <text x="594" y="347" text-anchor="end" font-size="12" fill="var(--silk)" font-weight="600">D25</text>
-      <text x="594" y="364" text-anchor="end" font-size="9.5" fill="var(--silk-dim)">piezo +</text>
+      <text x="594" y="364" text-anchor="end" font-size="9.5" fill="var(--silk-dim)">buzzer I/O</text>
       <line x1="600" y1="388" x2="640" y2="388" stroke="var(--silk-dim)" stroke-width="1"/>
       <text x="594" y="392" text-anchor="end" font-size="10" fill="var(--silk-dim)">D26</text>
       <line x1="600" y1="424" x2="640" y2="424" stroke="var(--c-orange)" stroke-width="2.5"/>
@@ -293,16 +293,21 @@
       <line x1="300" y1="320" x2="316" y2="320" stroke="#9aa5a0" stroke-width="4.6"/><line x1="300" y1="320" x2="316" y2="320" stroke="var(--c-black)" stroke-width="2.5"/>
       <rect x="316" y="311" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
       <text x="339" y="324" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
-      <rect x="120" y="348" width="180" height="62" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-      <text x="210.0" y="368" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">PASSIVE PIEZO</text>
-      <text x="210.0" y="382" text-anchor="middle" font-size="9" fill="var(--silk-dim)">buzzer, PWM-driven</text>
+      <rect x="120" y="348" width="180" height="76" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+      <text x="210.0" y="372" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">PASSIVE BUZZER</text>
+      <text x="210.0" y="386" text-anchor="middle" font-size="9" fill="var(--silk-dim)">module, PWM-driven</text>
       <circle cx="300" cy="372" r="3" fill="var(--silk)"/>
-      <text x="292" y="376" text-anchor="end" font-size="10.5" fill="var(--silk)">+</text>
+      <text x="292" y="376" text-anchor="end" font-size="10.5" fill="var(--silk)">I/O</text>
       <circle cx="300" cy="394" r="3" fill="var(--silk)"/>
-      <text x="292" y="398" text-anchor="end" font-size="10.5" fill="var(--silk)">−</text>
-      <line x1="300" y1="394" x2="316" y2="394" stroke="#9aa5a0" stroke-width="4.6"/><line x1="300" y1="394" x2="316" y2="394" stroke="var(--c-black)" stroke-width="2.5"/>
-      <rect x="316" y="385" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
-      <text x="339" y="398" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
+      <text x="292" y="398" text-anchor="end" font-size="10.5" fill="var(--silk)">VCC</text>
+      <line x1="300" y1="394" x2="316" y2="394" stroke="var(--c-red)" stroke-width="2.5"/>
+      <rect x="316" y="385" width="46" height="18" rx="9" fill="none" stroke="var(--c-red)" stroke-width="1.6"/>
+      <text x="339" y="398" text-anchor="middle" font-size="10.5" fill="var(--c-red)" font-weight="600">3V3</text>
+      <circle cx="300" cy="416" r="3" fill="var(--silk)"/>
+      <text x="292" y="420" text-anchor="end" font-size="10.5" fill="var(--silk)">GND</text>
+      <line x1="300" y1="416" x2="316" y2="416" stroke="#9aa5a0" stroke-width="4.6"/><line x1="300" y1="416" x2="316" y2="416" stroke="var(--c-black)" stroke-width="2.5"/>
+      <rect x="316" y="407" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
+      <text x="339" y="420" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
       <rect x="120" y="430" width="180" height="232" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
       <text x="210.0" y="450" text-anchor="middle" font-size="11" fill="var(--silk)" font-weight="600">MCP23017 · I/O EXPANDER</text>
       <text x="210.0" y="464" text-anchor="middle" font-size="9" fill="var(--silk-dim)">Waveshare IO Expansion Board · 0x27</text>
@@ -497,8 +502,9 @@
       <tr><td></td><td class="mono">SW</td><td class="mono">—</td><td class="mono">—</td><td class="note">to the MCP23017’s PB0, not to the ESP32</td></tr>
       <tr><td></td><td class="mono">+5V</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the pin is printed 5V; the axes output a fraction of the supply, so 5V would reach an ESP32 pin</td></tr>
       <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
-      <tr class="group-start"><td>Piezo (passive)</td><td class="mono">+</td><td class="mono gpio">25</td><td class="mono">D25</td><td class="note">LEDC PWM: pitch by frequency, volume by duty cycle</td></tr>
-      <tr><td></td><td class="mono">−</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr class="group-start"><td>Buzzer module (passive)</td><td class="mono">I/O</td><td class="mono gpio">25</td><td class="mono">D25</td><td class="note">LEDC PWM: pitch by frequency, volume by duty cycle</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
     </tbody>
   </table>
 </div>
@@ -600,8 +606,9 @@
 <circle cx="159" cy="92" r="3.4" fill="var(--silk)"/>
 <circle cx="159" cy="120" r="3.4" fill="var(--silk)"/>
 <circle cx="159" cy="148" r="3.4" fill="var(--silk)"/>
-<rect x="149" y="219" width="72" height="54" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="171" y="250.0" font-size="10.5" fill="var(--silk)" font-weight="600">Buzzer</text>
+<rect x="149" y="191" width="72" height="82" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
+<text x="171" y="236.0" font-size="10.5" fill="var(--silk)" font-weight="600">Buzzer</text>
+<circle cx="159" cy="204" r="3.4" fill="var(--silk)"/>
 <circle cx="159" cy="232" r="3.4" fill="var(--silk)"/>
 <circle cx="159" cy="260" r="3.4" fill="var(--silk)"/>
 <rect x="149" y="331" width="72" height="110" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
@@ -712,7 +719,7 @@
       <tr><td>BH1750</td><td class="note">XH plug on port B, s9 to s12 (ADDR left open)</td><td class="note">as the OLED</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#3b82f6;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>blue, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="mono">4</td></tr>
       <tr><td>DHT11</td><td class="note">XH plug on port A, s0 to s2: 3V3, D4, GND</td><td class="note">as the OLED</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f4f4f4;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>white, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="mono">3</td></tr>
       <tr><td>PIR</td><td class="note">XH plug on port B, s2 to s4: GND, D18, 3V3</td><td class="note">as the OLED</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>green, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red</td><td class="mono">3</td></tr>
-      <tr><td>Buzzer</td><td class="note">XH plug on port A, s5 to s6: D25, GND</td><td class="note">wires soldered to its two leads (B)</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a35a2a;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>brown, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="mono">2</td></tr>
+      <tr><td>Buzzer</td><td class="note">XH plug on port A, s4 to s6: 3V3, D25, GND</td><td class="note">Dupont-style housing on the module&rsquo;s three pins, in its order: I/O, VCC, GND (A). The hub plug&rsquo;s order differs, so swap the red and brown wires at one end</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a35a2a;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>brown, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="mono">3</td></tr>
       <tr><td>Joystick</td><td class="note">XH plug on port C, s6 to s9: GND, D34, D35, 3V3</td><td class="note">as the OLED, on the stick&rsquo;s GND, VRx, VRy and 5V pins; the 5V pin is fed 3V3</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a855f7;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>purple, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#9ca3af;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>grey, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red</td><td class="mono">4</td></tr>
       <tr class="group-start"><td>Button ground</td><td class="note">8-way Dupont-style housing on the 1×8 male header laid along s14</td><td class="note">the other ends soldered to each button&rsquo;s ground terminal</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="mono">8</td></tr>
       <tr><td>Buttons 1 to 8</td><td class="note">not on the hub</td><td class="note">Dupont-style housing on PA0 to PA7 of the expander&rsquo;s PA header; the other ends soldered to each button&rsquo;s signal terminal</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="mono">8</td></tr>

@@ -30,8 +30,9 @@ lives on the server.
   It holds its output high for about 2 s after movement and then ignores
   movement for about 2 s, so the signal is already stretched; the dome
   pokes out through the case's front wall.
-- **Buzzer:** a passive piezo, driven directly from a GPIO by LEDC PWM —
-  distinct pitches, volume by duty cycle. (Passive, not active: an active
+- **Buzzer:** a passive buzzer module (I/O, VCC, GND), its I/O pin driven
+  directly from a GPIO by LEDC PWM and VCC on 3.3V — distinct pitches,
+  volume by duty cycle. (Passive, not active: an active
   buzzer only has its one built-in tone, so sounds could differ only by
   rhythm.)
 - **Power:** 5V USB into the ESP32. Everything else runs from its 3.3V pin.
@@ -55,7 +56,7 @@ ESP32 pin.
 | AM312 PIR | `OUT` | 18 | `D18` |
 | Joystick | `VRx` | 34 | `D34` |
 | Joystick | `VRy` | 35 | `D35` |
-| Piezo buzzer | `+` | 25 | `D25` (its `−` to `GND`) |
+| Buzzer module (passive) | `I/O` | 25 | `D25` (`VCC` to `3V3`, `GND` to `GND`) |
 | MCP23017 | GPA0–GPA7 | — | buttons 1–8, other leg to GND |
 | MCP23017 | GPB0 | — | joystick `SW`, other side is its `GND` |
 | MCP23017 | A0–A2 | — | leave at default (address 0x27: the Waveshare board ships with all three high) |

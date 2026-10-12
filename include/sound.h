@@ -2,7 +2,7 @@
 
 #include <stdint.h>
 
-// The passive piezo on kPinBuzzer: short tunes that say what a button
+// The passive buzzer module on kPinBuzzer: short tunes that say what a button
 // press did (DESIGN.md "Sounds"). The server decides which to play and
 // sends its name on bedside/sound; the sounds this firmware plays on its
 // own are the tick when a hold becomes a long press and the easter egg

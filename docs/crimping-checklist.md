@@ -114,13 +114,16 @@ The module has no silkscreen on either side. Published pinouts agree that the **
 - [ ] hub plug filled black, green, red
 - [ ] device housing filled to match the column above
 
-### Buzzer, hub port A, s5 to s6
+### Buzzer, hub port A, s4 to s6
+The module's pins are I/O, VCC, GND; the hub plug's order is 3V3, D25, GND, because the 3V3 strip (s4) is next to the D25 strip (s5). **Swap the red and brown wires at one end.**
+
 | Wire | Signal | Hub pos | Device |
 |---|---|---|---|
-| brown | D25 (s5) | 1 | + lead |
-| black | GND (s6) | 2 | − lead |
+| red | 3V3 (s4) | 1 | VCC (pos 2) |
+| brown | D25 (s5) | 2 | I/O (pos 1) |
+| black | GND (s6) | 3 | GND (pos 3) |
 
-- Device end is soldered to the two leads (no housing).
+- Device end is a Dupont-style housing on the module's three pins (power it from 3V3, never 5V).
 
 ### Expander, hub port D, s9 to s13
 The stock cable's order is VCC (red), GND (black), SDA (blue), SCL (yellow), INTA (orange), but the hub plug's order is now 3V3, SDA, GND, SCL, INTA, because no two rail strips may be neighbours. **Swap the black and blue wires in the hub-end plug.**

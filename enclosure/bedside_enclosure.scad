@@ -29,7 +29,7 @@ show_parts = false;
 $fn = 64;
 
 /* [Shell] */
-H = 56;          // 40 mm button clearance from the surface, then the hub board's stack and the floor under it
+H = 63;          // 40 mm button clearance from the surface, then 2 mm spare, the tallest part on the hub board (hub_header_h), the board and the floor under it
 W = 160;
 wall = 2.4;
 floor_t = 2.4;
@@ -57,8 +57,14 @@ foot_y_back = 8;       // back feet: in from the back wall
 foot_x_front = 14;     // front feet: outside the hub board, which spans x 28 to 128
 foot_y_front = 20;     // front feet: in from the front wall
 
-/* [Lid screws] */
-boss_r = 4.2;
+/* [Lid fixing] */
+// "magnets": a 6 x 2 mm magnet in a pocket in the top of each corner boss and
+// another in the underside of the lid, facing each other (glue them in with the
+// poles opposed, as for the label blanks). "screws": the original M3 screws.
+// The lid underside prints on the bed, so its pockets open onto it and may want
+// a little support.
+lid_fixing = "magnets"; // [magnets, screws]
+boss_r = 5;       // 4.2 for screws; 5 leaves a 1.9 mm wall round a magnet pocket
 m3_pilot = 2.6;   // self-tapping into the tub's corner bosses
 m3_clear = 3.4;
 m3_head = 6.4;    // countersink diameter
@@ -67,6 +73,7 @@ m3_head = 6.4;    // countersink diameter
 btn_cols = 4;
 btn_rows = 2;
 btn_housing_d = 19;                 // sits flush; the button threads in from below
+btn_cap_d = 20;                     // the button's cap, which overhangs its 15.5 mm hole by 2.25 mm all round
 btn_hole_d = 15.5;                  // the button's threaded barrel; the 19 mm housing sits under the lid and sets the column spacing
 btn_pitch = 26;                     // between columns
 btn_clearance = 40;                 // from the top surface down: body, posts, wire bends
@@ -84,7 +91,7 @@ magnet_t = 2;
 magnet_play = 0.2;                  // added to the pocket's diameter and depth, for the glue
 blank_d = btn_hole_d;
 blank_t = 3;                        // the front 0.8 mm is the face: swap filament there for an icon
-label_gap = 2;                      // from a button hole to a blank, either side
+label_gap = 3.5;                    // from a button hole to a blank, either side: the cap (btn_cap_d) overhangs the hole, so this leaves it 1.25 mm
 row_pitch = btn_hole_d + blank_d + 2 * label_gap;
 
 /* [Gridfinity bins on the lid] */
@@ -100,6 +107,7 @@ gf_rows = 1;
 gf_corner_r = 4;
 gf_step = [2.15, 1.8, 0.7];         // lead-in, straight, chamfer: depth and inset
 gf_rim = 2;                         // flat border round the outer cells
+gf_gap = 7;                         // from the buttons' holes to the front of that border: the caps overhang by 2.25 mm and the border stands 4.65 mm tall
 
 /* [Joystick, KY-023 / HW-504] */
 // The board is screwed to the underside of the lid, components up, with its
@@ -134,11 +142,11 @@ disp_win = [26.54, 12.15];          // the visible area
 disp_win_dx = 0;                    // MEASURE: the glass is often off-centre on the PCB
 disp_thick = 3.1;                   // PCB plus glass
 dupont_len = 14;                    // a female plug on the header
-display_strip = 20;                 // depth in front of the button grid
+display_strip = 18.5;               // depth in front of the button grid: the display's plug and frame need 18.2, so this is as far forward as the buttons go
 
 /* [Electronics bay] */
 bay_depth = 44;
-bay_gap = 5;    // behind the button grid; the box is as deep as when this was 14 and the rows were 9 mm closer, to hold the whole hub board and its four corner guards
+bay_gap = 10;   // behind the button grid: deep enough that the Gridfinity pots sit gf_gap from the buttons with room behind them (it also clears the hub board and its corner guards)
 
 esp = [51.74, 29];                  // ELEGOO 30-pin (15 per side), flipped: pins up
 esp_t = 1.6;
@@ -177,7 +185,7 @@ usb_h = 5.5;                        // from the floor up; 4.5 mm off the first p
 hub = [100, 74];                    // x, y: the whole stripboard, uncut. The circuit only needs about 40 x 40 mm of it: see docs/pinout.html
 hub_t = 1.6;
 hub_standoff = 3;                   // solder tails under the board
-hub_header_h = 7;                   // JST-XH headers above the board: MEASURE
+hub_header_h = 14;                  // the tallest part above the board: the screw-terminal blocks. 2.54 mm ones look about 6 to 10 mm; 14 allows a 5.08 mm KF301 block too. MEASURE
 hub_gap = [0.5, 1.0];               // between the board and its corner guards, each side: along the long edge, along the short edge
 hub_hole = [3, 5.25, 2.5];          // its one mounting hole, back left: edge to the short edge, edge to the long edge, diameter
 hub_post_d = 6;
@@ -215,7 +223,7 @@ btn_back = row_y(btn_rows - 1) + btn_hole_d / 2;
 gf_w = gf_cols * gf_cell;
 gf_d = gf_rows * gf_cell;
 gf_x0 = (W - gf_w) / 2;
-gf_y0 = (btn_back + D - gf_d) / 2;
+gf_y0 = btn_back + gf_gap + gf_rim;
 gf_depth = gf_step[0] + gf_step[1] + gf_step[2];
 gf_top = H + gf_depth;
 
@@ -257,7 +265,7 @@ lux_z = 24;
 assert(foot_h > dht_h - floor_t + 1, "feet are too short for the DHT11 body");
 assert(foot_stud <= floor_t + foot_boss_h, "foot stud is longer than its hole");
 assert(H - floor_t >= btn_clearance, "buttons need more height");
-assert(H - btn_clearance - (hub_z + hub_t + hub_header_h) >= 1.5, "hub board and its headers reach into the button clearance");
+assert(H - btn_clearance - (hub_z + hub_t + hub_header_h) >= 1.5, "hub board and its terminal blocks reach into the button clearance");
 assert(hub_x0 + hub[0] + hub_gap[0] + 1.2 + 0.5 <= pir_x - 8, "hub board and its guards run into the PIR frame");
 assert(hub_y0 + hub[1] + hub_gap[1] + 1.2 <= bay_y0, "hub board's back guards run into the electronics bay");
 assert(foot_x_front + foot_boss_d / 2 + 1 <= hub_x0, "front foot boss is under the hub board");
@@ -286,9 +294,12 @@ assert(len([for (c = [0:btn_cols - 1], r = [0:btn_rows - 1], b = boss_c)
             if (norm([col_x(c), label_y(r)] - b) < blank_d / 2 + m3_head / 2 + 0.5) 1]) == 0,
        "a label blank runs into a lid screw");
 assert(lid_t - (magnet_t + magnet_play) >= 0.6, "the lid is too thin under a magnet pocket");
+assert(boss_r - (magnet_d + magnet_play) / 2 >= 1.5 || lid_fixing == "screws", "the corner bosses are too thin round the magnet pockets");
 assert(blank_t - (magnet_t + magnet_play) >= 0.6, "a blank is too thin over its magnet pocket");
 assert(blank_d <= btn_pitch - 4, "blanks are too wide for the column spacing");
-assert(gf_y0 - btn_back >= 4, "Gridfinity area is too close to the buttons");
+assert(gf_y0 - gf_rim - btn_back >= (btn_cap_d - btn_hole_d) / 2 + 3, "the Gridfinity border is too close to the button caps");
+assert(btn_hole_d / 2 + label_gap >= btn_cap_d / 2 + 1, "a button cap would touch its label blank");
+assert(D - (gf_y0 + gf_d + gf_rim) >= 4, "the Gridfinity border runs too close to the back edge of the lid");
 assert(len([for (b = boss_c) if (b[0] + m3_head / 2 + 1 > gf_x0 - gf_rim && b[0] - m3_head / 2 - 1 < gf_x0 + gf_w + gf_rim && b[1] + m3_head / 2 + 1 > gf_y0 - gf_rim && b[1] - m3_head / 2 - 1 < gf_y0 + gf_d + gf_rim) 1]) == 0,
        "a lid screw is under the Gridfinity area");
 
@@ -478,7 +489,10 @@ module tub_cutouts() {
     for (p = feet) translate([p[0], p[1], 0]) foot_thread_hole();
 
     // Pilot holes for the lid screws.
-    for (c = boss_c) translate([c[0], c[1], inner_top - 14]) cylinder(d = m3_pilot, h = 15);
+    if (lid_fixing == "screws")
+        for (c = boss_c) translate([c[0], c[1], inner_top - 14]) cylinder(d = m3_pilot, h = 15);
+    else
+        for (c = boss_c) translate([c[0], c[1], inner_top - magnet_t - magnet_play]) cylinder(d = magnet_d + magnet_play, h = magnet_t + magnet_play + 1);
 }
 
 // ---------------------------------------------------------------- the feet
@@ -553,8 +567,13 @@ module lid() {
         translate([0, 0, inner_top - 1]) linear_extrude(lid_t + 2) stick_cutout2d();
         for (p = stick_holes) translate([p[0], p[1], inner_top - 1]) cylinder(d = stick_screw_d, h = lid_t + 2);
         for (c = boss_c) {
-            translate([c[0], c[1], inner_top - 1]) cylinder(d = m3_clear, h = lid_t + 2);
-            translate([c[0], c[1], H - 1.5]) cylinder(h = 1.51, d1 = m3_clear, d2 = m3_head);
+            if (lid_fixing == "screws") {
+                translate([c[0], c[1], inner_top - 1]) cylinder(d = m3_clear, h = lid_t + 2);
+                translate([c[0], c[1], H - 1.5]) cylinder(h = 1.51, d1 = m3_clear, d2 = m3_head);
+            } else {
+                // magnet pocket in the underside; the top keeps lid_t minus the pocket's depth
+                translate([c[0], c[1], inner_top - 1]) cylinder(d = magnet_d + magnet_play, h = 1 + magnet_t + magnet_play);
+            }
         }
     }
 }

@@ -27,8 +27,9 @@ constexpr uint8_t kPinDht = 4;
 
 // AM312 mini PIR motion sensor: one output, 3.3V, high while it sees motion.
 // 18 is a plain input-capable GPIO with no boot-strap role. The firmware
-// turns on its internal pull-down, so a disconnected sensor reads as "no
-// motion". Power the module from 3.3V, like everything else.
+// leaves it a plain input: the module's output is weak, and the internal
+// pull-down held it at about 1.6V, so motion never registered. Power the
+// module from 3.3V, like everything else.
 constexpr uint8_t kPinPir = 18;
 
 // KY-023 joystick axes. These have to be ADC1 pins (GPIO32-39): ADC2 is

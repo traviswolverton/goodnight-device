@@ -86,8 +86,9 @@ Why these pins:
 - **25 for the buzzer:** a plain output with no boot-strap role (it's
   also DAC1, unused here).
 - **18 for the PIR:** a plain input with no boot-strap role. The firmware
-  turns on its internal pull-down, so with the sensor unplugged the pin
-  reads "no motion" instead of floating.
+  leaves the internal pull-down off: the AM312's output is weak and the
+  pull-down held it at about 1.6 V (neither high nor low), so motion was
+  never seen. With the sensor unplugged the pin floats.
 - Free for later: 13, 14, 16, 17, 19, 23, 26, 32, 33.
 
 ```mermaid

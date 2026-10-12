@@ -111,9 +111,12 @@ void sensorsBegin() {
   if (!lightPresent_) {
     Serial.println("[sensors] no BH1750 at 0x23 -- screen stays at full brightness");
   }
-  // The AM312 drives its output both ways; the pull-down only matters when
-  // it isn't connected, so that reads as "no motion" instead of floating.
-  pinMode(kPinPir, INPUT_PULLDOWN);
+  // A plain input, with no pull-down: the AM312's output is weak, and the
+  // ESP32's internal pull-down (about 45k) held it at about 1.6 V, which is
+  // neither a high nor a low, so motion was never seen. Measured on the bench
+  // with a meter and by watching the pin. A PIR that isn't connected would
+  // float, but it is always fitted.
+  pinMode(kPinPir, INPUT);
   dht_.begin();
   // First DHT read right away instead of 10s after boot.
   lastDhtMs_ = millis() - kDhtIntervalMs;

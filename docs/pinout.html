@@ -489,7 +489,7 @@
       <tr class="group-start"><td>DHT11 (HW-507)</td><td class="mono">DAT / S</td><td class="mono gpio">4</td><td class="mono">D4</td><td class="note">the board carries its own pull-up</td></tr>
       <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the board accepts 3.3–5V, but the data line swings to its supply</td></tr>
       <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
-      <tr class="group-start"><td>PIR (AM312)</td><td class="mono">OUT</td><td class="mono gpio">18</td><td class="mono">D18</td><td class="note">high while it sees motion; internal pull-down on, so unplugged reads as no motion</td></tr>
+      <tr class="group-start"><td>PIR (AM312)</td><td class="mono">OUT</td><td class="mono gpio">18</td><td class="mono">D18</td><td class="note">high while it sees motion; no pull-down (the module&rsquo;s output is too weak for one: about 1.6 V with it on), so an unplugged pin floats</td></tr>
       <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the module takes 2.7–12V, but power it from 3V3 like everything else</td></tr>
       <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
       <tr class="group-start"><td>Joystick (KY-023)</td><td class="mono">VRx</td><td class="mono gpio">34</td><td class="mono">D34</td><td class="note">ADC1, input-only, no internal pull: floats if unplugged</td></tr>

@@ -73,8 +73,8 @@ m3_head = 6.4;    // countersink diameter
 btn_cols = 4;
 btn_rows = 2;
 btn_housing_d = 19;                 // sits flush; the button threads in from below
-btn_cap_d = 20;                     // the button's cap, which overhangs its 15.5 mm hole by 2.25 mm all round
-btn_hole_d = 15.5;                  // the button's threaded barrel; the 19 mm housing sits under the lid and sets the column spacing
+btn_cap_d = 20;                     // the button's cap, which overhangs its 16.5 mm hole by 1.75 mm all round
+btn_hole_d = 16.5;                  // the button's threaded barrel, 1 mm up from the 15.5 that was a tad tight; the 19 mm housing sits under the lid and sets the column spacing
 btn_pitch = 26;                     // between columns
 btn_clearance = 40;                 // from the top surface down: body, posts, wire bends
 margin_x = 10;
@@ -89,7 +89,7 @@ margin_x = 10;
 magnet_d = 6;
 magnet_t = 2;
 magnet_play = 0.2;                  // added to the pocket's diameter and depth, for the glue
-blank_d = btn_hole_d;
+blank_d = 15.5;                    // the blanks stay 15.5 mm when the holes grow to 16.5, so ones already printed still fit
 blank_t = 3;                        // the front 0.8 mm is the face: swap filament there for an icon
 label_gap = 3.5;                    // from a button hole to a blank, either side: the cap (btn_cap_d) overhangs the hole, so this leaves it 1.25 mm
 row_pitch = btn_hole_d + blank_d + 2 * label_gap;
@@ -107,7 +107,7 @@ gf_rows = 1;
 gf_corner_r = 4;
 gf_step = [2.15, 1.8, 0.7];         // lead-in, straight, chamfer: depth and inset
 gf_rim = 2;                         // flat border round the outer cells
-gf_gap = 7;                         // from the buttons' holes to the front of that border: the caps overhang by 2.25 mm and the border stands 4.65 mm tall
+gf_gap = 7;                         // from the buttons' holes to the front of that border: the caps overhang by 1.75 mm and the border stands 4.65 mm tall
 
 /* [Joystick, KY-023 / HW-504] */
 // The board is screwed to the underside of the lid, components up, with its

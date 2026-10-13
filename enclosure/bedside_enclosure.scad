@@ -265,7 +265,7 @@ dht_y = 112;
 lux_y = 98;
 lux_z = 24;
 hub_x0 = exp_x0 + exp[0] + exp_cage_gap + 1.2 + exp_plug_gap + hub_gap[0] + 1.2;   // past the expander's sideways plug
-hub_hole_x = hub_x0 + hub[0] - hub_hole[1] - hub_hole[2] / 2;      // back right, after the board was turned
+hub_hole_x = hub_x0 + hub_hole[1] + hub_hole[2] / 2;                // back left, after the board was turned
 hub_hole_y = hub_y0 + hub[1] - hub_hole[0] - hub_hole[2] / 2;
 
 assert(foot_h > dht_h - floor_t + 1, "feet are too short for the DHT11 body");
@@ -407,12 +407,12 @@ module stud(x, y, post_d, stud_d, post_h, stud_h) {
 module hub_cage() {
     // A guard (an L) at each of the four corners locates the board, and a pad
     // under each corner lifts it so its solder tails clear the floor. The back
-    // right corner, which has the board's mounting hole, takes a post with a
+    // left corner, which has the board's mounting hole, takes a post with a
     // stud through the hole instead of a pad. Hot glue does the rest.
     for (sx = [-1, 1], sy = [-1, 1]) {
         bx = hub_x0 + (sx > 0 ? hub[0] : 0);
         by = hub_y0 + (sy > 0 ? hub[1] : 0);
-        if (!(sx > 0 && sy > 0)) span([bx, by, floor_t - 0.01], [bx - sx * 5, by - sy * 5, hub_z]);
+        if (!(sx < 0 && sy > 0)) span([bx, by, floor_t - 0.01], [bx - sx * 5, by - sy * 5, hub_z]);
         corner_l(bx + sx * hub_gap[0], by + sy * hub_gap[1], sx, sy, floor_t - 0.01, hub_z + hub_t + 2);
     }
     stud(hub_hole_x, hub_hole_y, hub_post_d, hub_stud_d, hub_standoff, hub_standoff + hub_t + 1);
@@ -746,11 +746,11 @@ module test_piece() {
 // Everything above the floor keeps its true height above it.
 fit_floor_t = 0.3;
 
-// The hub board's back-right corner, to check the anchor stud and the corner
+// The hub board's back-left corner, to check the anchor stud and the corner
 // guard before printing the whole tub.
 module hub_test_piece() {
     dz = floor_t - fit_floor_t;
-    x0 = hub_x0 + hub[0] + 6 - 46;
+    x0 = hub_x0 - 6;
     y1 = hub_y0 + hub[1] + 3;
     translate([x0, y1 - 46, 0]) cube([46, 46, fit_floor_t]);
     translate([0, 0, -dz]) intersection() {

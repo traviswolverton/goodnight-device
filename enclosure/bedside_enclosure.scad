@@ -1,6 +1,6 @@
 // Bedside dashboard enclosure: a rounded box with the display on the front,
 // eight buttons and the joystick on a removable lid, and the electronics
-// under it. The base is Gridfinity compatible: 4 x 3 cells of 42 mm, each
+// under it. The base is Gridfinity compatible: 4 x 2 cells of 42 mm, each
 // with the standard foot, so the box sits in a baseplate or on a desk.
 //
 // Axes: x runs left to right, y runs front to back (the display is on the
@@ -28,13 +28,13 @@ show_parts = false;
 $fn = 64;
 
 /* [Gridfinity base] */
-// The box stands on a 4 x 3 block of Gridfinity feet: 42 mm cells, each foot
+// The box stands on a 4 x 2 block of Gridfinity feet: 42 mm cells, each foot
 // 0.5 mm smaller than its cell, with the standard profile (gridfinity.xyz):
 // from the bottom a 0.8 mm 45 degree chamfer, 1.8 mm straight, then a 2.15 mm
 // 45 degree chamfer, 4.75 mm in all. It prints without support.
 base_pitch = 42;
 base_cols = 4;
-base_rows = 3;
+base_rows = 2;
 base_clear = 0.5;
 base_chamfers = [0.8, 1.8, 2.15];
 base_corner_r = 3.75;               // each foot's corner radius at the top
@@ -158,7 +158,7 @@ usb_h = 5.5;                        // from the floor up; 4.5 mm off the first p
 
 /* [Hub board: stripboard with JST-XH headers] */
 // Sits on the floor, partly under the button grid, below the buttons' clearance.
-hub = [34, 74.5];                   // x, y: the stripboard cut to 10 strips and turned 90 degrees
+hub = [24, 55];                     // x, y: the stripboard cut down to 24 x 55 mm and turned 90 degrees
 hub_t = 1.6;
 hub_standoff = 3;                   // solder tails under the board
 hub_header_h = 14;                  // the tallest part above the board: the screw-terminal blocks. 2.54 mm ones look about 6 to 10 mm; 14 allows a 5.08 mm KF301 block too. MEASURE
@@ -181,7 +181,7 @@ pir_plug_depth = 20;                // from the front wall: board, pins and a Du
 inner_top = H - lid_t;              // tub rim and the lid's underside
 grid_w = (btn_cols - 1) * btn_pitch + btn_housing_d;
 grid_d = (btn_rows - 1) * row_pitch + btn_housing_d;
-D = base_rows * base_pitch - base_clear;       // 125.5
+D = base_rows * base_pitch - base_clear;       // 83.5
 
 function col_x(c) = margin_x + btn_housing_d / 2 + c * btn_pitch;
 function row_y(r) = wall + display_strip + btn_housing_d / 2 + r * row_pitch;
@@ -204,7 +204,7 @@ stick_holes = [for (s = [-1, 1]) each [
     stick_pt(stick_u0 + stick_hole_back, stick_wc + s * stick_hole_span_w / 2),
     stick_pt(stick_u0 + stick_hole_back + stick_hole_span_u, stick_wc + s * stick_hole_span_w / 2)]];
 
-hub_y0 = 30;                        // clear of the PIR's plug (to y 22)
+hub_y0 = 14;                        // about centred in the depth; clear of the PIR, which is further right
 hub_z = floor_t + hub_standoff;     // underside of the board
 
 disp_cx = W / 2;
@@ -212,22 +212,22 @@ disp_cz = (floor_t + inner_top) / 2;
 pad_t = disp_thick + 0.1;           // the display's frame, in from the front wall
 
 // Left to right under the lid: the ESP32 at the left wall with its USB slot in
-// the middle of that wall, centred on the back row of buttons so that its two
+// the front of that wall, centred on the front row of buttons so that its two
 // plug rows straddle the buttons' bodies; the expander beside it, turned so its
 // PA header (pins bent flat, plug going on sideways) faces the strip board; then
 // the strip board. The buzzer and the light sensor sit on the left wall, in
-// front of and behind the ESP32. The DHT11 is on the right wall.
+// behind the ESP32, one above the other. The DHT11 is on the right wall.
 esp_x0 = wall + 3;
-esp_y0 = row_y(btn_rows - 1) - esp[1] / 2;
+esp_y0 = row_y(0) - esp[1] / 2;          // centred on the front row of buttons
 esp_z = floor_t + esp_standoff;
 exp_x0 = esp_x0 + esp[0] + 5;
-exp_y0 = row_y(btn_rows - 1) - exp[1] / 2;
+exp_y0 = row_y(0) - exp[1] / 2;
 exp_y1 = exp_y0 + exp[1];
-buz_y = 42;
+buz_y = 56;                         // behind the ESP32, on the left wall; the light sensor is above it on the same wall
 buz_cz = floor_t + 1.2 + buz_d / 2;
-dht_y = 75;                         // on the right wall, as far from the ESP32 as it gets
+dht_y = 62;                         // on the right wall, as far from the ESP32 as it gets, clear of the back magnet boss
 dht_z = floor_t + 21;
-lux_y = 98;
+lux_y = 56;
 lux_z = floor_t + 21.6;             // 24 mm above the old floor
 hub_x0 = exp_x0 + exp[0] + exp_cage_gap + 1.2 + exp_plug_gap + hub_gap[0] + 1.2;   // past the expander's sideways plug
 hub_hole_x = hub_x0 + hub_hole[1] + hub_hole[2] / 2;                // back left, after the board was turned
@@ -246,7 +246,10 @@ assert(pad_t + dupont_len + 1 <= display_strip, "display plug runs into the butt
 assert(esp_x0 + esp[0] + 1.5 < exp_x0 - exp_cage_gap - 1.2, "ESP32 cage overlaps the expander cage");
 assert(exp_x0 + exp[0] + exp_cage_gap + 1.2 + exp_plug_gap <= hub_x0 - hub_gap[0] - 1.2 + 0.01, "the expander's sideways plug runs into the hub board");
 assert(norm(pir_pcb) > pir_hole_d, "PIR board would fall through its hole");
-assert(buz_y + buz_d / 2 + 1.6 < esp_y0 - 1.5 - 1, "the buzzer cradle runs into the ESP32's cage");
+assert(buz_y - buz_d / 2 - 1.6 > esp_y0 + esp[1] + 1.5 + 1, "the buzzer cradle runs into the ESP32's cage");
+assert(max(buz_y + buz_d / 2 + 1.6, lux_y + lux_board[0] / 2) < D - corner_r - boss_r - 1, "the buzzer or the light sensor runs into the back left magnet boss");
+assert(exp_y1 + 1.5 <= D - wall && esp_y0 - 1.5 >= wall && exp_y0 - 1.5 >= wall, "the ESP32 or expander cage is outside the box");
+assert(dht_y + 6.8 < D - corner_r - boss_r, "the DHT11 vent runs into the back right magnet boss");
 assert(lux_y - lux_board[0] / 2 > esp_y0 + esp[1] / 2 + usb_w / 2 + 2, "the light sensor is over the USB slot");
 assert(stick_x + stick_board[0] / 2 <= W - wall, "joystick board is past the right wall");
 assert(stick_hole_back >= stick_screw_d / 2 - 0.5

@@ -1,6 +1,7 @@
 // Bedside dashboard enclosure: a rounded box with the display on the front,
-// eight buttons and the joystick on a removable lid, and the electronics in a
-// bay at the back.
+// eight buttons and the joystick on a removable lid, and the electronics
+// under it. The base is Gridfinity compatible: 4 x 3 cells of 42 mm, each
+// with the standard foot, so the box sits in a baseplate or on a desk.
 //
 // Axes: x runs left to right, y runs front to back (the display is on the
 // y = 0 face), z is up. The origin is the front-left corner of the tub's
@@ -11,51 +12,43 @@
 //
 //   part = "assembly"   tub and lid in place (turn on show_parts to see the
 //                       boards and the clearance they need)
-//   part = "tub"        the base, printed feet down
+//   part = "tub"        the tub, printed feet down
 //   part = "lid"        the lid, printed right side up (nothing hangs below it)
 //   part = "test"       the ESP32 and expander mounts, for a quick test print
 //   part = "fit"        the ESP32, expander and hub board cages on one floor, in place, for a test fit
 //   part = "hubtest"    the hub board's back-left corner: anchor stud and a guard
-//   part = "foot"       one threaded foot, as printed (you need four)
-//   part = "feet"       four feet in a row
 //   part = "sticktest"  just the lid around the joystick cutout, for a test print of the board's fit
 //   part = "risers"     four spacers for the joystick's screws
 //   part = "blank"      one round label blank, face down (magnet pocket up)
 //   part = "blanks"     eight blanks, one for each button
 //   part = "print"      tub and lid laid out together (too wide for most beds)
 
-part = "assembly"; // [assembly, tub, lid, sticktest, risers, test, fit, hubtest, foot, feet, blank, blanks, print]
+part = "assembly"; // [assembly, tub, lid, sticktest, risers, test, fit, hubtest, blank, blanks, print]
 show_parts = false;
 $fn = 64;
 
+/* [Gridfinity base] */
+// The box stands on a 4 x 3 block of Gridfinity feet: 42 mm cells, each foot
+// 0.5 mm smaller than its cell, with the standard profile (gridfinity.xyz):
+// from the bottom a 0.8 mm 45 degree chamfer, 1.8 mm straight, then a 2.15 mm
+// 45 degree chamfer, 4.75 mm in all. It prints without support.
+base_pitch = 42;
+base_cols = 4;
+base_rows = 3;
+base_clear = 0.5;
+base_chamfers = [0.8, 1.8, 2.15];
+base_corner_r = 3.75;               // each foot's corner radius at the top
+base_h = base_chamfers[0] + base_chamfers[1] + base_chamfers[2];
+floor_plate = 2.4;                  // the floor on top of the feet
+
 /* [Shell] */
-H = 63;          // 40 mm button clearance from the surface, then 2 mm spare, the tallest part on the hub board (hub_header_h), the board and the floor under it
-W = 160;
+// z = 0 is the bottom of the feet.
+H = 63;          // the top of the lid: 9 Gridfinity units. The buttons hang btn_clearance below it; under them, 2.25 mm spare, the tallest part on the hub board (hub_header_h), the board, and the floor
+W = base_cols * base_pitch - base_clear;       // 167.5
 wall = 2.4;
-floor_t = 2.4;
+floor_t = base_h + floor_plate;     // the top of the floor, 7.15
 lid_t = 3;
 corner_r = 8;    // vertical corners
-
-/* [Feet] */
-// The DHT11 body pokes (dht_h - floor_t) = 3.8 mm out of the floor, so the feet
-// stand 6.5 mm proud. Each is a printed screw that threads into a boss on the
-// inside of the floor; nothing hangs below the floor, so the tub prints flat.
-// The thread is coarse with 45 degree flanks, so both halves print without
-// support. thread_play is the radial gap: raise it if the feet bind, lower it
-// if they wobble.
-thread_d = 8;
-thread_pitch = 2.5;
-thread_depth = 0.9;
-thread_play = 0.3;
-foot_h = 6.5;          // below the floor
-foot_d = 16;
-foot_stud = 7;         // threaded length, into the 8.4 mm of floor and boss
-foot_boss_d = 14;
-foot_boss_h = 6;       // above the floor
-foot_x = 10;           // back feet: in from each side wall
-foot_y_back = 35;      // back feet: in from the back wall, clear of the corner magnet bosses and the strip board
-foot_x_front = 14;     // front feet: outside the hub board, which spans x 28 to 128
-foot_y_front = 20;     // front feet: in from the front wall
 
 /* [Lid fixing] */
 // "magnets": a 6 x 2 mm magnet in a pocket in the top of each corner boss and
@@ -76,8 +69,8 @@ btn_housing_d = 19;                 // sits flush; the button threads in from be
 btn_cap_d = 20;                     // the button's cap, which overhangs its 16.5 mm hole by 1.75 mm all round
 btn_hole_d = 16.5;                  // the button's threaded barrel, 1 mm up from the 15.5 that was a tad tight; the 19 mm housing sits under the lid and sets the column spacing
 btn_pitch = 26;                     // between columns
-btn_clearance = 40;                 // from the top surface down: body, posts, wire bends
-margin_x = 10;
+btn_clearance = 35;                 // from the top surface down: body, posts, wire bends (measured, about 35)
+margin_x = 14;                      // the left edge to the first button housing; the grid and joystick are centred in the 167.5 mm lid
 
 /* [Icon labels] */
 // A round magnet pocket in the lid in front of each button (below it, looking
@@ -93,21 +86,6 @@ blank_d = 15.5;                    // the blanks stay 15.5 mm when the holes gro
 blank_t = 3;                        // the front 0.8 mm is the face: swap filament there for an icon
 label_gap = 3.5;                    // from a button hole to a blank, either side: the cap (btn_cap_d) overhangs the hole, so this leaves it 1.25 mm
 row_pitch = btn_hole_d + blank_d + 2 * label_gap;
-
-/* [Gridfinity bins on the lid] */
-// A raised baseplate behind the buttons, in whole 42 mm cells, so Gridfinity
-// bins drop straight in. The profile is the community spec's (gridfinity.xyz):
-// from the top, a 2.15 mm 45 degree lead-in, 1.8 mm straight, then a 0.7 mm 45
-// degree chamfer, 4.65 mm in all. The pockets go down to the lid's top face.
-// Every wall leans outward going up, so it prints without support. gf_rows = 2
-// needs a deeper box.
-gf_cell = 42;
-gf_cols = 3;
-gf_rows = 1;
-gf_corner_r = 4;
-gf_step = [2.15, 1.8, 0.7];         // lead-in, straight, chamfer: depth and inset
-gf_rim = 2;                         // flat border round the outer cells
-gf_gap = 7;                         // from the buttons' holes to the front of that border: the caps overhang by 1.75 mm and the border stands 4.65 mm tall
 
 /* [Joystick, KY-023 / HW-504] */
 // The board is screwed to the underside of the lid, components up, with its
@@ -144,10 +122,7 @@ disp_thick = 3.1;                   // PCB plus glass
 dupont_len = 14;                    // a female plug on the header
 display_strip = 18.5;               // depth in front of the button grid: the display's plug and frame need 18.2, so this is as far forward as the buttons go
 
-/* [Electronics bay] */
-bay_depth = 44;
-bay_gap = 10;   // behind the button grid: deep enough that the Gridfinity pots sit gf_gap from the buttons with room behind them (it also clears the hub board and its corner guards)
-
+/* [Boards] */
 esp = [51.74, 29];                  // ELEGOO 30-pin (15 per side), flipped: pins up
 esp_t = 1.6;
 esp_standoff = 4.5;                 // the module and USB connector hang below it
@@ -172,18 +147,18 @@ buz_d = 11.72;
 buz_h = 8.5;
 buz_port_d = 3.5;
 
-dht = [15.84, 12.82];               // sensor body; it passes through the floor
-dht_h = 6.2;
+dht = [15.84, 12.82];               // sensor body, 15.84 high and 12.82 wide when it stands against the wall
+dht_h = 6.2;                        // its depth: it sits inside the right wall, behind vent slots, so nothing sticks out of the box
 
-lux_board = [14, 19];               // BH1750 board, on the right wall
+lux_board = [14, 19];               // BH1750 board, on the left wall
 lux_win_d = 5;                      // the sensor itself is about 3 x 3
 
 usb_w = 14;
 usb_h = 5.5;                        // from the floor up; 4.5 mm off the first print's 10, which stood too tall
 
 /* [Hub board: stripboard with JST-XH headers] */
-// Sits on the floor under the button grid, below the 40 mm button clearance.
-hub = [34, 100];                    // x, y: the whole stripboard, uncut. The circuit only needs about 40 x 40 mm of it: see docs/pinout.html
+// Sits on the floor, partly under the button grid, below the buttons' clearance.
+hub = [34, 74.5];                   // x, y: the stripboard cut to 10 strips and turned 90 degrees
 hub_t = 1.6;
 hub_standoff = 3;                   // solder tails under the board
 hub_header_h = 14;                  // the tallest part above the board: the screw-terminal blocks. 2.54 mm ones look about 6 to 10 mm; 14 allows a 5.08 mm KF301 block too. MEASURE
@@ -199,34 +174,24 @@ pir_pcb = [10, 8];                  // x, z
 pir_dome_d = 12;
 pir_hole_d = pir_dome_d + 0.5;
 pir_x = W - 22;
-pir_z = 14;
+pir_z = floor_t + 11.6;               // 14 mm above the old floor
 pir_plug_depth = 20;                // from the front wall: board, pins and a Dupont plug
 
 /* [Derived] */
 inner_top = H - lid_t;              // tub rim and the lid's underside
 grid_w = (btn_cols - 1) * btn_pitch + btn_housing_d;
 grid_d = (btn_rows - 1) * row_pitch + btn_housing_d;
-D = wall + display_strip + grid_d + bay_gap + bay_depth + wall;
+D = base_rows * base_pitch - base_clear;       // 125.5
 
 function col_x(c) = margin_x + btn_housing_d / 2 + c * btn_pitch;
 function row_y(r) = wall + display_strip + btn_housing_d / 2 + r * row_pitch;
 // Centre of a button's magnet pocket and blank, in front of it, halfway to the next hole.
 function label_y(r) = row_y(r) - btn_hole_d / 2 - label_gap - blank_d / 2;
 
-bay_y0 = wall + display_strip + grid_d + bay_gap;
-bay_y1 = D - wall;
-
 stick_x = margin_x + grid_w + stick_gap_x + stick_board[0] / 2;
 stick_y = (row_y(0) + row_y(btn_rows - 1)) / 2;
 
-// The Gridfinity area, centred in the lid's width and in the band behind the buttons.
 btn_back = row_y(btn_rows - 1) + btn_hole_d / 2;
-gf_w = gf_cols * gf_cell;
-gf_d = gf_rows * gf_cell;
-gf_x0 = (W - gf_w) / 2;
-gf_y0 = btn_back + gf_gap + gf_rim;
-gf_depth = gf_step[0] + gf_step[1] + gf_step[2];
-gf_top = H + gf_depth;
 
 // A point in the board's frame, in the model's: u along the board, v along the pin row.
 // Seen from above, the pin row points up the box (stick_pin_dir = 1) or down it.
@@ -239,7 +204,7 @@ stick_holes = [for (s = [-1, 1]) each [
     stick_pt(stick_u0 + stick_hole_back, stick_wc + s * stick_hole_span_w / 2),
     stick_pt(stick_u0 + stick_hole_back + stick_hole_span_u, stick_wc + s * stick_hole_span_w / 2)]];
 
-hub_y0 = 30;                        // clear of the front-right foot (to y 27) and the PIR's plug (to y 22)
+hub_y0 = 30;                        // clear of the PIR's plug (to y 22)
 hub_z = floor_t + hub_standoff;     // underside of the board
 
 disp_cx = W / 2;
@@ -251,7 +216,7 @@ pad_t = disp_thick + 0.1;           // the display's frame, in from the front wa
 // plug rows straddle the buttons' bodies; the expander beside it, turned so its
 // PA header (pins bent flat, plug going on sideways) faces the strip board; then
 // the strip board. The buzzer and the light sensor sit on the left wall, in
-// front of and behind the ESP32. The DHT11 goes through the floor behind.
+// front of and behind the ESP32. The DHT11 is on the right wall.
 esp_x0 = wall + 3;
 esp_y0 = row_y(btn_rows - 1) - esp[1] / 2;
 esp_z = floor_t + esp_standoff;
@@ -260,35 +225,29 @@ exp_y0 = row_y(btn_rows - 1) - exp[1] / 2;
 exp_y1 = exp_y0 + exp[1];
 buz_y = 42;
 buz_cz = floor_t + 1.2 + buz_d / 2;
-dht_x = 30;
-dht_y = 112;
+dht_y = 75;                         // on the right wall, as far from the ESP32 as it gets
+dht_z = floor_t + 21;
 lux_y = 98;
-lux_z = 24;
+lux_z = floor_t + 21.6;             // 24 mm above the old floor
 hub_x0 = exp_x0 + exp[0] + exp_cage_gap + 1.2 + exp_plug_gap + hub_gap[0] + 1.2;   // past the expander's sideways plug
 hub_hole_x = hub_x0 + hub_hole[1] + hub_hole[2] / 2;                // back left, after the board was turned
 hub_hole_y = hub_y0 + hub[1] - hub_hole[0] - hub_hole[2] / 2;
 
-assert(foot_h > dht_h - floor_t + 1, "feet are too short for the DHT11 body");
-assert(foot_stud <= floor_t + foot_boss_h, "foot stud is longer than its hole");
 assert(H - floor_t >= btn_clearance, "buttons need more height");
+assert(abs(H / 7 - round(H / 7)) < 0.001, "the box is not a whole number of Gridfinity units tall");
 assert(H - btn_clearance - (hub_z + hub_t + hub_header_h) >= 1.5, "hub board and its terminal blocks reach into the button clearance");
 assert(hub_y0 - hub_gap[1] - 1.2 >= wall + pir_plug_depth + 1 || hub_x0 + hub[0] + hub_gap[0] + 1.2 + 0.5 <= pir_x - 8, "hub board and its guards run into the PIR frame");
 assert(hub_y0 + hub[1] + hub_gap[1] + 1.2 <= D - wall, "hub board's back guards run into the back wall");
 assert(hub_x0 + hub[0] + hub_gap[0] + 1.2 <= W - wall, "hub board and its guards run into the right wall");
-assert(hub_y0 - hub_gap[1] - 1.2 >= foot_y_front + foot_boss_d / 2 || hub_x0 + hub[0] + hub_gap[0] + 1.2 <= W - foot_x_front - foot_boss_d / 2, "the front right foot boss is under the hub board");
-assert(hub_x0 + hub[0] + hub_gap[0] + 1.2 <= W - foot_x - foot_boss_d / 2, "the back right foot boss is under the hub board");
 assert(esp[1] - 8.44 >= btn_housing_d + 0.5, "the ESP32's plug rows are too close together to straddle a button row");
-assert(foot_x_front + foot_boss_d / 2 + 1 <= hub_x0, "front foot boss is under the hub board");
 assert(inner_top - (floor_t + exp_standoff + exp_t) >= exp_clearance, "expander wires need more height");
 assert(inner_top - (esp_z + esp_t) >= esp_plug_height, "ESP32 plugs need more height");
 assert(pad_t + dupont_len + 1 <= display_strip, "display plug runs into the button zone");
 assert(esp_x0 + esp[0] + 1.5 < exp_x0 - exp_cage_gap - 1.2, "ESP32 cage overlaps the expander cage");
 assert(exp_x0 + exp[0] + exp_cage_gap + 1.2 + exp_plug_gap <= hub_x0 - hub_gap[0] - 1.2 + 0.01, "the expander's sideways plug runs into the hub board");
 assert(norm(pir_pcb) > pir_hole_d, "PIR board would fall through its hole");
-assert(buz_y - buz_d / 2 - 1.6 > foot_y_front + foot_boss_d / 2 + 1, "the buzzer cradle runs into the front foot");
 assert(buz_y + buz_d / 2 + 1.6 < esp_y0 - 1.5 - 1, "the buzzer cradle runs into the ESP32's cage");
 assert(lux_y - lux_board[0] / 2 > esp_y0 + esp[1] / 2 + usb_w / 2 + 2, "the light sensor is over the USB slot");
-assert(dht_x - dht[0] / 2 > foot_x + foot_boss_d / 2 + 2 || dht_y - dht[1] / 2 > D - foot_y_back + foot_boss_d / 2, "the DHT11 hole runs into a foot boss");
 assert(stick_x + stick_board[0] / 2 <= W - wall, "joystick board is past the right wall");
 assert(stick_hole_back >= stick_screw_d / 2 - 0.5
        && stick_hole_back + stick_hole_span_u + stick_screw_d / 2 + 0.5 <= stick_board[1]
@@ -309,11 +268,7 @@ assert(lid_t - (magnet_t + magnet_play) >= 0.6, "the lid is too thin under a mag
 assert(boss_r - (magnet_d + magnet_play) / 2 >= 1.5 || lid_fixing == "screws", "the corner bosses are too thin round the magnet pockets");
 assert(blank_t - (magnet_t + magnet_play) >= 0.6, "a blank is too thin over its magnet pocket");
 assert(blank_d <= btn_pitch - 4, "blanks are too wide for the column spacing");
-assert(gf_y0 - gf_rim - btn_back >= (btn_cap_d - btn_hole_d) / 2 + 3, "the Gridfinity border is too close to the button caps");
 assert(btn_hole_d / 2 + label_gap >= btn_cap_d / 2 + 1, "a button cap would touch its label blank");
-assert(D - (gf_y0 + gf_d + gf_rim) >= 4, "the Gridfinity border runs too close to the back edge of the lid");
-assert(len([for (b = boss_c) if (b[0] + m3_head / 2 + 1 > gf_x0 - gf_rim && b[0] - m3_head / 2 - 1 < gf_x0 + gf_w + gf_rim && b[1] + m3_head / 2 + 1 > gf_y0 - gf_rim && b[1] - m3_head / 2 - 1 < gf_y0 + gf_d + gf_rim) 1]) == 0,
-       "a lid screw is under the Gridfinity area");
 
 // ---------------------------------------------------------------- helpers
 
@@ -342,11 +297,33 @@ module corner_l(cx, cy, sx, sy, z0, z1, leg = 6, t = 1.2, legx = 6) {
 
 // ---------------------------------------------------------------- the tub
 
+// One Gridfinity foot, in cell (i, j): hulls of four outlines, from the bottom
+// 35.6 mm square up to the 41.5 mm square at base_h, where the box starts.
+function base_inset(k) = base_clear / 2 + (k == 0 ? base_chamfers[0] + base_chamfers[2] : k == 1 ? base_chamfers[2] : k == 2 ? base_chamfers[2] : 0);
+module base_slab(i, j, inset, z) {
+    translate([i * base_pitch - base_clear / 2 + inset, j * base_pitch - base_clear / 2 + inset, z])
+        linear_extrude(0.001)
+            rrect2d(base_pitch - 2 * inset, base_pitch - 2 * inset, max(0.01, base_corner_r - (inset - base_clear / 2)));
+}
+module base_foot(i, j) {
+    z1 = base_chamfers[0];
+    z2 = z1 + base_chamfers[1];
+    hull() { base_slab(i, j, base_inset(0), 0);  base_slab(i, j, base_inset(1), z1); }
+    hull() { base_slab(i, j, base_inset(1), z1); base_slab(i, j, base_inset(2), z2); }
+    hull() { base_slab(i, j, base_inset(2), z2); base_slab(i, j, base_inset(3), base_h); }
+}
+module gridfinity_base() {
+    for (i = [0:base_cols - 1], j = [0:base_rows - 1]) base_foot(i, j);
+}
+
 module tub() {
     difference() {
         union() {
             difference() {
-                linear_extrude(inner_top) rrect2d(W, D, corner_r);
+                union() {
+                    translate([0, 0, base_h - 0.01]) linear_extrude(inner_top - base_h + 0.01) rrect2d(W, D, corner_r);
+                    gridfinity_base();
+                }
                 translate([0, 0, floor_t]) linear_extrude(H) inner2d();
             }
             screw_bosses();
@@ -356,14 +333,10 @@ module tub() {
             expander_cage();
             hub_cage();
             buzzer_cradle();
-            for (p = feet) translate([p[0], p[1], floor_t - 0.01]) cylinder(d = foot_boss_d, h = foot_boss_h + 0.01);
         }
         tub_cutouts();
     }
 }
-
-feet = [[foot_x_front, foot_y_front], [W - foot_x_front, foot_y_front],
-        [foot_x, D - foot_y_back], [W - foot_x, D - foot_y_back]];
 
 boss_c = [[corner_r, corner_r], [W - corner_r, corner_r],
           [corner_r, D - corner_r], [W - corner_r, D - corner_r]];
@@ -489,17 +462,15 @@ module tub_cutouts() {
     // Light sensor window in the left wall.
     translate([-1, lux_y, lux_z]) rotate([0, 90, 0]) cylinder(d = lux_win_d, h = wall + 2);
 
-    // DHT11 body through the floor.
-    translate([dht_x - dht[0] / 2 - 0.2, dht_y - dht[1] / 2 - 0.2, -1])
-        cube([dht[0] + 0.4, dht[1] + 0.4, floor_t + 2]);
+    // DHT11: five vertical vent slots through the right wall, with the sensor
+    // glued inside behind them.
+    for (i = [-2:2]) translate([W - wall - 1, dht_y + i * 3 - 0.8, dht_z - 6]) cube([wall + 2, 1.6, 12]);
 
     // Buzzer trough and its sound port.
     translate([wall - 0.01, buz_y, buz_cz]) rotate([0, 90, 0])
         cylinder(d = buz_d + 0.3, h = buz_h + 1.01);
     translate([-1, buz_y, buz_cz]) rotate([0, 90, 0])
         cylinder(d = buz_port_d, h = wall + 2);
-
-    for (p = feet) translate([p[0], p[1], 0]) foot_thread_hole();
 
     // Pilot holes for the lid screws.
     if (lid_fixing == "screws")
@@ -508,70 +479,11 @@ module tub_cutouts() {
         for (c = boss_c) translate([c[0], c[1], inner_top - magnet_t - magnet_play]) cylinder(d = magnet_d + magnet_play, h = magnet_t + magnet_play + 1);
 }
 
-// ---------------------------------------------------------------- the feet
-
-// Radius of the thread at height z: root flat, 45 degree flank up, crest
-// flat, flank down, repeating every pitch.
-function thread_r(z, rmin) =
-    let(flat = (thread_pitch - 2 * thread_depth) / 2,
-        zz = z % thread_pitch,
-        a = flat / 2,
-        b = a + thread_depth,
-        c = b + flat,
-        d = c + thread_depth)
-    zz < a ? rmin :
-    zz < b ? rmin + (zz - a) :
-    zz < c ? rmin + thread_depth :
-    zz < d ? rmin + thread_depth - (zz - c) :
-    rmin;
-
-// A threaded rod along +z, right-handed. Each slice of the polygon is the
-// thread's cross-section, so twisting it one turn per pitch makes the helix.
-module thread_rod(h, play = 0) {
-    rmin = thread_d / 2 - thread_depth;
-    n = 180;
-    linear_extrude(height = h, twist = -360 * h / thread_pitch,
-                   slices = max(4, ceil(h / thread_pitch * 24)), convexity = 10)
-        polygon([for (i = [0:n - 1])
-            let(a = 360 * i / n, r = thread_r(thread_pitch * a / 360, rmin) + play)
-            [r * cos(a), r * sin(a)]]);
-}
-
-// The nut: cut through the floor and its boss, with a lead-in chamfer.
-module foot_thread_hole() {
-    translate([0, 0, -1]) thread_rod(floor_t + foot_boss_h + 2, thread_play);
-    translate([0, 0, -0.01])
-        cylinder(h = 1, r1 = thread_d / 2 + thread_play + 1, r2 = thread_d / 2 + thread_play);
-}
-
-// One foot, as printed: the disk on the bed, the stud pointing up.
-module foot() {
-    difference() {
-        union() {
-            cylinder(d1 = foot_d - 1.6, d2 = foot_d, h = 0.8);
-            translate([0, 0, 0.79]) cylinder(d = foot_d, h = foot_h - 0.79);
-            translate([0, 0, foot_h - 0.01]) intersection() {
-                thread_rod(foot_stud + 0.01);
-                // taper the tip so it starts in the hole
-                rotate_extrude() polygon([[0, 0], [thread_d / 2 + 0.5, 0],
-                                          [thread_d / 2 + 0.5, foot_stud - thread_depth - 0.5],
-                                          [thread_d / 2 - thread_depth, foot_stud + 0.01],
-                                          [0, foot_stud + 0.01]]);
-            }
-        }
-        // finger flutes round the rim
-        for (i = [0:11]) rotate(i * 30) translate([foot_d / 2, 0, -1]) cylinder(d = 2.2, h = foot_h + 2, $fn = 24);
-    }
-}
-
 // ---------------------------------------------------------------- the lid
 
 module lid() {
     difference() {
-        union() {
-            translate([0, 0, inner_top]) linear_extrude(lid_t) rrect2d(W, D, corner_r);
-            gf_plate();
-        }
+        translate([0, 0, inner_top]) linear_extrude(lid_t) rrect2d(W, D, corner_r);
         for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
             translate([col_x(c), row_y(r), inner_top - 1]) cylinder(d = btn_hole_d, h = lid_t + 2);
         for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
@@ -624,39 +536,6 @@ module label_blank() {
     }
 }
 
-// One baseplate cell's outline, inset from the 42 mm square (negative: outset).
-module gf_cell2d(inset) {
-    translate([inset, inset]) rrect2d(gf_cell - 2 * inset, gf_cell - 2 * inset, max(0.01, gf_corner_r - inset));
-}
-
-// A slab of the cell's outline at depth z below the baseplate's top face.
-module gf_slab(inset, z) {
-    translate([0, 0, gf_top - z]) linear_extrude(0.001) gf_cell2d(inset);
-}
-
-// The pocket for one cell, as the solid to cut: the lead-in carried 1 mm above
-// the top face so the cut is clean. grow shrinks (negative) or swells it.
-module gf_pocket_cell(grow = 0) {
-    d1 = gf_step[0];
-    d2 = d1 + gf_step[1];
-    d3 = d2 + gf_step[2];
-    hull() { gf_slab(-1 - grow, -1); gf_slab(d1 - grow, d1); }
-    hull() { gf_slab(d1 - grow, d1); gf_slab(d1 - grow, d2); }
-    hull() { gf_slab(d1 - grow, d2); gf_slab(d1 + gf_step[2] - grow, d3); }
-}
-
-// The raised baseplate: a block on the lid's top face with a pocket per cell,
-// cut down to the lid.
-module gf_plate() {
-    m = gf_rim;
-    difference() {
-        translate([gf_x0 - m, gf_y0 - m, H - 0.01])
-            linear_extrude(gf_depth + 0.01) rrect2d(gf_w + 2 * m, gf_d + 2 * m, gf_corner_r + m);
-        for (i = [0:gf_cols - 1], j = [0:gf_rows - 1])
-            translate([gf_x0 + i * gf_cell, gf_y0 + j * gf_cell, 0]) gf_pocket_cell();
-    }
-}
-
 // ------------------------------------------------- parts, for checking fit
 
 module ghosts() {
@@ -686,15 +565,6 @@ module ghosts() {
     color("lightsteelblue", 0.6)
         for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
             translate([col_x(c), label_y(r), H]) cylinder(d = blank_d, h = blank_t);
-    color("khaki", 0.5)
-        // Bins: the foot, 0.25 mm in from the pocket all round, and 15 mm of body above the baseplate.
-        for (i = [0:gf_cols - 1], j = [0:gf_rows - 1]) translate([gf_x0 + i * gf_cell, gf_y0 + j * gf_cell, 0]) {
-            intersection() {
-                gf_pocket_cell(-0.25);
-                translate([-5, -5, H]) cube([gf_cell + 10, gf_cell + 10, gf_depth]);
-            }
-            translate([0.25, 0.25, gf_top]) cube([gf_cell - 0.5, gf_cell - 0.5, 15]);
-        }
     color("purple", 0.45) {
         // Joystick: the board against the lid's underside, its body through the cutout, then the shaft.
         bz = inner_top - stick_riser_h - stick_board_t;
@@ -726,18 +596,18 @@ module ghosts() {
     }
     color("orange", 0.5) {
         translate([wall, buz_y, buz_cz]) rotate([0, 90, 0]) cylinder(d = buz_d, h = buz_h);
-        translate([dht_x - dht[0] / 2, dht_y - dht[1] / 2, floor_t - dht_h]) cube([dht[0], dht[1], dht_h]);
+        translate([W - wall - dht_h, dht_y - dht[1] / 2, dht_z - dht[0] / 2]) cube([dht_h, dht[1], dht[0]]);
         translate([wall, lux_y - lux_board[0] / 2, lux_z - lux_board[1] / 2]) cube([1.6, lux_board[0], lux_board[1]]);
         translate([disp_cx - disp_pcb[0] / 2, wall, disp_cz - disp_pcb[1] / 2]) cube([disp_pcb[0], disp_thick, disp_pcb[1]]);
     }
 }
 
-// A slice of the tub to test the board mounts: the floor, the left wall up to
-// 14 mm (the USB slot is in it), and the ESP32 and expander cages.
+// A slice of the tub to test the board mounts: the floor and feet, the left wall
+// up to 14 mm above the floor (the USB slot is in it), and the ESP32 and expander cages.
 module test_piece() {
     intersection() {
         tub();
-        translate([-1, esp_y0 - 6, -1]) cube([hub_x0 - 12, esp[1] + 12 + 14, 15]);
+        translate([-1, esp_y0 - 6, -1]) cube([hub_x0 - 12, esp[1] + 12 + 14, floor_t + 14]);
     }
 }
 
@@ -809,10 +679,6 @@ if (part == "tub") {
 } else if (part == "blanks") {
     for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
         translate([c * (blank_d + 3) + blank_d / 2, r * (blank_d + 3) + blank_d / 2, 0]) label_blank();
-} else if (part == "foot") {
-    foot();
-} else if (part == "feet") {
-    for (i = [0:3]) translate([i * (foot_d + 4), 0, 0]) foot();
 } else if (part == "print") {
     tub();
     translate([W + 10, 0, -inner_top]) lid();

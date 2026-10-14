@@ -518,231 +518,70 @@
   the printed labels, not by the drawing&rsquo;s order.
 </p>
 
-<h2>Hub board</h2>
+<h2>Bus board</h2>
 <p class="note" style="margin-top:14px;max-width:72ch">
-  Every shared connection goes through one stripboard, so nothing is soldered pin to pin. The board has
-  15 copper strips, each one net, with no cuts. Each device gets a JST-XH header laid across the strips
-  it needs, so its cable plugs straight in. 3V3 and GND each appear on several strips, joined by wire
-  links on top, so every header stays within a few strips of the rails it needs. The last strip, s14, is
-  ground for the eight buttons: a row of eight pins laid along it, tied together by the strip itself.
-  Wiring only: where the board sits is in the enclosure.
+  Only four things are shared: GND, 3V3, SDA and SCL. They go through one small stripboard (24 &times; 55 mm)
+  with a screw-terminal block soldered along one copper strip for each bus, so a bus is just a row of screws that
+  are the same net. Everything else is a plain Dupont jumper straight from the ESP32 (or the expander) to its
+  device. Any free screw on a bus will do, so the labels below are only one way to fill them. Wiring only: where
+  the board sits is in the enclosure.
 </p>
 
 <figure class="diagram-figure">
   <div class="diagram-scroll">
-<svg class="wiring" viewBox="0 0 800 568" role="img" aria-label="Hub board strip map, in wire colours. Fifteen copper strips run left to right, each one net: 3V3 red, D4 white, GND black, D18 green, 3V3 red, D25 brown, GND black, D34 purple, D35 grey, 3V3 red, SDA blue, GND black, SCL yellow, D27 orange, and a black ground strip for the buttons. No two 3V3 or GND strips are neighbours. JST-XH header ports sit across the strips they use: DHT11 on strips 0 to 2, PIR on 2 to 4, buzzer on 5 to 6, stick on 6 to 9, OLED and BH1750 on 9 to 12, expander on 9 to 13. A row of eight pins is laid along strip 14. Two wire links join the three 3V3 strips, and the GND strips including strip 14. Ten ESP32 wires are soldered to the strips on the right.">
-<text x="185" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">A</text>
-<text x="285" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">B</text>
-<text x="385" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">C</text>
-<text x="485" y="48" text-anchor="middle" font-size="12" fill="var(--silk)" font-weight="600">D</text>
-<text x="335" y="32" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">JST-XH header ports, 2 holes each</text>
-<text x="590" y="32" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">bare-wire links</text>
-<text x="570" y="48" text-anchor="middle" font-size="10.5" fill="var(--c-red)" font-weight="600">3V3</text>
-<text x="610" y="48" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">GND</text>
-<text x="686" y="48" text-anchor="middle" font-size="10.5" fill="var(--silk)" font-weight="600">ESP32 wires</text>
-<text x="686" y="32" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">soldered to the strips</text>
-<rect x="150" y="88.5" width="530" height="7" rx="3.5" fill="var(--c-red)"/>
-<text x="8" y="96" font-size="9.5" fill="var(--silk-dim)">s0</text>
-<circle cx="38" cy="92" r="5" fill="var(--c-red)"/>
-<text x="50" y="96" font-size="11.5" fill="var(--silk)" font-weight="600">3V3</text>
-<rect x="150" y="116.5" width="530" height="7" rx="3.5" fill="var(--c-white)" stroke="#9aa5a0" stroke-width="0.8"/>
-<text x="8" y="124" font-size="9.5" fill="var(--silk-dim)">s1</text>
-<circle cx="38" cy="120" r="5" fill="var(--c-white)" stroke="#9aa5a0" stroke-width="1"/>
-<text x="50" y="124" font-size="11.5" fill="var(--silk)" font-weight="600">D4</text>
-<rect x="150" y="144.5" width="530" height="7" rx="3.5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="0.8"/>
-<text x="8" y="152" font-size="9.5" fill="var(--silk-dim)">s2</text>
-<circle cx="38" cy="148" r="5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<text x="50" y="152" font-size="11.5" fill="var(--silk)" font-weight="600">GND</text>
-<rect x="150" y="172.5" width="530" height="7" rx="3.5" fill="var(--c-green)"/>
-<text x="8" y="180" font-size="9.5" fill="var(--silk-dim)">s3</text>
-<circle cx="38" cy="176" r="5" fill="var(--c-green)"/>
-<text x="50" y="180" font-size="11.5" fill="var(--silk)" font-weight="600">D18</text>
-<rect x="150" y="200.5" width="530" height="7" rx="3.5" fill="var(--c-red)"/>
-<text x="8" y="208" font-size="9.5" fill="var(--silk-dim)">s4</text>
-<circle cx="38" cy="204" r="5" fill="var(--c-red)"/>
-<text x="50" y="208" font-size="11.5" fill="var(--silk)" font-weight="600">3V3</text>
-<rect x="150" y="228.5" width="530" height="7" rx="3.5" fill="var(--c-brown)"/>
-<text x="8" y="236" font-size="9.5" fill="var(--silk-dim)">s5</text>
-<circle cx="38" cy="232" r="5" fill="var(--c-brown)"/>
-<text x="50" y="236" font-size="11.5" fill="var(--silk)" font-weight="600">D25</text>
-<rect x="150" y="256.5" width="530" height="7" rx="3.5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="0.8"/>
-<text x="8" y="264" font-size="9.5" fill="var(--silk-dim)">s6</text>
-<circle cx="38" cy="260" r="5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<text x="50" y="264" font-size="11.5" fill="var(--silk)" font-weight="600">GND</text>
-<rect x="150" y="284.5" width="530" height="7" rx="3.5" fill="var(--c-purple)"/>
-<text x="8" y="292" font-size="9.5" fill="var(--silk-dim)">s7</text>
-<circle cx="38" cy="288" r="5" fill="var(--c-purple)"/>
-<text x="50" y="292" font-size="11.5" fill="var(--silk)" font-weight="600">D34</text>
-<rect x="150" y="312.5" width="530" height="7" rx="3.5" fill="var(--c-grey)"/>
-<text x="8" y="320" font-size="9.5" fill="var(--silk-dim)">s8</text>
-<circle cx="38" cy="316" r="5" fill="var(--c-grey)"/>
-<text x="50" y="320" font-size="11.5" fill="var(--silk)" font-weight="600">D35</text>
-<rect x="150" y="340.5" width="530" height="7" rx="3.5" fill="var(--c-red)"/>
-<text x="8" y="348" font-size="9.5" fill="var(--silk-dim)">s9</text>
-<circle cx="38" cy="344" r="5" fill="var(--c-red)"/>
-<text x="50" y="348" font-size="11.5" fill="var(--silk)" font-weight="600">3V3</text>
-<rect x="150" y="368.5" width="530" height="7" rx="3.5" fill="var(--c-blue)"/>
-<text x="8" y="376" font-size="9.5" fill="var(--silk-dim)">s10</text>
-<circle cx="38" cy="372" r="5" fill="var(--c-blue)"/>
-<text x="50" y="376" font-size="11.5" fill="var(--silk)" font-weight="600">SDA</text>
-<rect x="150" y="396.5" width="530" height="7" rx="3.5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="0.8"/>
-<text x="8" y="404" font-size="9.5" fill="var(--silk-dim)">s11</text>
-<circle cx="38" cy="400" r="5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<text x="50" y="404" font-size="11.5" fill="var(--silk)" font-weight="600">GND</text>
-<rect x="150" y="424.5" width="530" height="7" rx="3.5" fill="var(--c-yellow)"/>
-<text x="8" y="432" font-size="9.5" fill="var(--silk-dim)">s12</text>
-<circle cx="38" cy="428" r="5" fill="var(--c-yellow)"/>
-<text x="50" y="432" font-size="11.5" fill="var(--silk)" font-weight="600">SCL</text>
-<rect x="150" y="452.5" width="530" height="7" rx="3.5" fill="var(--c-orange)"/>
-<text x="8" y="460" font-size="9.5" fill="var(--silk-dim)">s13</text>
-<circle cx="38" cy="456" r="5" fill="var(--c-orange)"/>
-<text x="50" y="460" font-size="11.5" fill="var(--silk)" font-weight="600">D27 (INTA)</text>
-<rect x="150" y="480.5" width="530" height="7" rx="3.5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="0.8"/>
-<text x="8" y="488" font-size="9.5" fill="var(--silk-dim)">s14</text>
-<circle cx="38" cy="484" r="5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<text x="50" y="488" font-size="11.5" fill="var(--silk)" font-weight="600">GND (buttons)</text>
-<rect x="149" y="79" width="72" height="82" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="171" y="124.0" font-size="10.5" fill="var(--silk)" font-weight="600">DHT11</text>
-<circle cx="159" cy="92" r="3.4" fill="var(--silk)"/>
-<circle cx="159" cy="120" r="3.4" fill="var(--silk)"/>
-<circle cx="159" cy="148" r="3.4" fill="var(--silk)"/>
-<rect x="149" y="191" width="72" height="82" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="171" y="236.0" font-size="10.5" fill="var(--silk)" font-weight="600">Buzzer</text>
-<circle cx="159" cy="204" r="3.4" fill="var(--silk)"/>
-<circle cx="159" cy="232" r="3.4" fill="var(--silk)"/>
-<circle cx="159" cy="260" r="3.4" fill="var(--silk)"/>
-<rect x="149" y="331" width="72" height="110" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="171" y="390.0" font-size="10.5" fill="var(--silk)" font-weight="600">OLED</text>
-<circle cx="159" cy="344" r="3.4" fill="var(--silk)"/>
-<circle cx="159" cy="372" r="3.4" fill="var(--silk)"/>
-<circle cx="159" cy="400" r="3.4" fill="var(--silk)"/>
-<circle cx="159" cy="428" r="3.4" fill="var(--silk)"/>
-<rect x="249" y="135" width="72" height="82" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="271" y="180.0" font-size="10.5" fill="var(--silk)" font-weight="600">PIR</text>
-<circle cx="259" cy="148" r="3.4" fill="var(--silk)"/>
-<circle cx="259" cy="176" r="3.4" fill="var(--silk)"/>
-<circle cx="259" cy="204" r="3.4" fill="var(--silk)"/>
-<rect x="249" y="331" width="72" height="110" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="271" y="390.0" font-size="10.5" fill="var(--silk)" font-weight="600">BH1750</text>
-<circle cx="259" cy="344" r="3.4" fill="var(--silk)"/>
-<circle cx="259" cy="372" r="3.4" fill="var(--silk)"/>
-<circle cx="259" cy="400" r="3.4" fill="var(--silk)"/>
-<circle cx="259" cy="428" r="3.4" fill="var(--silk)"/>
-<rect x="349" y="247" width="72" height="110" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="371" y="306.0" font-size="10.5" fill="var(--silk)" font-weight="600">Stick</text>
-<circle cx="359" cy="260" r="3.4" fill="var(--silk)"/>
-<circle cx="359" cy="288" r="3.4" fill="var(--silk)"/>
-<circle cx="359" cy="316" r="3.4" fill="var(--silk)"/>
-<circle cx="359" cy="344" r="3.4" fill="var(--silk)"/>
-<rect x="449" y="331" width="72" height="138" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<text x="471" y="404.0" font-size="10.5" fill="var(--silk)" font-weight="600">Expander</text>
-<circle cx="459" cy="344" r="3.4" fill="var(--silk)"/>
-<circle cx="459" cy="372" r="3.4" fill="var(--silk)"/>
-<circle cx="459" cy="400" r="3.4" fill="var(--silk)"/>
-<circle cx="459" cy="428" r="3.4" fill="var(--silk)"/>
-<circle cx="459" cy="456" r="3.4" fill="var(--silk)"/>
-<rect x="178" y="471" width="358" height="26" rx="6" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
-<circle cx="196" cy="484" r="3.4" fill="var(--silk)"/>
-<circle cx="242" cy="484" r="3.4" fill="var(--silk)"/>
-<circle cx="288" cy="484" r="3.4" fill="var(--silk)"/>
-<circle cx="334" cy="484" r="3.4" fill="var(--silk)"/>
-<circle cx="380" cy="484" r="3.4" fill="var(--silk)"/>
-<circle cx="426" cy="484" r="3.4" fill="var(--silk)"/>
-<circle cx="472" cy="484" r="3.4" fill="var(--silk)"/>
-<circle cx="518" cy="484" r="3.4" fill="var(--silk)"/>
-<text x="178" y="518" font-size="10.5" fill="var(--silk)" font-weight="600">1×8 male header laid along s14: the lid&#8217;s ground plug goes here</text>
-<line x1="570" y1="92" x2="570" y2="344" stroke="var(--c-red)" stroke-width="2.5"/>
-<circle cx="570" cy="92" r="4" fill="var(--c-red)"/>
-<circle cx="570" cy="204" r="4" fill="var(--c-red)"/>
-<circle cx="570" cy="344" r="4" fill="var(--c-red)"/>
-<line x1="610" y1="148" x2="610" y2="484" stroke="#9aa5a0" stroke-width="4.6"/>
-<line x1="610" y1="148" x2="610" y2="484" stroke="var(--c-black)" stroke-width="2.5"/>
-<circle cx="610" cy="148" r="4" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<circle cx="610" cy="260" r="4" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<circle cx="610" cy="400" r="4" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<circle cx="610" cy="484" r="4" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<circle cx="672" cy="92" r="4" fill="var(--c-red)"/>
-<circle cx="692" cy="92" r="5.5" fill="var(--c-red)"/>
-<text x="704" y="96" font-size="10.5" fill="var(--silk)">3V3</text>
-<circle cx="672" cy="120" r="4" fill="var(--c-white)" stroke="#9aa5a0" stroke-width="1"/>
-<circle cx="692" cy="120" r="5.5" fill="var(--c-white)" stroke="#9aa5a0" stroke-width="1"/>
-<text x="704" y="124" font-size="10.5" fill="var(--silk)">D4</text>
-<circle cx="672" cy="148" r="4" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<circle cx="692" cy="148" r="5.5" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
-<text x="704" y="152" font-size="10.5" fill="var(--silk)">GND</text>
-<circle cx="672" cy="176" r="4" fill="var(--c-green)"/>
-<circle cx="692" cy="176" r="5.5" fill="var(--c-green)"/>
-<text x="704" y="180" font-size="10.5" fill="var(--silk)">D18</text>
-<circle cx="672" cy="232" r="4" fill="var(--c-brown)"/>
-<circle cx="692" cy="232" r="5.5" fill="var(--c-brown)"/>
-<text x="704" y="236" font-size="10.5" fill="var(--silk)">D25</text>
-<circle cx="672" cy="288" r="4" fill="var(--c-purple)"/>
-<circle cx="692" cy="288" r="5.5" fill="var(--c-purple)"/>
-<text x="704" y="292" font-size="10.5" fill="var(--silk)">D34</text>
-<circle cx="672" cy="316" r="4" fill="var(--c-grey)"/>
-<circle cx="692" cy="316" r="5.5" fill="var(--c-grey)"/>
-<text x="704" y="320" font-size="10.5" fill="var(--silk)">D35</text>
-<circle cx="672" cy="372" r="4" fill="var(--c-blue)"/>
-<circle cx="692" cy="372" r="5.5" fill="var(--c-blue)"/>
-<text x="704" y="376" font-size="10.5" fill="var(--silk)">SDA · D21</text>
-<circle cx="672" cy="428" r="4" fill="var(--c-yellow)"/>
-<circle cx="692" cy="428" r="5.5" fill="var(--c-yellow)"/>
-<text x="704" y="432" font-size="10.5" fill="var(--silk)">SCL · D22</text>
-<circle cx="672" cy="456" r="4" fill="var(--c-orange)"/>
-<circle cx="692" cy="456" r="5.5" fill="var(--c-orange)"/>
-<text x="704" y="460" font-size="10.5" fill="var(--silk)">INTA · D27</text>
-</svg>
+    <img src="bus-board.png" alt="Bus board: four copper strips, each with a screw-terminal block. GND has an 8-way and a 4-way block taking ESP32 (two), OLED, BH1750, expander, DHT11, PIR, buzzer, joystick and the buttons&rsquo; shared ground. 3V3 has an 8-way block taking ESP32, OLED, BH1750, expander, DHT11, PIR, buzzer and joystick. SDA and SCL each have a 4-way block taking the ESP32, OLED, BH1750 and expander." style="display:block;width:100%;height:auto;min-width:720px;background:#fff;border-radius:6px">
   </div>
   <figcaption>
-    Strips run left to right. The circuit needs about 40 × 40 mm (15 strips by about 15 holes) of the stripboard,
-    copper side down, headers on top. The enclosure holds the whole 100 × 74 mm board, uncut, with its one
-    mounting hole at the back left, so build the circuit toward the front or right of it and keep the back-left
-    corner clear for the anchor stud. In holes from the left edge: ports A at 2, B at 4, C at 6, D at 8, the 3V3 link at 10, the
-    GND link at 11, the ESP32 wires at 13. A bar is a header: its dots are the pins, and every pin of a header
-    lands on a strip it uses. Wherever two bars share strips they sit in different columns.
-    The 3V3 link is wire soldered at s0, s4 and s9; the GND link at s2, s6, s11 and s14. Build each link from
-    short pieces that share a hole on the middle strips. No two 3V3 or GND strips are neighbours, so a
-    stray blob of solder can&rsquo;t join 3V3 to GND: that is why SDA sits between them in the I2C block.
+    26 wires on the board: GND 10, 3V3 8, SDA 4, SCL 4. The ESP32 has two GND pins, so both are used.
+    The buttons&rsquo; eight grounds join on the lid and use a single GND screw.
   </figcaption>
 </figure>
 
 <div class="table-wrap">
   <table>
     <thead>
-      <tr><th>Cable</th><th>Hub end</th><th>Device end</th><th>Wire colours, in plug order</th><th>Wires</th></tr>
+      <tr><th>Bus</th><th>Screws</th><th>ESP32 pin</th><th>Goes to</th></tr>
     </thead>
     <tbody>
-      <tr><td>ESP32, right row</td><td class="note">soldered to the strips: SCL s12, SDA s10, D18 s3, D4 s1, GND s2, 3V3 s0</td><td class="note">Dupont-style housing on D22, D21, D18, D4, GND, 3V3, only those cavities filled</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f4f4f4;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>white, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>green, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#3b82f6;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>blue, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="mono">6</td></tr>
-      <tr><td>ESP32, left row</td><td class="note">soldered to the strips: D34 s7, D35 s8, D25 s5, D27 s13</td><td class="note">Dupont-style housing on D34, D35, D25, D27</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f97316;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>orange, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a35a2a;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>brown, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#9ca3af;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>grey, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a855f7;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>purple</td><td class="mono">4</td></tr>
-      <tr><td>Expander</td><td class="note">XH plug on port D, s9 to s13, if the stock cable&rsquo;s connector fits. Five pins only: s14 is ground, so leave the green INTB wire out. The plug&rsquo;s order is now 3V3, SDA, GND, SCL, INTA, so swap the black and blue wires from the stock order</td><td class="note">its own locking 6-pin connector (the stock cable)</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#3b82f6;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>blue, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f97316;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>orange</td><td class="mono">5</td></tr>
-      <tr><td>OLED</td><td class="note">XH plug on port A, s9 to s12: 3V3, SDA, GND, SCL</td><td class="note">XH header swapped onto the module (C), or a Dupont-style housing on its pins (A)</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#3b82f6;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>blue, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="mono">4</td></tr>
-      <tr><td>BH1750</td><td class="note">XH plug on port B, s9 to s12 (ADDR left open)</td><td class="note">as the OLED</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#3b82f6;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>blue, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="mono">4</td></tr>
-      <tr><td>DHT11</td><td class="note">XH plug on port A, s0 to s2: 3V3, D4, GND</td><td class="note">as the OLED</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f4f4f4;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>white, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="mono">3</td></tr>
-      <tr><td>PIR</td><td class="note">XH plug on port B, s2 to s4: GND, D18, 3V3</td><td class="note">as the OLED</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#22c55e;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>green, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red</td><td class="mono">3</td></tr>
-      <tr><td>Buzzer</td><td class="note">XH plug on port A, s4 to s6: 3V3, D25, GND</td><td class="note">Dupont-style housing on the module&rsquo;s three pins, in its order: I/O, VCC, GND (A). The hub plug&rsquo;s order differs, so swap the red and brown wires at one end</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a35a2a;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>brown, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="mono">3</td></tr>
-      <tr><td>Joystick</td><td class="note">XH plug on port C, s6 to s9: GND, D34, D35, 3V3</td><td class="note">as the OLED, on the stick&rsquo;s GND, VRx, VRy and 5V pins; the 5V pin is fed 3V3</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a855f7;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>purple, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#9ca3af;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>grey, <span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red</td><td class="mono">4</td></tr>
-      <tr class="group-start"><td>Button ground</td><td class="note">8-way Dupont-style housing on the 1×8 male header laid along s14</td><td class="note">the other ends soldered to each button&rsquo;s ground terminal</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="mono">8</td></tr>
-      <tr><td>Buttons 1 to 8</td><td class="note">not on the hub</td><td class="note">Dupont-style housing on PA0 to PA7 of the expander&rsquo;s PA header; the other ends soldered to each button&rsquo;s signal terminal</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="mono">8</td></tr>
-      <tr><td>Stick press</td><td class="note">not on the hub</td><td class="note">one-wire Dupont-style plug on PB0; the other end soldered to the stick&rsquo;s SW pin</td><td class="note"><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f4f4f4;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>white</td><td class="mono">1</td></tr>
+      <tr><td>GND</td><td class="mono">8P + 4P</td><td class="mono">both GND pins</td><td class="note">OLED, BH1750, expander, DHT11, PIR, buzzer, joystick, buttons (one wire)</td></tr>
+      <tr><td>3V3</td><td class="mono">8P</td><td class="mono">3V3</td><td class="note">OLED, BH1750, expander, DHT11, PIR, buzzer, joystick (its pin printed 5V gets 3V3, never 5V)</td></tr>
+      <tr><td>SDA</td><td class="mono">4P</td><td class="mono">D21</td><td class="note">OLED, BH1750, expander</td></tr>
+      <tr><td>SCL</td><td class="mono">4P</td><td class="mono">D22</td><td class="note">OLED, BH1750, expander</td></tr>
+    </tbody>
+  </table>
+</div>
+
+<h2>Direct jumpers</h2>
+<p class="note" style="margin-top:14px;max-width:72ch">
+  These don&rsquo;t touch the bus board. One Dupont jumper each, from the ESP32 pin to the device pin, in the
+  wire colours below.
+</p>
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr><th>From</th><th>To</th><th>Note</th></tr>
+    </thead>
+    <tbody>
+      <tr><td class="mono">D4</td><td>DHT11 data (S)</td><td class="note">HW-507 module, order S, +, &minus;</td></tr>
+      <tr><td class="mono">D18</td><td>PIR OUT</td><td class="note">middle pin; no pull-down in firmware, the AM312&rsquo;s output is weak</td></tr>
+      <tr><td class="mono">D25</td><td>Buzzer I/O</td><td class="note">module pins are I/O, VCC, GND; power it from 3V3</td></tr>
+      <tr><td class="mono">D34</td><td>Joystick VRx</td><td class="note">ADC1 only: ADC2 stops working with Wi-Fi on</td></tr>
+      <tr><td class="mono">D35</td><td>Joystick VRy</td><td class="note">as above</td></tr>
+      <tr><td class="mono">D27</td><td>Expander INTA</td><td class="note">leave INTB unconnected</td></tr>
+      <tr><td class="mono">PA0 to PA7</td><td>Buttons 1 to 8</td><td class="note">see below</td></tr>
+      <tr><td class="mono">PB0</td><td>Joystick SW</td><td class="note">one-wire plug on the top pin of the PB header</td></tr>
     </tbody>
   </table>
 </div>
 <p class="note" style="margin-top:14px;max-width:72ch">
-  Reading the table: the hub end is a JST-XH plug onto a header soldered into the hub, except the ESP32&rsquo;s
-  wires (soldered to the strips) and the button ground (a plain pin header along s14). The device end depends on
-  what the module has. <strong>A</strong> is a crimped Dupont-style housing on the module&rsquo;s 2.54 mm pins
-  (easiest, but a friction fit). <strong>B</strong> is wires soldered straight to the pins or leads.
-  <strong>C</strong> is the stock pin header desoldered and an XH header soldered in its place, which gives a
-  latching connector at both ends.
+  The BH1750 board carries the I2C pull-up resistors for the whole bus. Leave its ADDR pin unconnected (address 0x23).
 </p>
 
 <h2>Wire colours</h2>
 <p class="note" style="margin-top:14px;max-width:72ch">
-  The same signal is the same colour at both ends of every cable, and no two wires in one plug share a colour.
-  Red is always 3V3 and black is always GND. A colour can repeat on different cables when they never share a
-  plug: white is the DHT11&rsquo;s data and the stick&rsquo;s press, and yellow is SCL and the lid&rsquo;s button
-  signals. The I2C and expander colours follow the expander&rsquo;s stock cable. The ESP32&rsquo;s ten wires are
-  all different, so they are easy to tell apart in the two housings.
+  The same signal is the same colour at both ends of its wire. Red is always 3V3 and black is always GND. A colour
+  can repeat when the wires never sit side by side: white is the DHT11&rsquo;s data and the stick&rsquo;s press, and
+  yellow is SCL and the lid&rsquo;s button signals. The I2C and expander colours follow the expander&rsquo;s stock cable.
 </p>
 <div class="table-wrap">
   <table>
@@ -750,8 +589,8 @@
       <tr><th>Signal</th><th>ESP32 pin</th><th>Colour</th><th>Where</th></tr>
     </thead>
     <tbody>
-      <tr><td>3V3</td><td class="mono"></td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red</td><td class="note">every cable</td></tr>
-      <tr><td>GND</td><td class="mono"></td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="note">every cable, and the button grounds</td></tr>
+      <tr><td>3V3</td><td class="mono"></td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#e5484d;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>red</td><td class="note">every device</td></tr>
+      <tr><td>GND</td><td class="mono"></td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#111111;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>black</td><td class="note">every device, and the buttons&rsquo; shared ground</td></tr>
       <tr><td>SDA</td><td class="mono">D21</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#3b82f6;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>blue</td><td class="note">OLED, BH1750, expander</td></tr>
       <tr><td>SCL</td><td class="mono">D22</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="note">OLED, BH1750, expander</td></tr>
       <tr><td>INTA</td><td class="mono">D27</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f97316;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>orange</td><td class="note">expander</td></tr>
@@ -760,28 +599,27 @@
       <tr><td>Buzzer</td><td class="mono">D25</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a35a2a;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>brown</td><td class="note">buzzer</td></tr>
       <tr><td>Stick VRx</td><td class="mono">D34</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#a855f7;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>purple</td><td class="note">joystick</td></tr>
       <tr><td>Stick VRy</td><td class="mono">D35</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#9ca3af;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>grey</td><td class="note">joystick</td></tr>
-      <tr><td>Stick press</td><td class="mono">PB0</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f4f4f4;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>white</td><td class="note">its own one-wire plug</td></tr>
-      <tr><td>Buttons 1 to 8</td><td class="mono">PA0 to PA7</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="note">the lid harness you already have</td></tr>
+      <tr><td>Stick press</td><td class="mono">PB0</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#f4f4f4;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>white</td><td class="note">one wire to the stick&rsquo;s SW</td></tr>
+      <tr><td>Buttons 1 to 8</td><td class="mono">PA0 to PA7</td><td><span style="display:inline-block;width:11px;height:11px;border-radius:50%;background:#eab308;border:1px solid #888;vertical-align:-1px;margin-right:4px"></span>yellow</td><td class="note">the lid harness</td></tr>
     </tbody>
   </table>
 </div>
 
 <h2>Buttons and their ground</h2>
 <p class="note" style="margin-top:14px;max-width:72ch">
-  The buttons&rsquo; signals don&rsquo;t go through the hub: each has its own wire to the expander&rsquo;s PA header.
-  Their shared ground does. Strip s14 on the hub is tied to GND by the GND link and has a 1×8 male header laid
-  along it; the eight pins are joined by the strip, so nothing is bridged with solder. The lid&rsquo;s eight
-  ground wires end in an 8-way housing that plugs onto that header, so the whole lid unplugs: that housing,
-  the signal housing on the PA header, the stick&rsquo;s plug on the hub, and the one-wire press plug.
-  The joystick&rsquo;s press switch is the one other wire to the expander, to PB0; its other side is the
-  stick&rsquo;s GND, which comes from the hub.
+  Each button has its own yellow signal wire to the expander&rsquo;s PA header. Their grounds are joined to each other
+  on the lid, and that one common wire goes to a single GND screw on the bus board, so the buttons use one of the
+  ten GND wires, not eight. On the PA header, bend the pins flat so a plug goes on sideways: the header is
+  PA7 at the top down to PA0, then GND and VCC at the bottom, so button <em>n</em> goes to the pin labelled
+  PA<em>n&minus;1</em>. The joystick&rsquo;s press switch is the one other wire to the expander, to PB0; its other
+  side is the stick&rsquo;s GND, from the bus board.
 </p>
 
 <figure class="diagram-figure">
   <div class="diagram-scroll">
-<svg class="wiring" viewBox="0 0 800 418" role="img" aria-label="Button wiring, in wire colours. Each of the eight buttons has a yellow signal wire to its own pin on the expander PA header, PA0 to PA7, and a black ground wire to its own pin on the hub board's eight-pin ground header along strip 14. The joystick press switch has a white wire to expander PB0.">
-<text x="22" y="30" font-size="11" fill="var(--silk)" font-weight="600">Hub · s14 ground header</text>
-<text x="22" y="44" font-size="9" fill="var(--silk-dim)">8 pins on one strip, tied to GND (black)</text>
+<svg class="wiring" viewBox="0 0 800 418" role="img" aria-label="Button wiring, in wire colours. Each of the eight buttons has a yellow signal wire to its own pin on the expander PA header, PA0 to PA7, and a black ground wire to a common ground joined on the lid, which has one wire to a GND screw on the bus board. The joystick press switch has a white wire to expander PB0.">
+<text x="22" y="30" font-size="11" fill="var(--silk)" font-weight="600">Lid · common ground</text>
+<text x="22" y="44" font-size="9" fill="var(--silk-dim)">joined on the lid, one wire to a GND screw</text>
 <text x="560" y="30" font-size="11" fill="var(--silk)" font-weight="600">Expander · PA header</text>
 <text x="560" y="44" font-size="9" fill="var(--silk-dim)">on the board, PA7 is at the top: wire by the labels</text>
 <rect x="22" y="46" width="14" height="270" rx="4" fill="var(--c-black)" stroke="#9aa5a0" stroke-width="1"/>
@@ -873,12 +711,12 @@
 <rect x="552" y="342" width="130" height="32" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
 <circle cx="560" cy="358" r="3.4" fill="var(--c-white)"/>
 <text x="574" y="362" font-size="10.5" fill="var(--silk)" font-weight="600">PB0 (PB header)</text>
-<text x="122" y="388" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">its other side is the stick&#8217;s GND, from the hub</text>
+<text x="122" y="388" text-anchor="middle" font-size="9.5" fill="var(--silk-dim)">its other side is the stick&#8217;s GND, from the bus board</text>
 </svg>
   </div>
   <figcaption>
     Buttons 1 to 8 go to PA0 to PA7, so the order matches the numbers the firmware publishes. The expander&rsquo;s
-    supply pin is printed VCC: feed it 3V3 from the hub (port D), never 5V.
+    supply pin is printed VCC: feed it 3V3 from the bus board, never 5V.
   </figcaption>
 </figure>
 
@@ -894,5 +732,5 @@
   ground to GND, and check both with a multimeter before anything else is connected. Then add the I2C
   parts one at a time (OLED, BH1750, MCP23017) and look for
   <code>[i2c] found: 0x23 0x27 0x3C</code> on the serial monitor, then the buttons, joystick, DHT11 and
-  piezo. Put the BH1750 where it sees the room, not the screen.
+  buzzer. Put the BH1750 where it sees the room, not the screen.
 </footer>

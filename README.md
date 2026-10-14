@@ -75,16 +75,17 @@ OTA_PASSWORD="$(scripts/gen_secrets.py --ota-password)" pio run -t upload -e esp
 | [docs/pinout.html](docs/pinout.html) | Wiring diagram |
 | [docs/button-actions-spec.md](docs/button-actions-spec.md) | What each button should do, for the Home Assistant side |
 | [docs/diagnostics-server-brief.md](docs/diagnostics-server-brief.md) | The device's diagnostics feed, for a server page |
-| [docs/crimping-checklist.md](docs/crimping-checklist.md) | Which wire goes where in every cable, with a test routine for before first power-up |
+| [docs/wiring-checklist.md](docs/wiring-checklist.md) | Which wire goes where, device pin orders, and a test routine for before first power-up |
 | [docs/secrets-rotation.md](docs/secrets-rotation.md) | What each secret is, which need a flash, and the order to rotate them in |
 | [todo.md](todo.md) | What's left |
-| [enclosure/](enclosure/) | Parametric OpenSCAD enclosure: tub, lid and threaded feet |
+| [enclosure/](enclosure/) | Parametric OpenSCAD enclosure: a 4 x 2 Gridfinity-base tub (167.5 x 83.5 x 63 mm) and lid |
 
 ## Enclosure
 
 `enclosure/bedside_enclosure.scad` builds the whole case from the measured
-sizes of the parts. Set `part` at the top of the file to `tub`, `lid`, `feet`
-or `test` and export an STL for each; `assembly` previews everything in place
+sizes of the parts. Set `part` at the top of the file to `tub`, `lid`, `risers`,
+`blanks`, or a test piece (`test`, `fit`, `hubtest`, `sticktest`) and export an
+STL for each; `assembly` previews everything in place
 (add `show_parts = true` to see the boards inside). Values marked `MEASURE`
 in the file are guesses to check against your own parts before printing.
 

@@ -68,8 +68,8 @@ disagree, this table is what the hardware was built from.
 See [`docs/pinout.html`](docs/pinout.html) for a visual wiring diagram of
 the same pins (open it in a browser). It's drawn from this table and
 `pins.h`, not from a built unit, so keep all three in step. The same page
-also draws the hub board's strip map and cable list, and the buttons' shared
-ground (strip s14 on the hub).
+also draws the bus board (GND, 3V3, SDA and SCL on screw terminals), the direct
+jumpers, and the buttons' shared ground.
 
 Why these pins:
 - **21/22** are the ESP32's default I2C pins. The three I2C devices have

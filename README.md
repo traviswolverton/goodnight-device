@@ -84,7 +84,7 @@ OTA_PASSWORD="$(scripts/gen_secrets.py --ota-password)" pio run -t upload -e esp
 
 `enclosure/bedside_enclosure.scad` builds the whole case from the measured
 sizes of the parts. Set `part` at the top of the file to `tub`, `lid`, `risers`,
-`blanks`, or a test piece (`test`, `fit`, `hubtest`, `sticktest`) and export an
+`blanks`, `label` (a blank with an inlaid icon), or a test piece (`test`, `fit`, `hubtest`, `sticktest`) and export an
 STL for each; `assembly` previews everything in place
 (add `show_parts = true` to see the boards inside). Values marked `MEASURE`
 in the file are guesses to check against your own parts before printing.

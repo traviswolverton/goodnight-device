@@ -23,7 +23,7 @@
 //   part = "blanks"     eight blanks, one for each button
 //   part = "print"      tub and lid laid out together (too wide for most beds)
 
-part = "assembly"; // [assembly, tub, lid, sticktest, risers, test, fit, hubtest, blank, blanks, print]
+part = "assembly"; // [assembly, tub, lid, sticktest, risers, test, fit, hubtest, blank, blanks, label, print]
 show_parts = false;
 $fn = 64;
 
@@ -84,6 +84,9 @@ magnet_t = 2;
 magnet_play = 0.2;                  // added to the pocket's diameter and depth, for the glue
 blank_d = 15.5;                    // the blanks stay 15.5 mm when the holes grow to 16.5, so ones already printed still fit
 blank_t = 3;                        // the front 0.8 mm is the face: swap filament there for an icon
+icon_depth = 0.8;                   // an icon is inlaid in the face, flush with it: a second colour, not a relief
+icon = "none";                      // which icon the "label" part wears: moon, toilet, fan, bulb, tv, playpause, eye, none
+layer = "both";                     // "base", "icon", or "both" (a two-colour preview) for the "label" part
 label_gap = 3.5;                    // from a button hole to a blank, either side: the cap (btn_cap_d) overhangs the hole, so this leaves it 1.25 mm
 row_pitch = btn_hole_d + blank_d + 2 * label_gap;
 
@@ -539,6 +542,86 @@ module label_blank() {
     }
 }
 
+
+// ------------------------------------------------- icons for the blanks
+// Each is drawn as seen from the front, centred, inside a 12 mm circle (the face is 14.7 mm).
+// The blank prints face down, so label_icon3d() mirrors it: turn the blank over and it reads right.
+
+module rrect(w, h, r) {
+    offset(r = r) square([w - 2 * r, h - 2 * r], center = true);
+}
+
+module icon_2d(name) {
+    if (name == "moon") {
+        difference() {
+            circle(d = 11.5, $fn = 64);
+            translate([3.4, 2.4]) circle(d = 10, $fn = 64);
+        }
+    } else if (name == "toilet") {
+        translate([-4.3, 0.2]) square([2.8, 4.2]);                              // tank
+        translate([-0.9, 1.8]) square([6.1, 1.0]);                              // seat
+        polygon([[-0.9, 1.2], [4.8, 1.2], [4.2, -1.1], [2.8, -2.4], [0.4, -2.4], [-0.9, -1.2]]);  // bowl
+        translate([-0.4, -4.5]) square([3.6, 1.4]);                             // foot
+        translate([-4.3, -2.8]) square([2.8, 2.6]);                             // pipe under the tank
+    } else if (name == "fan") {
+        difference() {
+            circle(d = 11.6, $fn = 64);
+            circle(d = 9.6, $fn = 64);
+        }
+        circle(d = 2.4, $fn = 32);
+        for (i = [0:2]) rotate(i * 120)
+            hull() {
+                translate([0.8, 0]) circle(d = 1.4, $fn = 24);
+                translate([3.1, 1.8]) circle(d = 3.4, $fn = 24);
+            }
+    } else if (name == "bulb") {
+        translate([0, 1.2]) circle(d = 7.6, $fn = 48);
+        polygon([[-2, -1], [2, -1], [1.7, -3], [-1.7, -3]]);
+        translate([-1.5, -4.0]) square([3, 0.8]);
+        translate([-1, -5.2]) square([2, 0.8]);
+    } else if (name == "tv") {
+        translate([0, -0.5]) difference() {
+            rrect(10.4, 7, 1.2);
+            rrect(8.2, 4.8, 0.6);
+        }
+        for (sx = [-1, 1]) hull() {
+            translate([0, 3.2]) circle(d = 0.9, $fn = 16);
+            translate([sx * 2.2, 4.8]) circle(d = 0.9, $fn = 16);
+        }
+        for (sx = [-1, 1]) translate([sx * 2.9 - 0.8, -5]) square([1.6, 1]);
+    } else if (name == "playpause") {
+        translate([-0.1, 0]) {
+            polygon([[-5, -2.8], [-5, 2.8], [-0.2, 0]]);
+            translate([1.4, -2.8]) square([1.4, 5.6]);
+            translate([3.8, -2.8]) square([1.4, 5.6]);
+        }
+    } else if (name == "eye") {
+        difference() {
+            intersection() { translate([0, -3.2]) circle(r = 6.5, $fn = 96); translate([0, 3.2]) circle(r = 6.5, $fn = 96); }
+            offset(delta = -1) intersection() { translate([0, -3.2]) circle(r = 6.5, $fn = 96); translate([0, 3.2]) circle(r = 6.5, $fn = 96); }
+        }
+        circle(d = 3.2, $fn = 32);
+    }
+}
+
+module label_icon3d() {
+    translate([0, 0, -0.01]) linear_extrude(icon_depth + 0.01) mirror([1, 0]) icon_2d(icon);
+}
+
+module label_base() {
+    difference() {
+        label_blank();
+        label_icon3d();
+    }
+}
+
+module label_icon_part() {
+    intersection() {
+        label_blank();
+        label_icon3d();
+    }
+}
+
 // ------------------------------------------------- parts, for checking fit
 
 module ghosts() {
@@ -679,6 +762,13 @@ if (part == "tub") {
     for (i = [0:3]) translate([i * (stick_riser_d + 3), 0, 0]) stick_riser();
 } else if (part == "blank") {
     label_blank();
+} else if (part == "label") {
+    if (layer == "base") label_base();
+    else if (layer == "icon") label_icon_part();
+    else {
+        color("#333333") label_base();
+        color("white") label_icon_part();
+    }
 } else if (part == "blanks") {
     for (r = [0:btn_rows - 1], c = [0:btn_cols - 1])
         translate([c * (blank_d + 3) + blank_d / 2, r * (blank_d + 3) + blank_d / 2, 0]) label_blank();

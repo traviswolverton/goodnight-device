@@ -164,10 +164,11 @@ constexpr unsigned long kRepeatDelayMs = 450;
 constexpr unsigned long kRepeatIntervalMs = 150;
 
 // Flip these if the stick ends up mounted rotated. Most KY-023 boards read
-// low X at left and low Y at top with the pins facing down.
+// low X at left and low Y at top with the pins facing down. Both are
+// inverted here: the stick as mounted in the lid reads the other way round.
 constexpr bool kSwapAxes = false;
-constexpr bool kInvertX = false;
-constexpr bool kInvertY = false;
+constexpr bool kInvertX = true;
+constexpr bool kInvertY = true;
 
 enum class Dir : uint8_t { None, Up, Down, Left, Right };
 Dir dir_ = Dir::None;

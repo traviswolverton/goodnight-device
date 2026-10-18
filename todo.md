@@ -13,11 +13,6 @@ page. Fast mode was checked end to end on the live broker on 2026-10-18. Left:
   not yet seen arriving. Move the stick and press a button while the server listens.
 - Ask the server to stop offering button 8 on its Buttons page (the device never publishes it).
 
-## Config and security
-- MQTT broker comes from `secrets.h` and connects. Check whether the server's `GET /device/config`
-  (via `SERVER_URL` and `DEVICE_TOKEN`) is supposed to supply it, and whether the device can reach
-  the server from its subnet.
-
 ## Hardware
 All of it is built, wired and working: the OLED, the BH1750, the eight buttons, the joystick (both
 axes inverted in `input.cpp`, as mounted), the DHT11 and the AM312 PIR. What's left:

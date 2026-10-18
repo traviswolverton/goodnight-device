@@ -285,11 +285,6 @@ void maybePublishDiagnostics() {
   }
   char buffer[640];
   size_t length = diagnosticsBuild(buffer, sizeof(buffer));
-  static bool logged = false;
-  if (!logged) {
-    logged = true;
-    Serial.printf("[diag] %s\n", buffer);  // once, so the shape can be checked
-  }
   mqttClient.publish(kTopicDiagnostics, reinterpret_cast<const uint8_t*>(buffer), length, true);
 }
 
@@ -489,9 +484,9 @@ void loop() {
   dimmerUpdate(sensorsLux());
 #endif
   {
-    // Bring-up aid: what the dimmer is going on, every 5 s.
+    // What the dimmer is up to, once a minute.
     static unsigned long lastDimLogMs = 0;
-    if (millis() - lastDimLogMs >= 5000) {
+    if (millis() - lastDimLogMs >= 60000) {
       lastDimLogMs = millis();
       Serial.printf("[dim] lux=%.2f screen=%s motion=%d idle=%d\n", sensorsLux(), dimmerLevelName(),
                     sensorsMotion() ? 1 : 0, dimmerIdle() ? 1 : 0);

@@ -15,7 +15,7 @@ constexpr uint8_t kPinI2cScl = 22;
 constexpr uint32_t kI2cClockHz = 400000;
 
 constexpr uint8_t kI2cAddrOled = 0x3C;
-constexpr uint8_t kI2cAddrLight = 0x23;  // BH1750 ADDR pin wired to GND (low or floating also gives 0x23)
+constexpr uint8_t kI2cAddrLight = 0x23;  // BH1750 ADDR pin low or floating
 constexpr uint8_t kI2cAddrExpander = 0x27;  // MCP23017 A0-A2 all high: how the Waveshare board ships
 
 // MCP23017 INTA. The expander mirrors both ports onto INTA and drives it

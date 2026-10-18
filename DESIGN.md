@@ -23,7 +23,7 @@ lives on the server.
   internal pull-ups are enabled; no resistors needed.
 - **Joystick:** KY-023 (two potentiometers + a push switch). Axes on
   ESP32 ADC1; the switch on the expander's GPB0.
-- **Light:** BH1750 on a GY-302 board (I2C, 0x23 with ADDR wired to GND).
+- **Light:** BH1750 on a GY-302 board (I2C, 0x23 with ADDR low/floating).
 - **Temperature/humidity:** DHT11 on an HW-507 board (single-wire, own GPIO;
   the board carries the data pull-up).
 - **Motion:** AM312 mini PIR (one output pin, high while it sees movement).
@@ -302,6 +302,9 @@ plain-http LAN address) and `DEVICE_TOKEN` (made on that page, sent as
 `Authorization: Bearer`). Without them, fetching compiles out and
 `MQTT_*` are used as before.
 
+- **How to tell it's working:** each ask logs `[config] couldn't get broker settings from the server`
+  if it fails, `[config] server's broker settings match the ones in use` if it succeeds with nothing
+  new, or `[config] server says: broker ...; trying it` if the settings changed.
 - **When it asks:** at boot, before the first MQTT connect; every 15 min;
   and after 3 failed connects in a row, at most once a minute. Each ask
   is one blocking request, capped at 2 s. That's normally a few ms on the
@@ -374,9 +377,8 @@ arrive as events on `bedside/button` and `bedside/stick`.
    stop, and `bedside/sensors` shows `"motion":true` then `false`.
 
 ### Debug aids left in the firmware
-- **`[dim]` line:** `main.cpp` prints `[dim] lux=... screen=... motion=...` every
-  5 s. It's the quickest way to see what the dimmer is deciding; cut or slow it
-  down once the thresholds are tuned.
+- **`[dim]` line:** `main.cpp` prints `[dim] lux=... screen=... motion=... idle=...`
+  once a minute. It's the quickest way to see what the dimmer is deciding.
 - **`BENCH_OLED_TEST`:** a build flag that replaces the normal screen with a
   blinking test pattern at full brightness, ignoring the dimmer and the clock,
   to tell a live panel from a frozen one. Build with

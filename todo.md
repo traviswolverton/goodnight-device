@@ -13,12 +13,6 @@ page. Fast mode was checked end to end on the live broker on 2026-10-18. Left:
   not yet seen arriving. Move the stick and press a button while the server listens.
 - Ask the server to stop offering button 8 on its Buttons page (the device never publishes it).
 
-## Cleanup
-- The first diagnostics message is printed to serial once per boot (`[diag] {...}`); drop it if
-  it's no longer useful.
-- `main.cpp` prints a `[dim] lux=... screen=... motion=...` line every 5 s, left in from bring-up.
-  Keep it while tuning the dimmer, then drop it or make it less frequent.
-
 ## Config and security
 - MQTT broker comes from `secrets.h` and connects. Check whether the server's `GET /device/config`
   (via `SERVER_URL` and `DEVICE_TOKEN`) is supposed to supply it, and whether the device can reach
@@ -31,4 +25,3 @@ axes inverted in `input.cpp`, as mounted), the DHT11 and the AM312 PIR. What's l
   counts as activity for the idle screen-off timer.
 - Add `idle_off_minutes` (default 15, 0 = never) to the server's device config and settings page;
   the firmware side is done. Brief: [docs/idle-off-server-brief.md](docs/idle-off-server-brief.md).
-- Wire the BH1750's `ADDR` pin to a GND screw on the bus board. The docs now assume it is.

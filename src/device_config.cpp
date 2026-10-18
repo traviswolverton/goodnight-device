@@ -170,7 +170,11 @@ bool deviceConfigUpdate(bool connectAttempted, bool connectSucceeded) {
   lastFetchMs_ = now;
 
   BrokerConfig fetched;
-  if (!fetch(fetched) || sameConfig(fetched, active_)) {
+  if (!fetch(fetched)) {
+    return false;
+  }
+  if (sameConfig(fetched, active_)) {
+    Serial.println("[config] server's broker settings match the ones in use");
     return false;
   }
   if (hasRejected_ && sameConfig(fetched, rejected_) && now - rejectedAtMs_ < kRejectRetryMs) {

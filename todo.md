@@ -6,12 +6,13 @@ every 10 s turned out to be the display's periodic panel ping (an address-only I
 to the OLED); it is gone now that the panel is no longer probed while running.
 
 ## Diagnostics for the server page
-Firmware side is done (`src/diagnostics.cpp`, `bedside/diagnostics`, `bedside/stick`,
-`bedside/diagnostics/request`; contract in DESIGN.md "Diagnostics"). Left:
-- Give the server repo the brief (topics and JSON shapes are in DESIGN.md).
-- Confirm the broker ACL for `bedside-esp32` covers the new topics: publish `bedside/diagnostics`
-  and `bedside/stick`, subscribe `bedside/diagnostics/request`.
-- Check the whole path with the server: ask for `{"fast_seconds": 30}` and watch it publish 1/s.
+Done on both sides: the firmware (`src/diagnostics.cpp`, `bedside/diagnostics`, `bedside/stick`,
+`bedside/diagnostics/request`; contract in DESIGN.md "Diagnostics") and the server's `/diagnostics`
+page. Fast mode was checked end to end on the live broker on 2026-10-18. Left:
+- Confirm the central broker's ACL lets `bedside-esp32` publish `bedside/stick`: it's the one topic
+  not yet seen arriving. Move the stick and press a button while the server listens.
+- Ask the server to stop offering button 8 on its Buttons page (the device never publishes it).
+- Check why the Wi-Fi signal is weak (about -72 dBm): the unit is now inside its case.
 
 ## Cleanup
 - The first diagnostics message is printed to serial once per boot (`[diag] {...}`); drop it if

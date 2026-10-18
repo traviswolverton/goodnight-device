@@ -71,13 +71,26 @@ page stays open, and don't leave it on when nobody is looking.
 - `heap_free` is for spotting leaks over time, not a pass or fail value.
 
 ## Please check
-1. The `bedside-esp32` broker ACL must allow it to publish `bedside/diagnostics` and
-   `bedside/stick`, and to subscribe to `bedside/diagnostics/request`. If the ACL lists topics
-   one by one, these three are new.
-2. The device is on `192.0.2.x`. The broker was unreachable from there until recently, so
-   confirm the path works.
+1. The `bedside-esp32` account must be allowed to publish `bedside/stick` on the central broker. The
+   other two topics are proven (the device publishes `bedside/diagnostics` and obeys
+   `bedside/diagnostics/request`), but no stick event has been seen arriving there yet. Move the stick
+   and press a button while the server listens, and confirm both arrive.
+2. The Buttons page lets someone bind button 8, which the device never publishes (it's the device's
+   own). It would be better not to offer it.
+3. The addresses in these docs (`192.0.2.x`) are documentation placeholders on purpose; the real
+   ones are in `secrets.h`.
 
 ## Status
-The firmware publishes the diagnostics message correctly: its JSON was checked on the device's
-serial output. Nothing on the server side has been tested. The topic could not be read from the
-broker, so the end-to-end path is unverified.
+Confirmed on the live broker on 2026-10-18 by the server's session:
+- The server has a Diagnostics page built from this brief (`/diagnostics`). It parses every field the
+  device sends. It also still reads `setup_mode`, which defaults to false and is no longer sent.
+- Fast mode works end to end: after a `{"fast_seconds": 10}` request the device published diagnostics
+  and sensors once a second, live and not retained. Without a request it publishes about every 30 s.
+- While anyone has the page open the server renews the request at most every 30 s, each for 60 s.
+- A retained report replayed on connect is shown as waiting for a new report; one older than 90 s, or
+  from an offline device, is shown as not reporting.
+
+Not yet seen: a live `bedside/stick` or `bedside/button` event arriving on the server (nobody touched
+the device while it listened).
+
+Also noted: the device's Wi-Fi signal was weak, about -72 to -73 dBm.

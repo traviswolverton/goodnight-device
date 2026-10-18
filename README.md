@@ -79,6 +79,7 @@ OTA_PASSWORD="$(scripts/gen_secrets.py --ota-password)" pio run -t upload -e esp
 | [docs/pinout.html](docs/pinout.html) | Wiring diagram |
 | [docs/button-actions-spec.md](docs/button-actions-spec.md) | What each button should do, for the Home Assistant side |
 | [docs/diagnostics-server-brief.md](docs/diagnostics-server-brief.md) | The device's diagnostics feed, for a server page |
+| [docs/idle-off-server-brief.md](docs/idle-off-server-brief.md) | The idle screen-off setting (`idle_off_minutes`), for the server's device config |
 | [docs/wiring-checklist.md](docs/wiring-checklist.md) | Which wire goes where, device pin orders, and a test routine for before first power-up |
 | [docs/enclosure.md](docs/enclosure.md) | The case: what's inside, parts list, printing, assembly and the button labels |
 | [docs/troubleshooting.md](docs/troubleshooting.md) | I2C error floods, phantom stick presses, a stick or sensor that doesn't show up |

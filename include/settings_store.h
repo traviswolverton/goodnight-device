@@ -5,7 +5,7 @@
 
 // Thin wrapper around the ESP32's NVS-backed Preferences library, for the
 // settings that should survive a reboot even when the server is
-// unreachable: the dimmer and the buzzer. The server sends both on
+// unreachable: the dimmer (including its idle-off minutes) and the buzzer. The server sends both on
 // bedside/config (retained), and the last copy received is kept here so a
 // power cut in the night doesn't bring the screen back at full brightness
 // (or the buzzer at full volume) with defaults until the WiFi and broker

@@ -2,7 +2,7 @@
 //
 // Wires together connectivity (WiFi + MQTT + OTA), input (8 buttons and a
 // joystick through the MCP23017 and ADC), sensors (BH1750 light, DHT11
-// climate, AM312 motion), and output (SSD1306 OLED, dimmed by room light; a piezo
+// climate, AM312 motion), and output (SSD1306 OLED, dimmed by room light; a passive
 // buzzer). See
 // DESIGN.md for the design -- this file is just the glue.
 
@@ -94,10 +94,12 @@ void applyDimmer(JsonObjectConst d) {
   s.darkLux = clampF(d["dark_lux"] | s.darkLux, 0.0f, s.brightLux);
   s.dimContrast = (uint8_t)clampF(d["dim_contrast"] | (float)s.dimContrast, 0.0f, 255.0f);
   s.wakeSeconds = (uint16_t)clampF(d["wake_seconds"] | (float)s.wakeSeconds, 3.0f, 600.0f);
+  s.idleOffMinutes =
+      (uint16_t)clampF(d["idle_off_minutes"] | (float)s.idleOffMinutes, 0.0f, 1440.0f);
   dimmerApply(s);
   settingsSaveDimmer(s);
-  Serial.printf("[config] bright=%.1flx dark=%.1flx dimContrast=%u wake=%us\n", s.brightLux,
-                s.darkLux, s.dimContrast, s.wakeSeconds);
+  Serial.printf("[config] bright=%.1flx dark=%.1flx dimContrast=%u wake=%us idleOff=%umin\n",
+                s.brightLux, s.darkLux, s.dimContrast, s.wakeSeconds, s.idleOffMinutes);
 }
 
 void applySounds(JsonObjectConst d) {
@@ -116,7 +118,7 @@ void applySounds(JsonObjectConst d) {
 
 // bedside/config, retained, from the server:
 //   {"dimmer": {"bright_lux": 20, "dark_lux": 2, "dim_contrast": 1,
-//               "wake_seconds": 15},
+//               "wake_seconds": 15, "idle_off_minutes": 15},
 //    "sounds": {"enabled": true, "volume": 80, "dark_volume": 10}}
 // Any field left out keeps its current value.
 void applyConfig(const uint8_t* payload, unsigned int length) {
@@ -478,6 +480,9 @@ void loop() {
   }
 
   sensorsUpdate();
+  if (sensorsMotion()) {
+    dimmerMotion();
+  }
   inputUpdate();
   handleInput();
 #ifndef BENCH_OLED_TEST
@@ -488,8 +493,8 @@ void loop() {
     static unsigned long lastDimLogMs = 0;
     if (millis() - lastDimLogMs >= 5000) {
       lastDimLogMs = millis();
-      Serial.printf("[dim] lux=%.2f screen=%s motion=%d\n", sensorsLux(), dimmerLevelName(),
-                    sensorsMotion() ? 1 : 0);
+      Serial.printf("[dim] lux=%.2f screen=%s motion=%d idle=%d\n", sensorsLux(), dimmerLevelName(),
+                    sensorsMotion() ? 1 : 0, dimmerIdle() ? 1 : 0);
     }
   }
   soundUpdate();

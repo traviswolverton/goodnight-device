@@ -11,6 +11,11 @@
 //   lux < darkLux               Off -- until a control is touched, then Dim
 //                               for wakeSeconds, then Off again
 //
+// Whatever the room light says, the screen also turns Off after
+// idleOffMinutes with no activity (a control touched, or movement seen by
+// the PIR). Any activity ends that: a touch wakes it (and, like a wake in
+// the dark, is swallowed), movement just brings it back. 0 turns this off.
+//
 // No light sensor (or no reading yet) means Full: fail toward a readable
 // screen, never toward a dark one nobody can explain.
 //
@@ -22,6 +27,7 @@ struct DimmerSettings {
   float darkLux = 2.0f;
   uint8_t dimContrast = 1;  // 0-255, see displaySetDimContrast()
   uint16_t wakeSeconds = 15;
+  uint16_t idleOffMinutes = 15;  // 0 = never turn off for being idle
 };
 
 void dimmerBegin(const DimmerSettings& settings);
@@ -32,10 +38,17 @@ const DimmerSettings& dimmerSettings();
 void dimmerUpdate(float lux);
 
 // Call when any control is first touched. Returns true when the screen was
-// off and this touch woke it -- the caller should then ignore the rest of
-// that gesture. While already awake in the dark, a touch just restarts the
-// wake timer and returns false.
+// off (dark, or off for being idle) and this touch woke it -- the caller
+// should then ignore the rest of that gesture. While already awake, a touch
+// just restarts the timers and returns false.
 bool dimmerWake();
+
+// Call while the PIR sees movement. Restarts the idle timer, and brings the
+// screen back if it was off for being idle (it stays off if the room is dark).
+void dimmerMotion();
+
+// True while the screen is off for being idle.
+bool dimmerIdle();
 
 DisplayLevel dimmerLevel();
 

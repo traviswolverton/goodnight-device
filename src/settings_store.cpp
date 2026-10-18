@@ -11,6 +11,7 @@ constexpr char kKeyBrightLux[] = "bright_lux";
 constexpr char kKeyDarkLux[] = "dark_lux";
 constexpr char kKeyDimContrast[] = "dim_contrast";
 constexpr char kKeyWakeSeconds[] = "wake_secs";
+constexpr char kKeyIdleMinutes[] = "idle_mins";
 constexpr char kKeySoundOn[] = "snd_on";
 constexpr char kKeySoundVolume[] = "snd_vol";
 constexpr char kKeySoundDark[] = "snd_dark";
@@ -29,6 +30,7 @@ DimmerSettings settingsLoadDimmer(const DimmerSettings& defaults) {
   s.darkLux = prefs.getFloat(kKeyDarkLux, defaults.darkLux);
   s.dimContrast = prefs.getUChar(kKeyDimContrast, defaults.dimContrast);
   s.wakeSeconds = prefs.getUShort(kKeyWakeSeconds, defaults.wakeSeconds);
+  s.idleOffMinutes = prefs.getUShort(kKeyIdleMinutes, defaults.idleOffMinutes);
   prefs.end();
   return s;
 }
@@ -39,7 +41,8 @@ void settingsSaveDimmer(const DimmerSettings& settings) {
   if (prefs.isKey(kKeyBrightLux) && prefs.getFloat(kKeyBrightLux) == settings.brightLux &&
       prefs.getFloat(kKeyDarkLux) == settings.darkLux &&
       prefs.getUChar(kKeyDimContrast) == settings.dimContrast &&
-      prefs.getUShort(kKeyWakeSeconds) == settings.wakeSeconds) {
+      prefs.getUShort(kKeyWakeSeconds) == settings.wakeSeconds &&
+      prefs.isKey(kKeyIdleMinutes) && prefs.getUShort(kKeyIdleMinutes) == settings.idleOffMinutes) {
     prefs.end();
     return;
   }
@@ -47,6 +50,7 @@ void settingsSaveDimmer(const DimmerSettings& settings) {
   prefs.putFloat(kKeyDarkLux, settings.darkLux);
   prefs.putUChar(kKeyDimContrast, settings.dimContrast);
   prefs.putUShort(kKeyWakeSeconds, settings.wakeSeconds);
+  prefs.putUShort(kKeyIdleMinutes, settings.idleOffMinutes);
   prefs.end();
 }
 

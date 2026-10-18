@@ -11,6 +11,8 @@ DimmerSettings settings_;
 Zone zone_ = Zone::Bright;
 unsigned long awakeUntilMs_ = 0;
 bool awake_ = false;
+unsigned long lastActivityMs_ = 0;
+bool idle_ = false;
 
 // A threshold has to be crossed by this fraction (or at least
 // kMinHysteresisLux) before the zone changes.
@@ -50,12 +52,23 @@ Zone zoneFor(float lux) {
 }
 
 DisplayLevel levelNow() {
+  if (idle_) {
+    return DisplayLevel::Off;
+  }
   switch (zone_) {
     case Zone::Bright: return DisplayLevel::Full;
     case Zone::Dim: return DisplayLevel::Dim;
     case Zone::Dark: return awake_ ? DisplayLevel::Dim : DisplayLevel::Off;
   }
   return DisplayLevel::Full;
+}
+
+void noteActivity() {
+  lastActivityMs_ = millis();
+  if (idle_) {
+    idle_ = false;
+    Serial.println("[dim] idle ended");
+  }
 }
 
 void extendWake() {
@@ -66,6 +79,7 @@ void extendWake() {
 }  // namespace
 
 void dimmerBegin(const DimmerSettings& settings) {
+  lastActivityMs_ = millis();
   dimmerApply(settings);
   displaySetLevel(levelNow());
 }
@@ -91,17 +105,35 @@ void dimmerUpdate(float lux) {
   } else if (awake_ && (long)(millis() - awakeUntilMs_) >= 0) {
     awake_ = false;
   }
+  if (!idle_ && settings_.idleOffMinutes > 0 &&
+      millis() - lastActivityMs_ >= (unsigned long)settings_.idleOffMinutes * 60000UL) {
+    idle_ = true;
+    Serial.printf("[dim] idle for %u min, screen off\n", settings_.idleOffMinutes);
+  } else if (idle_ && settings_.idleOffMinutes == 0) {
+    idle_ = false;
+  }
   displaySetLevel(levelNow());
 }
 
 bool dimmerWake() {
+  bool wasIdle = idle_;
+  noteActivity();
   if (zone_ != Zone::Dark) {
-    return false;
+    displaySetLevel(levelNow());
+    return wasIdle;
   }
   bool wasOff = !awake_;
   extendWake();
   displaySetLevel(levelNow());
-  return wasOff;
+  return wasOff || wasIdle;
+}
+
+void dimmerMotion() {
+  noteActivity();
+}
+
+bool dimmerIdle() {
+  return idle_;
 }
 
 DisplayLevel dimmerLevel() {

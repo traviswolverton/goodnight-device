@@ -71,10 +71,7 @@ page stays open, and don't leave it on when nobody is looking.
 - `heap_free` is for spotting leaks over time, not a pass or fail value.
 
 ## Please check
-1. The `bedside-esp32` account must be allowed to publish `bedside/stick` on the central broker. The
-   other two topics are proven (the device publishes `bedside/diagnostics` and obeys
-   `bedside/diagnostics/request`), but no stick event has been seen arriving there yet. Move the stick
-   and press a button while the server listens, and confirm both arrive.
+1. (Done) The stick events reach the server: checked at the device by its owner.
 2. The Buttons page lets someone bind button 8, which the device never publishes (it's the device's
    own). It would be better not to offer it.
 3. The addresses in these docs (`192.0.2.x`) are documentation placeholders on purpose; the real
@@ -90,5 +87,4 @@ Confirmed on the live broker on 2026-10-18 by the server's session:
 - A retained report replayed on connect is shown as waiting for a new report; one older than 90 s, or
   from an offline device, is shown as not reporting.
 
-Not yet seen: a live `bedside/stick` or `bedside/button` event arriving on the server (nobody touched
-the device while it listened).
+Stick events were checked by hand at the device afterwards and arrive.

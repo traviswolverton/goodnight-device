@@ -8,9 +8,7 @@ to the OLED); it is gone now that the panel is no longer probed while running.
 ## Diagnostics for the server page
 Done on both sides: the firmware (`src/diagnostics.cpp`, `bedside/diagnostics`, `bedside/stick`,
 `bedside/diagnostics/request`; contract in DESIGN.md "Diagnostics") and the server's `/diagnostics`
-page. Fast mode was checked end to end on the live broker on 2026-10-18. Left:
-- Confirm the central broker's ACL lets `bedside-esp32` publish `bedside/stick`: it's the one topic
-  not yet seen arriving. Move the stick and press a button while the server listens.
+page. Fast mode and the stick events were checked end to end on the live broker. Left:
 - Ask the server to stop offering button 8 on its Buttons page (the device never publishes it).
 
 ## Hardware

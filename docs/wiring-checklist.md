@@ -91,4 +91,4 @@ Multimeter in continuity mode, with nothing plugged into the devices.
 - [ ] Each direct jumper beeps end to end.
 - [ ] Only then plug the devices in, and watch the serial log's `[i2c] found:` line for `0x23 0x27 0x3C`.
 
-If the expander reports I2C errors or phantom presses, check the screw terminals are tight, then unplug the PA wires to see whether the buttons are the cause.
+If the log shows I2C errors or phantom stick presses, see [troubleshooting.md](troubleshooting.md): the usual causes are a device with no ground, the expander on 5V instead of 3V3, or a loose terminal screw.

@@ -447,7 +447,7 @@
     The ESP32&rsquo;s pins in real physical row order, so where a wire has to cross the board it does.
     <strong>3V3</strong> only breaks out on the right and the expander&rsquo;s I2C wires come from the
     right-hand D21/D22, so SDA and SCL run over the top of the board to reach it. Power isn&rsquo;t drawn
-    as wires: every <strong>3V3</strong> tag is the same rail, joined to the one 3V3 pin, and every
+    as wires: every <strong>3V3</strong> tag is the same bus, joined to the one 3V3 pin, and every
     <strong>GND</strong> tag is the same ground. Pin order on each breakout is shown by function, not
     silkscreen position, so wire by the printed labels.
   </figcaption>
@@ -479,32 +479,32 @@
       <tr class="group-start"><td>I2C bus</td><td class="mono">SDA</td><td class="mono gpio">21</td><td class="mono">D21</td><td class="note">shared by the OLED, BH1750 and MCP23017; the ESP32 default</td></tr>
       <tr><td></td><td class="mono">SCL</td><td class="mono gpio">22</td><td class="mono">D22</td><td class="note">the ESP32 default; 400 kHz</td></tr>
       <tr class="group-start"><td>SSD1306 OLED</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x3C</td></tr>
-      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 bus</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus</td></tr>
       <tr class="group-start"><td>BH1750 (GY-302)</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x23 (ADDR low or floating)</td></tr>
-      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail; mount it facing the room, not the screen</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 bus</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus; mount it facing the room, not the screen</td></tr>
       <tr class="group-start"><td>MCP23017</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x27 (leave A0–A2 as shipped)</td></tr>
       <tr><td></td><td class="mono">INTA</td><td class="mono gpio">27</td><td class="mono">D27</td><td class="note">open-drain, active-low: the ESP32’s own pull-up sets the idle level</td></tr>
       <tr><td></td><td class="mono">PA0–PA7</td><td class="mono">—</td><td class="mono">—</td><td class="note">buttons 1–8 (printed PA0–PA7, the datasheet’s GPA0–GPA7); the other leg of each to GND (internal pull-ups, no resistors). On the board’s header PA7 is at the top, PA0 at the bottom</td></tr>
       <tr><td></td><td class="mono">PB0</td><td class="mono">—</td><td class="mono">—</td><td class="note">joystick SW (the datasheet’s GPB0); first pin of the other header</td></tr>
       <tr><td></td><td class="mono">INTB</td><td class="mono">—</td><td class="mono">—</td><td class="note">unused: both ports are mirrored onto INTA</td></tr>
-      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail (also on both headers)</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail (also on both headers)</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 bus (also on both headers)</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus (also on both headers)</td></tr>
       <tr class="group-start"><td>DHT11 (HW-507)</td><td class="mono">DAT / S</td><td class="mono gpio">4</td><td class="mono">D4</td><td class="note">the board carries its own pull-up</td></tr>
       <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the board accepts 3.3–5V, but the data line swings to its supply</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus</td></tr>
       <tr class="group-start"><td>PIR (AM312)</td><td class="mono">OUT</td><td class="mono gpio">18</td><td class="mono">D18</td><td class="note">high while it sees motion; no pull-down (the module&rsquo;s output is too weak for one: about 1.6 V with it on), so an unplugged pin floats</td></tr>
       <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the module takes 2.7–12V, but power it from 3V3 like everything else</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus</td></tr>
       <tr class="group-start"><td>Joystick (KY-023)</td><td class="mono">VRx</td><td class="mono gpio">34</td><td class="mono">D34</td><td class="note">ADC1, input-only, no internal pull: floats if unplugged</td></tr>
       <tr><td></td><td class="mono">VRy</td><td class="mono gpio">35</td><td class="mono">D35</td><td class="note">ADC1, input-only, no internal pull: floats if unplugged</td></tr>
       <tr><td></td><td class="mono">SW</td><td class="mono">—</td><td class="mono">—</td><td class="note">to the MCP23017’s PB0, not to the ESP32</td></tr>
       <tr><td></td><td class="mono">+5V</td><td class="mono">—</td><td class="mono">3V3<span class="flag">not 5V</span></td><td class="note">the pin is printed 5V; the axes output a fraction of the supply, so 5V would reach an ESP32 pin</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus</td></tr>
       <tr class="group-start"><td>Buzzer module (passive)</td><td class="mono">I/O</td><td class="mono gpio">25</td><td class="mono">D25</td><td class="note">LEDC PWM: pitch by frequency, volume by duty cycle</td></tr>
-      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 rail</td></tr>
-      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND rail</td></tr>
+      <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 bus</td></tr>
+      <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus</td></tr>
     </tbody>
   </table>
 </div>

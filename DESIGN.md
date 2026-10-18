@@ -135,6 +135,25 @@ behind the panel's edge, never looking at the display. The firmware guards
 against the obvious feedback loop (see Dimming) but can't undo a sensor
 that mostly measures the screen.
 
+**The I2C bus.** SDA and SCL are shared by the OLED, the BH1750 and the
+expander. The pull-up resistors are on the BH1750 (GY-302) board, so that
+board must be powered and grounded for the bus to work at all; the expander
+board has none of its own that matter here. Two faults have cost time:
+- A device with its **ground missing** can still answer the address scan
+  (it half-powers itself through the bus pins' protection diodes) but
+  corrupts the bus. A missing BH1750 ground produced about 50 timeout
+  errors per 100 s.
+- The expander **fed 5V** instead of 3V3: its logic-high threshold is
+  then about 3.5 V, more than the ESP32's 3.3 V, so reads fail now and then
+  and a stick press can appear that nobody made.
+Every device takes 3V3 and GND from the bus board. See
+[`docs/troubleshooting.md`](docs/troubleshooting.md) for how to tell these
+apart.
+
+**The case.** The enclosure (a 4 × 2 Gridfinity-base box with the boards
+inside and the controls on a removable lid), its parts list, printing and
+assembly are in [`docs/enclosure.md`](docs/enclosure.md).
+
 ## Firmware layout
 
 | File | What it owns |
@@ -147,7 +166,7 @@ that mostly measures the screen.
 | `screen.*` | What's drawn: one big line, the clock first, stick left/right for other pages |
 | `local_time.*` | Central time from NTP (`CST6CDT`), 12-hour, for the clock page |
 | `settings_store.*` | Dimmer and buzzer settings in NVS, surviving reboots |
-| `sound.*` | The piezo: named tunes, non-blocking, quieter in the dark |
+| `sound.*` | The buzzer: named tunes, non-blocking, quieter in the dark |
 | `ota.*` | ArduinoOTA, hostname `bedside-dashboard-esp32` |
 | `device_config.*` | Which broker to use, fetched from the server (below) |
 | `http_get.*` | The small HTTP client that fetch uses (from the desk unit) |
@@ -158,8 +177,8 @@ unit. The one deliberate exception is the DHT11 read (a few milliseconds
 with interrupts held off, once every 10s).
 
 A missing I2C device never stops the firmware: each module checks for its
-chip at boot, logs what it didn't find, and the bench screen names it on
-its bottom line (`No BH1750 MCP stick`). Serial also prints a full I2C
+chip at boot, logs what it didn't find, and the screen shows an inverted `!`
+top left and adds a last page naming it (`No BH1750 MCP stick`). Serial also prints a full I2C
 scan at boot.
 
 ## Dimming
@@ -189,6 +208,15 @@ Three levels, chosen from smoothed room light (lux):
   still bright in a dark room, so Dim also lowers the panel's pre-charge
   and VCOMH voltages (`display.cpp`). If a particular panel misbehaves at
   those values (flicker, uneven rows), that's the place to tune.
+- **Idle off:** whatever the room light says, the screen also turns off after
+  `idle_off_minutes` (default 15, 0 = never) with no activity. Activity is a
+  control being touched or the PIR seeing movement, so the screen stays on
+  while someone is in the room. A touch on an idle screen wakes it and, as in
+  the dark, is swallowed; movement just brings it back. In a dark room
+  movement does not light it (the room's darkness still wins, and only a touch
+  wakes it, at Dim). The timer starts at boot. The serial log prints
+  `[dim] idle for N min, screen off` and `[dim] idle ended`, and `bedside/sensors`
+  reports `"screen":"off"` while it is idle.
 - **No sensor, no reading:** Full. Fail toward a readable screen.
 - **Burn-in:** the whole frame drifts by one pixel every 3 minutes around
   a small square, so nothing sits on the same pixels all night.
@@ -215,8 +243,9 @@ thresholds before WiFi is up.
   ~25%. Holding repeats after 450ms, then every 150ms. Its press is a
   plain event. The stick is for on-device navigation; its moves and press
   go out only as `bedside/stick` events, for diagnostics.
-  If it reads rotated once mounted, flip `kSwapAxes` / `kInvertX` /
-  `kInvertY` in `input.cpp`.
+  As mounted in the lid it reads the other way round, so `kInvertX` and
+  `kInvertY` in `input.cpp` are both `true` (`kSwapAxes` is `false`); if you
+  mount it differently, change those three flags.
 - **Easter egg:** five stick clicks in a row (each within 2 s of the last,
   nothing else touched in between) play the Super Mario Bros. theme on the
   buzzer. Device-only: it isn't a `bedside/sound` name, and it follows the
@@ -226,14 +255,15 @@ thresholds before WiFi is up.
 ## MQTT
 
 Client ID `bedside-dashboard-esp32`, login `bedside-esp32`, on the
-homelab's central broker (192.0.2.10:1883) — shared with Home Assistant,
+homelab's central broker (192.0.2.10:1883; the addresses in these docs are
+documentation placeholders, and the real ones live in `secrets.h`) — shared with Home Assistant,
 which is how the sensors and button triggers reach it. The account's ACL
 limits it to the topics below (bedside-dashboard-server's
 `docs/mqtt-broker.md`).
 
 | Topic | Direction | Retained | Payload |
 |---|---|---|---|
-| `bedside/config` | server → device | yes | `{"dimmer":{"bright_lux":20,"dark_lux":2,"dim_contrast":1,"wake_seconds":15},"sounds":{"enabled":true,"volume":80,"dark_volume":10}}` — any field optional |
+| `bedside/config` | server → device | yes | `{"dimmer":{"bright_lux":20,"dark_lux":2,"dim_contrast":1,"wake_seconds":15,"idle_off_minutes":15},"sounds":{"enabled":true,"volume":80,"dark_volume":10}}` — any field optional |
 | `bedside/sound` | server → device | no | `{"sound":"armed","urgent":false}` — see "Sounds" |
 | `bedside/sensors` | device → server | yes | `{"temperature_c":21.5,"humidity":44,"lux":3.5,"screen":"off","motion":false}` — `null` for a sensor with no reading; `motion` is never null |
 | `bedside/button` | device → server | no | `{"button":3,"press":"short"}` or `"long"` |
@@ -255,10 +285,11 @@ What "someone's in the room" means, and for how long, is the server's
 decision; the device sends no timeout. It rides in the retained sensors
 message, so it can be stale after the device drops off; check
 `bedside/availability` before trusting a retained `true`. Nothing on the
-device reacts to it: it doesn't wake the screen.
+device uses it only as activity for the idle timer (see Dimming): it
+doesn't turn the screen on by itself.
 
 Config values are clamped on arrival (`dark_lux` ≤ `bright_lux`, contrast
-0–255, wake 3–600s), so a bad server value can't produce a screen that
+0–255, wake 3–600s, `idle_off_minutes` 0–1440 with 0 meaning never), so a bad server value can't produce a screen that
 never turns on.
 
 ### Broker settings from the server
@@ -342,6 +373,19 @@ arrive as events on `bedside/button` and `bedside/stick`.
    prints `[sensors] motion`, then `[sensors] still` a few seconds after you
    stop, and `bedside/sensors` shows `"motion":true` then `false`.
 
+### Debug aids left in the firmware
+- **`[dim]` line:** `main.cpp` prints `[dim] lux=... screen=... motion=...` every
+  5 s. It's the quickest way to see what the dimmer is deciding; cut or slow it
+  down once the thresholds are tuned.
+- **`BENCH_OLED_TEST`:** a build flag that replaces the normal screen with a
+  blinking test pattern at full brightness, ignoring the dimmer and the clock,
+  to tell a live panel from a frozen one. Build with
+  `PLATFORMIO_BUILD_FLAGS=-DBENCH_OLED_TEST pio run -t upload`; the serial log
+  prints `[bench] frame A/B`. Changing that variable makes PlatformIO rebuild
+  everything.
+- **Serial log:** `[input] button N short|long`, `[input] stick <direction>`,
+  `[sensors] motion` / `still`, and a full I2C scan at boot are all printed.
+
 ## Sounds
 The server decides what a press did and says which sound to play on
 `bedside/sound` (bedside-dashboard-server's DESIGN.md, "Button feedback":
@@ -365,20 +409,24 @@ immediately replaced by `armed` for a confirm action).
 dimmer says the room is dark (below `dark_lux`, woken or not) — unless the
 message is `urgent`, which the server sets for `failure` so a door that
 didn't close is heard at night. `enabled: false` silences everything.
-Duty cycle sets loudness (50% is the loudest a piezo gets); 0–100 maps to
+Duty cycle sets loudness (50% is the loudest a passive buzzer gets); 0–100 maps to
 duty squared so the quiet end has usable steps. Kept in NVS like the
 dimmer.
 
 ## Still to build
-- **A clock** — NTP time is the obvious resting screen at night, with
-  the light, temperature and humidity readings.
 - **On-screen confirmations** — a brief message alongside each button
   sound ("Press again: Close garage", "Garage closed", "Failed: timed
   out"), worded by the server. No menus: the screen is too small to
-  scroll through lists, so actions are reached through buttons only.
-- **Icons** — the desk's icon set was a TFT_eSPI `.vlw` font the OLED
-  can't draw, so it's gone. Icons come back from U8g2's own icon fonts
-  once the screen is designed.
+  scroll through lists, so actions are reached through buttons only. The device
+  has no topic for this yet.
+- **Icons on the screen** — the desk's icon set was a TFT_eSPI `.vlw` font the
+  OLED can't draw, so it's gone. Icons could come back from U8g2's own icon
+  fonts if a page needs them. (The icons on the lid's button labels are
+  printed, not drawn on the screen: see `docs/enclosure.md`.)
 - **Server side** — the bedside server stack (port 8001),
   button bindings, the dimmer settings UI, and Home Assistant MQTT
   discovery for the three sensors.
+
+Built since this list was first written: the clock (NTP time as the resting
+screen, with temperature, humidity and light on the other pages), the motion
+sensor's reading and the diagnostics feed.

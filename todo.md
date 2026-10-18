@@ -16,24 +16,23 @@ Firmware side is done (`src/diagnostics.cpp`, `bedside/diagnostics`, `bedside/st
 ## Cleanup
 - The first diagnostics message is printed to serial once per boot (`[diag] {...}`); drop it if
   it's no longer useful.
+- `main.cpp` prints a `[dim] lux=... screen=... motion=...` line every 5 s, left in from bring-up.
+  Keep it while tuning the dimmer, then drop it or make it less frequent.
 
 ## Config and security
-- Flash once over USB with the `secrets.h` that `scripts/gen_secrets.py` writes, so the device has
-  the real OTA password and device token and the saved WiFi no longer matters.
-- MQTT broker is `192.0.2.10:1883` from `secrets.h`. It connects now; check whether the
-  server's `GET /device/config` (via `SERVER_URL` and `DEVICE_TOKEN`) is supposed to supply it,
-  and whether the device on `192.0.2.x` can reach the server.
+- MQTT broker comes from `secrets.h` and connects. Check whether the server's `GET /device/config`
+  (via `SERVER_URL` and `DEVICE_TOKEN`) is supposed to supply it, and whether the device can reach
+  the server from its subnet.
 
 ## Hardware
-- Verify buttons 3, 4, 5 and 8 and the joystick directions in the log (the stick now logs
-  `[input] stick <direction>`); 1, 2, 6 and 7 were seen registering.
-- Check the DHT11 shows temperature and humidity on the OLED.
-- Wire the AM312 PIR (`OUT` to GPIO18 / `D18`, `VCC` to 3V3, `GND`) and check it: wave a hand in
-  front of it 10 s after boot and watch the log for `[sensors] motion`, then `[sensors] still`.
-  Also confirm `"motion"` shows up in `bedside/sensors`.
-- Decide what the PIR is for on the server (night light, occupancy). Nothing on the device uses
-  it yet: it doesn't wake the screen.
+All of it is built, wired and working: the OLED, the BH1750, the eight buttons, the joystick (both
+axes inverted in `input.cpp`, as mounted), the DHT11 and the AM312 PIR. What's left:
+- Decide what else the PIR is for on the server (night light, occupancy). On the device it only
+  counts as activity for the idle screen-off timer.
+- Add `idle_off_minutes` (default 15, 0 = never) to the server's device config and settings page;
+  the firmware side is done. Brief: [docs/idle-off-server-brief.md](docs/idle-off-server-brief.md).
 - Optional: BH1750 `ADDR` to GND to force 0x23 (works left open now).
 - Optional: sound sensor (HW-485) planned for GPIO32 (`AO`, ADC1); not wired or in the pinout.
-- Optional: lower-risk I2C bus hardening (4.7 kΩ pull-ups) if dropouts ever return; the cause
-  last time was the ground bus.
+- Optional: 4.7 kΩ pull-ups if I2C errors ever return with every device grounded and on 3V3. The
+  BH1750 board already carries pull-ups. The two bus faults so far were a BH1750 with no ground
+  and the expander fed 5V (see [docs/troubleshooting.md](docs/troubleshooting.md)).

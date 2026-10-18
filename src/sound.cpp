@@ -11,7 +11,7 @@ namespace {
 // Nothing else here uses LEDC; any free channel would do.
 constexpr uint8_t kChannel = 4;
 constexpr uint8_t kResolutionBits = 10;
-// A piezo is loudest at 50% duty; less duty is quieter.
+// A passive buzzer is loudest at 50% duty; less duty is quieter.
 constexpr uint32_t kMaxDuty = 1u << (kResolutionBits - 1);
 
 struct Note {
@@ -20,7 +20,7 @@ struct Note {
 };
 
 // Short and distinct by pitch direction as well as rhythm, so they can be
-// told apart half asleep: rising = good, falling = bad. A piezo is
+// told apart half asleep: rising = good, falling = bad. A passive buzzer is
 // loudest around 2-4 kHz, so the "good" tunes sit up there and the
 // failure deliberately low and long.
 constexpr Note kTick[] = {{4000, 8}};

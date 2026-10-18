@@ -21,6 +21,10 @@ and keeps its connectivity, OTA and settings code.
 - BH1750 light sensor, DHT11 temperature/humidity sensor
 - AM312 mini PIR motion sensor
 - Passive buzzer module (I/O, VCC, GND)
+- A 24 × 55 mm stripboard with screw terminals for the four shared buses
+  (GND, 3V3, SDA, SCL); everything else is a Dupont jumper
+- A printed 4 × 2 Gridfinity-base case with magnets; its parts list is in
+  [docs/enclosure.md](docs/enclosure.md#parts-list)
 
 Everything runs from the ESP32's 3.3V pin. Pins, wiring and the reasons for
 them are in [DESIGN.md](DESIGN.md); [docs/pinout.html](docs/pinout.html) is a
@@ -76,23 +80,31 @@ OTA_PASSWORD="$(scripts/gen_secrets.py --ota-password)" pio run -t upload -e esp
 | [docs/button-actions-spec.md](docs/button-actions-spec.md) | What each button should do, for the Home Assistant side |
 | [docs/diagnostics-server-brief.md](docs/diagnostics-server-brief.md) | The device's diagnostics feed, for a server page |
 | [docs/wiring-checklist.md](docs/wiring-checklist.md) | Which wire goes where, device pin orders, and a test routine for before first power-up |
+| [docs/enclosure.md](docs/enclosure.md) | The case: what's inside, parts list, printing, assembly and the button labels |
+| [docs/troubleshooting.md](docs/troubleshooting.md) | I2C error floods, phantom stick presses, a stick or sensor that doesn't show up |
 | [docs/secrets-rotation.md](docs/secrets-rotation.md) | What each secret is, which need a flash, and the order to rotate them in |
 | [todo.md](todo.md) | What's left |
-| [enclosure/](enclosure/) | Parametric OpenSCAD enclosure: a 4 x 2 Gridfinity-base tub (167.5 x 83.5 x 63 mm) and lid |
+| [enclosure/](enclosure/) | Parametric OpenSCAD enclosure: a 4 x 2 Gridfinity-base tub (167.5 x 83.5 x 63 mm) and lid, the STLs, and the two-colour label plate |
 
 ## Enclosure
 
 `enclosure/bedside_enclosure.scad` builds the whole case from the measured
-sizes of the parts. Set `part` at the top of the file to `tub`, `lid`, `risers`,
-`blanks`, `label` (a blank with an inlaid icon), or a test piece (`test`, `fit`, `hubtest`, `sticktest`) and export an
-STL for each; `assembly` previews everything in place
-(add `show_parts = true` to see the boards inside). Values marked `MEASURE`
-in the file are guesses to check against your own parts before printing.
+sizes of the parts. Set `part` at the top of the file to one of `tub`, `lid`,
+`risers`, `blank`, `blanks`, `label` (a blank with an inlaid icon), a test
+piece (`test`, `fit`, `bustest`, `sticktest`), `print` or `assembly`, and
+export an STL for each; `assembly` previews everything in place (add
+`show_parts = true` to see the boards inside). Values marked `MEASURE` in the
+file are guesses to check against your own parts before printing.
+
+What's inside, the parts list, how to print it, how to put it together and how
+the two-colour button labels are made are in
+[docs/enclosure.md](docs/enclosure.md).
 
 ## Status
 
-The firmware is built and running on the bench, and the enclosure is at the
-test-print stage; both are tracked in [todo.md](todo.md).
+The firmware and the enclosure are built, and the unit is running in its case
+(see [docs/enclosure.md](docs/enclosure.md)). What's left is in
+[todo.md](todo.md).
 
 ## License
 

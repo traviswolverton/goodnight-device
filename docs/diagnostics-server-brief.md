@@ -92,5 +92,3 @@ Confirmed on the live broker on 2026-10-18 by the server's session:
 
 Not yet seen: a live `bedside/stick` or `bedside/button` event arriving on the server (nobody touched
 the device while it listened).
-
-Also noted: the device's Wi-Fi signal was weak, about -72 to -73 dBm.

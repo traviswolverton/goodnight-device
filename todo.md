@@ -12,7 +12,6 @@ page. Fast mode was checked end to end on the live broker on 2026-10-18. Left:
 - Confirm the central broker's ACL lets `bedside-esp32` publish `bedside/stick`: it's the one topic
   not yet seen arriving. Move the stick and press a button while the server listens.
 - Ask the server to stop offering button 8 on its Buttons page (the device never publishes it).
-- Check why the Wi-Fi signal is weak (about -72 dBm): the unit is now inside its case.
 
 ## Cleanup
 - The first diagnostics message is printed to serial once per boot (`[diag] {...}`); drop it if

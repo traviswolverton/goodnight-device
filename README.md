@@ -1,4 +1,4 @@
-# Bedside dashboard (ESP32)
+# Goodnight device (ESP32)
 
 A bedside clock and control panel built on an ESP32. A small OLED shows the
 time and the room's temperature, humidity and light; eight buttons and a
@@ -7,10 +7,9 @@ dims the screen to match the room, down to off in the dark.
 
 The ESP32 is the dumb end of a pair: it shows what a server tells it and
 reports its sensors and raw button presses over MQTT. What each button *does*
-lives on the server (`bedside-dashboard-server`, a separate project), so
-changing a binding never needs a reflash. It was forked from
-[desk-dashboard-esp32](https://github.com/traviswolverton/desk-dashboard-esp32)
-and keeps its connectivity, OTA and settings code.
+lives on the server ([goodnight-server](https://github.com/traviswolverton/goodnight-server), a separate project), so
+changing a binding never needs a reflash. It was forked from an earlier
+desk-dashboard ESP32 project and keeps its connectivity, OTA and settings code.
 
 ## Hardware
 

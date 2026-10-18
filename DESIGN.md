@@ -1,7 +1,6 @@
 # Bedside Dashboard — ESP32 client
 
-A bedside sibling of [desk-dashboard-esp32](https://github.com/traviswolverton/desk-dashboard-esp32),
-forked from it with full history. Connectivity, OTA and the NVS settings
+A bedside sibling of an earlier desk-dashboard ESP32 project, forked from it. Connectivity, OTA and the NVS settings
 pattern carry over; the display, controls and sensors are all new. For the
 reasoning behind the inherited pieces (non-blocking MQTT, heap-churn-free
 payload parsing, OTA partition layout), see the desk repo's `DESIGN.md` at
@@ -9,7 +8,7 @@ the fork point — `git log` here reaches it too.
 
 ## Role in the system
 Same split as the desk unit: the ESP32 is the dumb end. It shows what
-`bedside-dashboard-server` sends, reports its sensors, and publishes raw
+`goodnight-server` sends, reports its sensors, and publishes raw
 button presses. What a button *does*, and every threshold worth tuning,
 lives on the server.
 
@@ -258,7 +257,7 @@ Client ID `bedside-dashboard-esp32`, login `bedside-esp32`, on the
 homelab's central broker (192.0.2.10:1883; the addresses in these docs are
 documentation placeholders, and the real ones live in `secrets.h`) — shared with Home Assistant,
 which is how the sensors and button triggers reach it. The account's ACL
-limits it to the topics below (bedside-dashboard-server's
+limits it to the topics below (goodnight-server's
 `docs/mqtt-broker.md`).
 
 | Topic | Direction | Retained | Payload |
@@ -390,7 +389,7 @@ arrive as events on `bedside/button` and `bedside/stick`.
 
 ## Sounds
 The server decides what a press did and says which sound to play on
-`bedside/sound` (bedside-dashboard-server's DESIGN.md, "Button feedback":
+`bedside/sound` (goodnight-server's DESIGN.md, "Button feedback":
 confirm presses, and checking in Home Assistant that an action really
 happened). The firmware only knows the tunes:
 

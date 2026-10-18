@@ -1,5 +1,5 @@
 // Minimal HTTP GET into a caller-supplied buffer, for the broker-settings
-// fetch (device_config.cpp). Taken from desk-dashboard-esp32, where it
+// fetch (device_config.cpp). Taken from an earlier desk-dashboard ESP32 project, where it
 // also serves the CAMERA screen's snapshot fetch.
 
 #include "http_get.h"

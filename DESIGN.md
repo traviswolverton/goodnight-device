@@ -23,7 +23,7 @@ lives on the server.
   internal pull-ups are enabled; no resistors needed.
 - **Joystick:** KY-023 (two potentiometers + a push switch). Axes on
   ESP32 ADC1; the switch on the expander's GPB0.
-- **Light:** BH1750 on a GY-302 board (I2C, 0x23 with ADDR low/floating).
+- **Light:** BH1750 on a GY-302 board (I2C, 0x23 with ADDR wired to GND).
 - **Temperature/humidity:** DHT11 on an HW-507 board (single-wire, own GPIO;
   the board carries the data pull-up).
 - **Motion:** AM312 mini PIR (one output pin, high while it sees movement).

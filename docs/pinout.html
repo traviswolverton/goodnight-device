@@ -382,7 +382,7 @@
       <line x1="1420" y1="306" x2="1436" y2="306" stroke="#9aa5a0" stroke-width="4.6"/><line x1="1420" y1="306" x2="1436" y2="306" stroke="var(--c-black)" stroke-width="2.5"/>
       <rect x="1436" y="297" width="46" height="18" rx="9" fill="none" stroke="var(--wire-gnd)" stroke-width="1.6"/>
       <text x="1459" y="310" text-anchor="middle" font-size="10.5" fill="var(--wire-gnd)" font-weight="600">GND</text>
-      <text x="1340" y="344" text-anchor="middle" font-size="9" fill="var(--silk-dim)">ADDR: leave floating (0x23)</text>
+      <text x="1340" y="344" text-anchor="middle" font-size="9" fill="var(--silk-dim)">ADDR: wire to GND (0x23)</text>
       <text x="1190" y="112" text-anchor="middle" font-size="10" fill="var(--silk)" font-weight="600">shared I2C bus</text>
       <text x="1190" y="124" text-anchor="middle" font-size="8.5" fill="var(--silk-dim)">SDA + SCL (with the expander at left)</text>
       <rect x="930" y="410" width="160" height="120" rx="5" fill="var(--pcb)" stroke="var(--pcb-edge)" stroke-width="2"/>
@@ -481,7 +481,7 @@
       <tr class="group-start"><td>SSD1306 OLED</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x3C</td></tr>
       <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 bus</td></tr>
       <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus</td></tr>
-      <tr class="group-start"><td>BH1750 (GY-302)</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x23 (ADDR low or floating)</td></tr>
+      <tr class="group-start"><td>BH1750 (GY-302)</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x23 (ADDR wired to GND)</td></tr>
       <tr><td></td><td class="mono">VCC</td><td class="mono">—</td><td class="mono">3V3</td><td class="note">on the 3V3 bus</td></tr>
       <tr><td></td><td class="mono">GND</td><td class="mono">—</td><td class="mono">GND</td><td class="note">on the GND bus; mount it facing the room, not the screen</td></tr>
       <tr class="group-start"><td>MCP23017</td><td class="mono">SDA / SCL</td><td class="mono">—</td><td class="mono">D21 / D22</td><td class="note">address 0x27 (leave A0–A2 as shipped)</td></tr>
@@ -532,7 +532,7 @@
     <img src="bus-board.png" alt="Bus board: four copper strips, each with a screw-terminal block. GND has an 8-way and a 4-way block taking ESP32 (two), OLED, BH1750, expander, DHT11, PIR, buzzer, joystick and the buttons&rsquo; shared ground. 3V3 has an 8-way block taking ESP32, OLED, BH1750, expander, DHT11, PIR, buzzer and joystick. SDA and SCL each have a 4-way block taking the ESP32, OLED, BH1750 and expander." style="display:block;width:100%;height:auto;min-width:720px;background:#fff;border-radius:6px">
   </div>
   <figcaption>
-    26 wires on the board: GND 10, 3V3 8, SDA 4, SCL 4. The ESP32 has two GND pins, so both are used.
+    27 wires on the board: GND 11, 3V3 8, SDA 4, SCL 4. The ESP32 has two GND pins, so both are used.
     The buttons&rsquo; eight grounds join on the lid and use a single GND screw.
   </figcaption>
 </figure>
@@ -543,7 +543,7 @@
       <tr><th>Bus</th><th>Screws</th><th>ESP32 pin</th><th>Goes to</th></tr>
     </thead>
     <tbody>
-      <tr><td>GND</td><td class="mono">8P + 4P</td><td class="mono">both GND pins</td><td class="note">OLED, BH1750, expander, DHT11, PIR, buzzer, joystick, buttons (one wire)</td></tr>
+      <tr><td>GND</td><td class="mono">8P + 4P</td><td class="mono">both GND pins</td><td class="note">OLED, BH1750 (and its ADDR pin), expander, DHT11, PIR, buzzer, joystick, buttons (one wire)</td></tr>
       <tr><td>3V3</td><td class="mono">8P</td><td class="mono">3V3</td><td class="note">OLED, BH1750, expander, DHT11, PIR, buzzer, joystick (its pin printed 5V gets 3V3, never 5V)</td></tr>
       <tr><td>SDA</td><td class="mono">4P</td><td class="mono">D21</td><td class="note">OLED, BH1750, expander</td></tr>
       <tr><td>SCL</td><td class="mono">4P</td><td class="mono">D22</td><td class="note">OLED, BH1750, expander</td></tr>
@@ -574,7 +574,7 @@
   </table>
 </div>
 <p class="note" style="margin-top:14px;max-width:72ch">
-  The BH1750 board carries the I2C pull-up resistors for the whole bus. Leave its ADDR pin unconnected (address 0x23).
+  The BH1750 board carries the I2C pull-up resistors for the whole bus. Wire its ADDR pin to a GND screw (address 0x23).
 </p>
 
 <h2>Wire colours</h2>
@@ -609,7 +609,7 @@
 <p class="note" style="margin-top:14px;max-width:72ch">
   Each button has its own yellow signal wire to the expander&rsquo;s PA header. Their grounds are joined to each other
   on the lid, and that one common wire goes to a single GND screw on the bus board, so the buttons use one of the
-  ten GND wires, not eight. On the PA header, bend the pins flat so a plug goes on sideways: the header is
+  eleven GND wires, not eight. On the PA header, bend the pins flat so a plug goes on sideways: the header is
   PA7 at the top down to PA0, then GND and VCC at the bottom, so button <em>n</em> goes to the pin labelled
   PA<em>n&minus;1</em>. The joystick&rsquo;s press switch is the one other wire to the expander, to PB0; its other
   side is the stick&rsquo;s GND, from the bus board.

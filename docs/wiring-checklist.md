@@ -21,11 +21,11 @@ Red is always 3V3 and black is always GND.
 | Stick press | PB0 | white |
 | Buttons 1 to 8 | PA0 to PA7 | yellow |
 
-## Bus board (26 wires)
+## Bus board (27 wires)
 
 Strip the wire about 6 mm, push it in fully, tighten, and tug it. Never put 5V on anything here: the joystick's pin printed 5V gets 3V3.
 
-- [ ] **GND, 10 screws:** ESP32 (both GND pins), OLED, BH1750, expander, DHT11, PIR, buzzer, joystick, and the buttons' common ground (one wire).
+- [ ] **GND, 11 screws:** ESP32 (both GND pins), OLED, BH1750, the BH1750's ADDR pin, expander, DHT11, PIR, buzzer, joystick, and the buttons' common ground (one wire).
 - [ ] **3V3, 8 screws:** ESP32 3V3, OLED, BH1750, expander, DHT11, PIR, buzzer, joystick.
 - [ ] **SDA, 4 screws:** ESP32 D21, OLED, BH1750, expander.
 - [ ] **SCL, 4 screws:** ESP32 D22, OLED, BH1750, expander.
@@ -49,7 +49,7 @@ Wire by each module's own silkscreen. Orders differ between modules, so don't as
 |---|---|---|
 | DHT11 (HW-507) | S, +, − | + to 3V3 |
 | OLED | GND, VCC, SCK, SDA | SCK is the I2C clock, SCL. GND and VCC are the first two, the reverse of most modules. |
-| BH1750 (GY-302) | ADDR, SDA, SCL, GND, VCC | Leave ADDR unconnected. Its board carries the bus's pull-ups. |
+| BH1750 (GY-302) | ADDR, SDA, SCL, GND, VCC | Wire ADDR to a GND screw, so the address is fixed at 0x23 and the pin can't float. Its board carries the bus's pull-ups. |
 | Joystick (KY-023) | GND, 5V, VRx, VRy, SW | The pin printed 5V gets **3V3**. SW goes to PB0. |
 | Buzzer module | I/O, VCC, GND | Power from 3V3. |
 | Expander stock cable | VCC, GND, SDA, SCL, INTA, INTB (red, black, blue, yellow, orange, green) | Feed VCC 3V3, never 5V. |

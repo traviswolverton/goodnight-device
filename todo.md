@@ -31,8 +31,4 @@ axes inverted in `input.cpp`, as mounted), the DHT11 and the AM312 PIR. What's l
   counts as activity for the idle screen-off timer.
 - Add `idle_off_minutes` (default 15, 0 = never) to the server's device config and settings page;
   the firmware side is done. Brief: [docs/idle-off-server-brief.md](docs/idle-off-server-brief.md).
-- Optional: BH1750 `ADDR` to GND to force 0x23 (works left open now).
-- Optional: sound sensor (HW-485) planned for GPIO32 (`AO`, ADC1); not wired or in the pinout.
-- Optional: 4.7 kΩ pull-ups if I2C errors ever return with every device grounded and on 3V3. The
-  BH1750 board already carries pull-ups. The two bus faults so far were a BH1750 with no ground
-  and the expander fed 5V (see [docs/troubleshooting.md](docs/troubleshooting.md)).
+- Wire the BH1750's `ADDR` pin to a GND screw on the bus board. The docs now assume it is.

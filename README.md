@@ -11,6 +11,12 @@ lives on the server ([goodnight-server](https://github.com/traviswolverton/goodn
 changing a binding never needs a reflash. It was forked from an earlier
 desk-dashboard ESP32 project and keeps its connectivity, OTA and settings code.
 
+![The finished bedside dashboard from the front: the OLED shows the time, with the motion sensor's dome at the right.](docs/images/bedside-front.jpg)
+
+| | |
+|---|---|
+| ![From above: eight buttons with a label under each, and the joystick at the right.](docs/images/bedside-top.jpg) | ![From the side: the USB-C cable enters the left wall, and the case sits on a Gridfinity baseplate.](docs/images/bedside-side.jpg) |
+
 ## Hardware
 
 - ELEGOO ESP32-WROOM-32 (30-pin DEVKIT V1)
